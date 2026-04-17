@@ -1,0 +1,156 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Payra palette — navy monochrome from logo */
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(222 45% 11%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(222 45% 11%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(222 45% 11%);
+  --primary: hsl(222 47% 18%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(220 20% 96%);
+  --secondary-foreground: hsl(222 47% 18%);
+  --muted: hsl(220 20% 96%);
+  --muted-foreground: hsl(222 15% 45%);
+  --accent: hsl(220 30% 94%);
+  --accent-foreground: hsl(222 47% 18%);
+  --destructive: hsl(0 72% 51%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(220 15% 90%);
+  --input: hsl(220 15% 90%);
+  --ring: hsl(222 47% 18%);
+  --radius: 0.75rem;
+
+  /* Brand tokens */
+  --brand-navy: hsl(222 47% 18%);
+  --brand-navy-deep: hsl(222 55% 12%);
+  --brand-navy-soft: hsl(222 40% 28%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand-navy);
+  --color-brand-deep: var(--brand-navy-deep);
+  --color-brand-soft: var(--brand-navy-soft);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+}
+
+/* Brand gradient — deep navy → slightly lifted navy, matches logo tone */
+.gradient-brand {
+  background: linear-gradient(135deg, hsl(222 55% 12%) 0%, hsl(222 45% 22%) 100%);
+}
+
+/* Legacy alias so existing markup keeps working */
+.gradient-card {
+  background: linear-gradient(135deg, hsl(222 55% 12%) 0%, hsl(222 45% 22%) 100%);
+}
+
+/* Landing page animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50%       { transform: translateY(-8px) rotate(2deg); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px hsl(222 55% 30% / 0.3); }
+  50%       { box-shadow: 0 0 40px hsl(222 55% 40% / 0.6), 0 0 80px hsl(222 55% 40% / 0.2); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(120px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(120px) rotate(-360deg); }
+}
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.animate-float       { animation: float 4s ease-in-out infinite; }
+.animate-float-slow  { animation: float-slow 6s ease-in-out infinite; }
+.animate-pulse-glow  { animation: pulse-glow 3s ease-in-out infinite; }
+.animate-slide-up    { animation: slide-up 0.7s ease both; }
+.animate-fade-in     { animation: fade-in 0.5s ease both; }
+.animate-ticker      { animation: ticker 30s linear infinite; }
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+.text-shimmer {
+  background: linear-gradient(90deg, hsl(222 55% 12%), hsl(222 40% 45%), hsl(222 55% 12%));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+.glass {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.noise {
+  position: relative;
+}
+.noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+}
