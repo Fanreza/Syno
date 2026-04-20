@@ -11,6 +11,8 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.4.2",
+    "@dicebear/core": "^9.4.2",
     "@jup-ag/lend": "^0.1.9",
     "@jup-ag/lend-read": "^0.0.12",
     "@privy-io/js-sdk-core": "^0.60.4",

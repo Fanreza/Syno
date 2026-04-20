@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Copy, Check, ExternalLink, LogOut, Shield, Mail, KeyRound, Eye, EyeOff, AlertTriangle } from 'lucide-vue-next'
+import { createAvatar } from '@dicebear/core'
+import { bottts } from '@dicebear/collection'
 
 const { user, apiFetch, logout } = useAuth()
 
@@ -49,16 +51,27 @@ const explorerUrl = computed(() =>
   user.value?.wallet_address ? `https://explorer.solana.com/address/${user.value.wallet_address}` : '#'
 )
 
-const avatarGradient = computed(() => {
+const avatarSvg = computed(() => {
+  const seed = user.value?.username ?? 'default'
+  return createAvatar(bottts, { seed, size: 80 }).toString()
+})
+
+const avatarDataUrl = computed(() =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(avatarSvg.value)}`
+)
+
+// Deterministic banner colors from username
+const bannerColors = computed(() => {
   const name = user.value?.username ?? ''
-  const gradients = [
-    'hsl(222 55% 18%), hsl(240 50% 26%)',
-    'hsl(262 60% 28%), hsl(280 55% 35%)',
-    'hsl(195 70% 20%), hsl(210 65% 28%)',
-    'hsl(340 60% 22%), hsl(350 55% 30%)',
-    'hsl(160 50% 18%), hsl(175 55% 25%)',
+  const palettes = [
+    ['#1a1f3a', '#2d1b69', '#11998e'],
+    ['#0f0c29', '#302b63', '#24243e'],
+    ['#1a1a2e', '#16213e', '#0f3460'],
+    ['#200122', '#6f0000', '#200122'],
+    ['#0f2027', '#203a43', '#2c5364'],
   ]
-  return gradients[name.charCodeAt(0) % gradients.length]
+  const [a, b, c] = palettes[name.charCodeAt(0) % palettes.length]
+  return { a, b, c }
 })
 </script>
 
@@ -82,14 +95,30 @@ const avatarGradient = computed(() => {
 
       <!-- Hero banner -->
       <div class="overflow-hidden rounded-2xl border border-border bg-card">
-        <div class="h-20 w-full" :style="`background: linear-gradient(135deg, ${avatarGradient})`" />
+        <!-- Banner with mesh gradient -->
+        <div class="relative h-24 w-full overflow-hidden" :style="`background: ${bannerColors.a}`">
+          <svg class="absolute inset-0 h-full w-full opacity-60" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient :id="`g1-${user?.username}`" cx="20%" cy="50%" r="60%">
+                <stop offset="0%" :stop-color="bannerColors.b" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="transparent"/>
+              </radialGradient>
+              <radialGradient :id="`g2-${user?.username}`" cx="80%" cy="30%" r="50%">
+                <stop offset="0%" :stop-color="bannerColors.c" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="transparent"/>
+              </radialGradient>
+            </defs>
+            <rect width="100%" height="100%" :fill="`url(#g1-${user?.username})`"/>
+            <rect width="100%" height="100%" :fill="`url(#g2-${user?.username})`"/>
+          </svg>
+          <!-- Subtle dot grid overlay -->
+          <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, white 1px, transparent 1px); background-size: 20px 20px;" />
+        </div>
+
         <div class="flex items-end gap-4 px-6 pb-5">
-          <!-- Avatar -->
-          <div
-            class="-mt-7 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-xl font-bold text-white ring-4 ring-card"
-            :style="`background: linear-gradient(135deg, ${avatarGradient})`"
-          >
-            {{ user?.username?.[0]?.toUpperCase() }}
+          <!-- Bottts avatar -->
+          <div class="-mt-10 shrink-0 overflow-hidden rounded-2xl ring-4 ring-card bg-secondary flex items-center justify-center" style="width:72px;height:72px;">
+            <img :src="avatarDataUrl" class="scale-110" style="width:88px;height:88px;" alt="avatar" />
           </div>
 
           <!-- Info row -->

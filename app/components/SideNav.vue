@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { Home, User, LogOut, Scissors, Activity, Sun, Moon, Users, TrendingUp } from 'lucide-vue-next'
+import { createAvatar } from '@dicebear/core'
+import { bottts } from '@dicebear/collection'
 
 const route = useRoute()
 const { user, logout } = useAuth()
 const { isDark, toggle } = useTheme()
+
+const avatarDataUrl = computed(() => {
+  const seed = user.value?.username ?? 'default'
+  const svg = createAvatar(bottts, { seed, size: 32 }).toString()
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+})
 
 const items = [
   { to: '/app', icon: Home, label: 'Home' },
@@ -30,8 +38,8 @@ function isActive(to: string) {
 
     <!-- User pill -->
     <div class="mx-4 mt-4 flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5">
-      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-        {{ user?.username?.[0]?.toUpperCase() }}
+      <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-secondary flex items-center justify-center">
+        <img :src="avatarDataUrl" class="h-10 w-10 scale-110" alt="avatar" />
       </div>
       <div class="min-w-0">
         <p class="truncate text-sm font-semibold">@{{ user?.username }}</p>
