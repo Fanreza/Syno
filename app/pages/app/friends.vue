@@ -6,7 +6,7 @@ const { apiFetch, user } = useAuth()
 
 type Friend = { id: string; created_at: string; friend: { id: string; username: string; wallet_address: string } }
 
-const { data: friends, refresh } = await useAsyncData<Friend[]>('friends', () => apiFetch('/api/friends'))
+const { data: friends, refresh, pending: pendingFriends } = useAsyncData<Friend[]>('friends', () => apiFetch('/api/friends'), { lazy: true })
 
 const query = ref('')
 const searchResults = ref<{ username: string; wallet_address: string }[]>([])
@@ -119,7 +119,18 @@ function avatarColor(username: string) {
         Your friends ({{ friends?.length ?? 0 }})
       </p>
 
-      <div v-if="!friends?.length" class="flex flex-col items-center justify-center py-24 text-center">
+      <div v-if="pendingFriends" class="space-y-2">
+        <div v-for="i in 3" :key="i" class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4">
+          <div class="h-10 w-10 shrink-0 animate-pulse rounded-full bg-secondary" />
+          <div class="flex-1 space-y-2">
+            <div class="h-4 w-24 animate-pulse rounded bg-secondary" />
+            <div class="h-3 w-32 animate-pulse rounded bg-secondary" />
+          </div>
+          <div class="h-8 w-20 animate-pulse rounded-xl bg-secondary" />
+        </div>
+      </div>
+
+      <div v-else-if="!friends?.length" class="flex flex-col items-center justify-center py-24 text-center">
         <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary">
           <Users class="h-7 w-7 text-muted-foreground" />
         </div>
@@ -127,7 +138,7 @@ function avatarColor(username: string) {
         <p class="mt-1 text-sm text-muted-foreground">Search above to add someone.</p>
       </div>
 
-      <div v-else class="space-y-2">
+      <div v-else-if="friends?.length" class="space-y-2">
         <div
           v-for="f in friends"
           :key="f.id"

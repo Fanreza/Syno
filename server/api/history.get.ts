@@ -1,4 +1,3 @@
-// On-chain transaction history via GoldRush (Covalent) API
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
   const db = adminDb()
@@ -11,29 +10,34 @@ export default defineEventHandler(async (event) => {
     .maybeSingle()
 
   if (!me) throw createError({ statusCode: 404, statusMessage: 'User not found' })
-  if (!config.goldrushApiKey) {
-    throw createError({ statusCode: 503, statusMessage: 'GoldRush API key not configured' })
-  }
 
-  const chain = 'solana-mainnet'
-  const url = `https://api.covalenthq.com/v1/${chain}/address/${me.wallet_address}/transactions_v3/?page-size=25`
+  const rpcUrl = config.solanaRpcUrl || 'https://api.mainnet-beta.solana.com'
 
   try {
-    const res = await $fetch<any>(url, {
-      headers: { Authorization: `Bearer ${config.goldrushApiKey}` }
+    const sigRes = await $fetch<any>(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getSignaturesForAddress',
+        params: [me.wallet_address, { limit: 25 }],
+      },
     })
-    const txs = (res?.data?.items ?? []).map((tx: any) => ({
-      tx_hash: tx.tx_hash,
-      block_signed_at: tx.block_signed_at,
-      successful: tx.successful,
-      fees_paid: tx.fees_paid,
-      value_quote: tx.value_quote,
-      from_address: tx.from_address,
-      to_address: tx.to_address,
-      transfers: (tx.log_events ?? []).slice(0, 3),
+
+    const sigs: any[] = sigRes?.result ?? []
+
+    const txs = sigs.map((s: any) => ({
+      tx_hash: s.signature,
+      block_signed_at: s.blockTime ? new Date(s.blockTime * 1000).toISOString() : null,
+      successful: s.err === null,
+      fees_paid: null,
+      from_address: me.wallet_address,
+      to_address: null,
     }))
+
     return { address: me.wallet_address, txs }
   } catch (e: any) {
-    throw createError({ statusCode: 502, statusMessage: `GoldRush error: ${e.message}` })
+    throw createError({ statusCode: 502, statusMessage: `RPC error: ${e.message}` })
   }
 })

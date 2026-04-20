@@ -3,10 +3,11 @@ import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } f
 import Input from '~/components/ui/Input.vue'
 import Button from '~/components/ui/Button.vue'
 import { X, Gift, AlertCircle, CheckCircle2, Copy, Check, Users, Coins } from 'lucide-vue-next'
-import { formatAmount } from '~/utils'
+import { formatAmount, formatUsd } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
+const { balance, refresh: refreshBalance } = useBalance()
 
 const totalRaw = ref('')
 const slots = ref('5')
@@ -38,6 +39,7 @@ async function onCreate() {
       body: { totalAmount: totalNum.value, totalSlots: slotsNum.value, token: giftToken.value.address }
     })
     created.value = res
+    refreshBalance()
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Failed to create gift'
   } finally { loading.value = false }
@@ -120,7 +122,16 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
 
             <!-- Total amount -->
             <div>
-              <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total amount ({{ giftToken.symbol }})</label>
+              <div class="mb-2 flex items-center justify-between">
+                <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total amount ({{ giftToken.symbol }})</label>
+                <span v-if="balance" class="text-xs text-muted-foreground">
+                  Balance:
+                  <button class="font-semibold text-foreground hover:text-primary transition" @click="totalRaw = balance.sol.toFixed(6)">
+                    {{ balance.sol.toFixed(4) }} SOL
+                  </button>
+                  <span class="text-muted-foreground/60"> · {{ formatUsd(balance.usd) }}</span>
+                </span>
+              </div>
               <input
                 :value="totalRaw"
                 inputmode="decimal"

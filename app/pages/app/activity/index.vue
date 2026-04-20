@@ -33,13 +33,14 @@ const tab = ref<'payra' | 'onchain'>('payra')
 const filter = ref<'all' | 'sent' | 'received' | 'split' | 'gift_claim'>('all')
 
 // Payra activity
-const { data: activity, refresh: refreshActivity, pending: loadingActivity } = await useAsyncData(
+const { data: activity, refresh: refreshActivity, pending: loadingActivity } = useAsyncData(
   'activity-page',
   () => apiFetch<ActivityItem[]>('/api/activity'),
+  { lazy: true }
 )
 
 // On-chain history
-const { data: history, refresh: refreshHistory, pending: loadingHistory, error: historyError } = await useAsyncData(
+const { data: history, refresh: refreshHistory, pending: loadingHistory, error: historyError } = useAsyncData(
   'onchain-history',
   () => apiFetch<{ address: string; txs: OnChainTx[] }>('/api/history'),
   { lazy: true }
@@ -135,9 +136,19 @@ function refresh() {
         </div>
       </div>
 
-      <!-- Loading -->
-      <div v-if="loadingActivity" class="flex items-center justify-center py-16">
-        <span class="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground" />
+      <!-- Skeleton -->
+      <div v-if="loadingActivity" class="rounded-2xl border border-border bg-card divide-y divide-border">
+        <div v-for="i in 5" :key="i" class="flex items-center gap-4 px-5 py-4">
+          <div class="h-9 w-9 shrink-0 animate-pulse rounded-full bg-secondary" />
+          <div class="flex-1 space-y-1.5">
+            <div class="h-3.5 w-28 animate-pulse rounded bg-secondary" />
+            <div class="h-3 w-16 animate-pulse rounded bg-secondary" />
+          </div>
+          <div class="space-y-1.5 text-right">
+            <div class="h-3.5 w-16 animate-pulse rounded bg-secondary ml-auto" />
+            <div class="h-3 w-10 animate-pulse rounded bg-secondary ml-auto" />
+          </div>
+        </div>
       </div>
 
       <!-- Empty -->

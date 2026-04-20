@@ -8,7 +8,7 @@ export default defineNuxtConfig({
   // and a stable client-side runtime. SSR is incompatible with this pattern.
   ssr: false,
 
-  modules: [],
+  modules: ['@pinia/nuxt'],
   css: ['~/assets/css/main.css'],
   typescript: { strict: true },
 

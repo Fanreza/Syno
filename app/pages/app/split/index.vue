@@ -29,9 +29,10 @@ type ParticipatingBill = {
   myStatus: string
 }
 
-const { data, refresh } = await useAsyncData(
+const { data, refresh, pending } = useAsyncData(
   'splits',
   () => apiFetch<{ created: CreatedBill[]; participating: ParticipatingBill[] }>('/api/split'),
+  { lazy: true }
 )
 
 const showModal = ref(false)
@@ -64,8 +65,20 @@ function progressPct(b: CreatedBill) {
       </button>
     </div>
 
+    <!-- Skeleton -->
+    <div v-if="pending" class="space-y-2">
+      <div v-for="i in 3" :key="i" class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4">
+        <div class="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-secondary" />
+        <div class="flex-1 space-y-2">
+          <div class="h-4 w-40 animate-pulse rounded bg-secondary" />
+          <div class="h-1.5 w-full animate-pulse rounded-full bg-secondary" />
+        </div>
+        <div class="h-4 w-16 animate-pulse rounded bg-secondary" />
+      </div>
+    </div>
+
     <!-- Empty state -->
-    <div v-if="!hasAny" class="flex flex-col items-center justify-center py-24 text-center">
+    <div v-else-if="!hasAny" class="flex flex-col items-center justify-center py-24 text-center">
       <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary">
         <Scissors class="h-7 w-7 text-muted-foreground" />
       </div>
@@ -79,7 +92,7 @@ function progressPct(b: CreatedBill) {
       </button>
     </div>
 
-    <div v-else class="space-y-8">
+    <div v-else-if="hasAny" class="space-y-8">
 
       <!-- Created by me -->
       <div v-if="created.length">

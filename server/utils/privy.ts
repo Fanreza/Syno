@@ -3,6 +3,12 @@ import type { H3Event } from 'h3'
 
 let cached: PrivyClient | null = null
 
+export function authorizationContext() {
+  const key = useRuntimeConfig().privyAuthorizationKey as string | undefined
+  if (!key) return {}
+  return { authorization_context: { authorization_private_keys: [key] } }
+}
+
 export function getPrivy(): PrivyClient {
   if (cached) return cached
   const config = useRuntimeConfig()

@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { TrendingUp, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, AlertCircle, ExternalLink, Loader2, Zap, ArrowRight } from 'lucide-vue-next'
+import { TrendingUp, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, AlertCircle, ExternalLink, Loader2, Zap, ArrowRight, RefreshCw } from 'lucide-vue-next'
 import TokenPicker from '~/components/TokenPicker.vue'
+import { formatUsd } from '~/utils'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog'
 
 const { apiFetch } = useAuth()
+const { balance, pending, refresh: refreshBalance } = useBalance()
+
+const successEl = ref<HTMLElement>()
+
+async function fireConfetti() {
+  const party = (await import('party-js')).default
+  if (successEl.value) party.confetti(successEl.value, { count: party.variation.range(60, 100) })
+}
 
 type Market = {
   mint: string
@@ -28,15 +38,18 @@ type Position = {
   jlShares: string
 }
 
-const { data: markets, pending: loadingMarkets } = await useAsyncData<Market[]>('earn:markets', () =>
-  $fetch('/api/earn/markets')
+const { data: markets, pending: loadingMarkets } = useAsyncData<Market[]>('earn:markets', () =>
+  $fetch('/api/earn/markets'),
+  { lazy: true }
 )
 
-const { data: positions, refresh: refreshPositions } = await useAsyncData<Position[]>('earn:positions', () =>
-  apiFetch('/api/earn/positions')
+const { data: positions, refresh: refreshPositions } = useAsyncData<Position[]>('earn:positions', () =>
+  apiFetch('/api/earn/positions'),
+  { lazy: true }
 )
 
 type ModalMode = 'deposit' | 'withdraw'
+const modalOpen = ref(false)
 const modal = ref<{ mode: ModalMode; market: Market } | null>(null)
 const amountRaw = ref('')
 const inputToken = ref<JupToken>(SOL_TOKEN)
@@ -47,19 +60,31 @@ const successSig = ref('')
 function openDeposit(market: Market) {
   modal.value = { mode: 'deposit', market }
   amountRaw.value = ''; error.value = ''; successSig.value = ''
-  // default input token to the vault token if it's in POPULAR_TOKENS, else SOL
   const match = POPULAR_TOKENS.find(t => t.address === market.mint)
   inputToken.value = match ?? SOL_TOKEN
+  refreshBalance()
+  modalOpen.value = true
 }
 
 function openWithdraw(market: Market) {
   modal.value = { mode: 'withdraw', market }
-  amountRaw.value = ''; error.value = ''; successSig.value = ''
+  amountRaw.value = ''; error.value = ''; successSig.value = ''; isMaxWithdraw.value = false
+  refreshBalance()
+  modalOpen.value = true
 }
 
 function closeModal() {
-  modal.value = null
-  amountRaw.value = ''; error.value = ''; successSig.value = ''
+  modalOpen.value = false
+  setTimeout(() => {
+    modal.value = null
+    amountRaw.value = ''; error.value = ''; successSig.value = ''
+  }, 200)
+  refreshBalance()
+
+}
+
+function onOpenChange(val: boolean) {
+  if (!val) closeModal()
 }
 
 function onAmountInput(e: Event) {
@@ -67,13 +92,26 @@ function onAmountInput(e: Event) {
   const parts = s.split('.')
   if (parts.length > 2) s = parts[0] + '.' + parts.slice(1).join('')
   amountRaw.value = s
+  isMaxWithdraw.value = false
 }
 
 const amountNum = computed(() => parseFloat(amountRaw.value) || 0)
+const isMaxWithdraw = ref(false)
 const positionForModal = computed(() =>
   modal.value ? positions.value?.find(p => p.mint === modal.value!.market.mint) : null
 )
 const canSubmit = computed(() => amountNum.value > 0 && !loading.value && !successSig.value)
+
+const inputTokenBalance = computed(() => {
+  if (!balance.value) return null
+  const SOL_MINT = 'So11111111111111111111111111111111111111112'
+  if (inputToken.value.address === SOL_MINT) {
+    return { amount: balance.value.sol, usd: balance.value.usd, symbol: 'SOL' }
+  }
+  const t = balance.value.tokens.find((t: any) => t.mint === inputToken.value.address)
+  if (!t) return null
+  return { amount: t.balance, usd: t.usd, symbol: t.symbol }
+})
 
 async function onSubmit() {
   if (!modal.value) return
@@ -83,11 +121,13 @@ async function onSubmit() {
     const { mint, decimals } = modal.value.market
     const endpoint = modal.value.mode === 'deposit' ? '/api/earn/deposit' : '/api/earn/withdraw'
     const isSwap = modal.value.mode === 'deposit' && inputToken.value.address !== mint
+    const pos = positionForModal.value
     const body: Record<string, any> = {
       mint,
       amount: amountNum.value,
       decimals: isSwap ? inputToken.value.decimals : decimals,
       ...(isSwap ? { inputMint: inputToken.value.address } : {}),
+      ...(modal.value.mode === 'withdraw' && pos ? { jlShares: pos.jlShares, positionBalance: pos.balance, isMax: isMaxWithdraw.value } : {}),
     }
     const res = await apiFetch<{ signature: string }>(endpoint, {
       method: 'POST',
@@ -95,6 +135,9 @@ async function onSubmit() {
     })
     successSig.value = res.signature
     await refreshPositions()
+    refreshBalance()
+    await nextTick()
+    fireConfetti()
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Transaction failed'
   } finally { loading.value = false }
@@ -285,12 +328,12 @@ const totalEarningUsd = computed(() => {
     </div>
 
     <!-- Modal -->
-    <Teleport to="body">
-      <div v-if="modal" class="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closeModal" />
-        <div class="relative w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
+    <Dialog :open="modalOpen" @update:open="onOpenChange">
+      <DialogContent class="max-w-sm p-0 overflow-hidden" :show-close-button="false">
+        <template v-if="modal">
 
-          <div v-if="successSig" class="p-8 text-center">
+          <!-- Success state -->
+          <div v-if="successSig" ref="successEl" class="p-8 text-center">
             <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
               <CheckCircle2 class="h-8 w-8 text-green-500" />
             </div>
@@ -305,20 +348,23 @@ const totalEarningUsd = computed(() => {
             </button>
           </div>
 
+          <!-- Form state -->
           <template v-else>
-            <div class="flex items-center gap-3 border-b border-border px-5 py-4">
-              <img v-if="modal.market.logoURI" :src="modal.market.logoURI" class="h-9 w-9 rounded-full" />
-              <div v-else class="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+            <DialogHeader class="flex-row items-center gap-3 border-b border-border px-5 py-4 space-y-0">
+              <img v-if="modal.market.logoURI" :src="modal.market.logoURI" class="h-9 w-9 rounded-full shrink-0" />
+              <div v-else class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                 {{ (modal.market.symbol || '?')[0] }}
               </div>
               <div class="flex-1">
-                <p class="font-bold">{{ modal.mode === 'deposit' ? 'Deposit' : 'Withdraw' }} {{ modal.market.symbol }}</p>
-                <p class="text-xs text-green-500 font-semibold">{{ formatApr(modal.market.supplyApr) }} APR</p>
+                <DialogTitle class="text-base font-bold leading-none">
+                  {{ modal.mode === 'deposit' ? 'Deposit' : 'Withdraw' }} {{ modal.market.symbol }}
+                </DialogTitle>
+                <p class="text-xs text-green-500 font-semibold mt-0.5">{{ formatApr(modal.market.supplyApr) }} APR</p>
               </div>
-              <button class="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground" @click="closeModal">
-                <span class="text-sm leading-none">✕</span>
+              <button class="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition" :class="{ 'animate-spin': pending }" @click="refreshBalance">
+                <RefreshCw class="h-4 w-4" />
               </button>
-            </div>
+            </DialogHeader>
 
             <div class="space-y-4 p-5">
               <div v-if="positionForModal" class="flex items-center justify-between rounded-xl bg-secondary px-4 py-2.5 text-xs">
@@ -326,10 +372,8 @@ const totalEarningUsd = computed(() => {
                 <span class="font-semibold">{{ Number(positionForModal.balance).toFixed(4) }} {{ modal.market.symbol }}</span>
               </div>
 
-              <!-- Pay with (deposit only) -->
               <div v-if="modal.mode === 'deposit'">
                 <TokenPicker v-model="inputToken" label="Pay with" />
-                <!-- swap indicator -->
                 <div v-if="inputToken.address !== modal.market.mint" class="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <ArrowRight class="h-3 w-3 shrink-0" />
                   <span>Auto-swap to <span class="font-semibold text-foreground">{{ modal.market.symbol }}</span> via Jupiter</span>
@@ -337,7 +381,20 @@ const totalEarningUsd = computed(() => {
               </div>
 
               <div>
-                <label class="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</label>
+                <div class="mb-1.5 flex items-center justify-between">
+                  <label class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount</label>
+                  <span v-if="inputTokenBalance && modal.mode === 'deposit'" class="text-xs text-muted-foreground">
+                    Balance:
+                    <button class="font-semibold text-foreground hover:text-primary transition" @click="amountRaw = inputTokenBalance.amount.toFixed(6)">
+                      {{ inputTokenBalance.amount.toFixed(4) }} {{ inputTokenBalance.symbol }}
+                    </button>
+                    <span class="text-muted-foreground/60"> · {{ formatUsd(inputTokenBalance.usd) }}</span>
+                  </span>
+                  <span v-else-if="positionForModal && modal.mode === 'withdraw'" class="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span>{{ Number(positionForModal.balance).toFixed(4) }} {{ modal.market.symbol }}</span>
+                    <button class="font-semibold text-primary hover:opacity-80 transition" @click="amountRaw = String(positionForModal.balance); isMaxWithdraw = true">Max</button>
+                  </span>
+                </div>
                 <div class="flex items-center gap-2 rounded-xl border border-input bg-background px-3.5 py-3 focus-within:ring-2 focus-within:ring-ring">
                   <img v-if="modal.mode === 'deposit' && inputToken.logoURI" :src="inputToken.logoURI" class="h-5 w-5 rounded-full shrink-0" />
                   <img v-else-if="modal.market.logoURI" :src="modal.market.logoURI" class="h-5 w-5 rounded-full shrink-0" />
@@ -370,8 +427,8 @@ const totalEarningUsd = computed(() => {
             </div>
           </template>
 
-        </div>
-      </div>
-    </Teleport>
+        </template>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

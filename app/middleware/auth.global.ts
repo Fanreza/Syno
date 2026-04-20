@@ -8,7 +8,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   const { isReady, isAuthenticated, user } = useAuth()
 
-  if (!isReady.value) {
+  // Skip wait if already authenticated — avoids blocking every navigation
+  if (!isAuthenticated.value && !isReady.value) {
     await new Promise<void>((resolve) => {
       const stop = watch(isReady, (v) => {
         if (v) { stop(); resolve() }

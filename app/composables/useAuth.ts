@@ -21,16 +21,12 @@ export function useAuth() {
   const identityToken = useState<string | null>('auth:identityToken', () => null)
   const appUser = useState<AppUser | null>('auth:appUser', () => null)
 
-  // The server wallet address (from DB). This is what we show as "your balance".
   const walletAddress = computed(() => appUser.value?.wallet_address ?? null)
-
-  // Keep solanaAddress as alias for backwards compat with onboarding/send pages
   const solanaAddress = walletAddress
 
   function privy() { return getPrivy() }
 
   async function apiFetch<T>(url: string, opts: any = {}): Promise<T> {
-    // Always get a fresh token — Privy access tokens expire and the cached value may be stale
     const fresh = await privy().getAccessToken().catch(() => null)
     if (fresh) accessToken.value = fresh
     const headers: Record<string, string> = { ...(opts.headers || {}) }
@@ -100,7 +96,6 @@ export function useAuth() {
   }
 
   async function loginWithSolanaWallet(wallet: any, walletName?: string) {
-    // Check for Wallet Standard by looking for features with solana: or standard: keys
     const features = wallet.features ?? {}
     const featureKeys = Object.keys(features)
     const isWalletStandard = featureKeys.length > 0 && featureKeys.some(k => k.startsWith('solana:') || k.startsWith('standard:'))
@@ -110,20 +105,14 @@ export function useAuth() {
 
     if (isWalletStandard) {
       const connectFeature = features['standard:connect']
-      if (connectFeature) {
-        await connectFeature.connect()
-      }
-      // accounts is a live getter — read after connect()
+      if (connectFeature) await connectFeature.connect()
       const accounts: any[] = wallet.accounts ?? []
       const rawAccount = accounts[0]
       if (!rawAccount) throw new Error('No account found. Make sure your wallet is unlocked and has an account.')
-
-      // address may be Uint8Array in some wallets — normalize to base58 string
       const resolvedAddress: string = typeof rawAccount.address === 'string'
         ? rawAccount.address
         : encodeBase58(rawAccount.address as Uint8Array)
       address = resolvedAddress
-
       const signFeature = features['solana:signMessage'] ?? features['standard:signMessage']
       if (!signFeature) throw new Error('Wallet does not support signMessage')
       signFn = async (msg: Uint8Array) => {
@@ -151,7 +140,6 @@ export function useAuth() {
       domain: window.location.host,
       uri: window.location.origin,
     })
-
     const encoded = new TextEncoder().encode(message)
     const signatureBytes = await signFn(encoded)
     const signatureBase64 = btoa(String.fromCharCode(...signatureBytes))
@@ -183,7 +171,6 @@ export function useAuth() {
   }
 
   async function registerUsername(username: string) {
-    // wallet_address no longer sent from client — server creates it
     const me = await apiFetch<AppUser>('/api/users/register', {
       method: 'POST',
       body: { username }
@@ -196,6 +183,7 @@ export function useAuth() {
     try { await privy().auth.logout() } catch {}
     privyUser.value = null
     accessToken.value = null
+    identityToken.value = null
     appUser.value = null
     isAuthenticated.value = false
     await navigateTo('/login')

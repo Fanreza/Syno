@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Shield, Users, RefreshCw, ArrowRight, ChevronDown, Plus, Minus } from 'lucide-vue-next'
 
-definePageMeta({ layout: false })
+definePageMeta({ layout: false, ssr: false })
 
 const tickerItems = [
   { from: '@budi', to: '@rina', amount: '0.05 SOL', note: 'Dinner split' },

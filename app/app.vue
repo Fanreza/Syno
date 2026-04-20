@@ -13,6 +13,7 @@ watch([isApp, isDark], ([app, dark]) => {
 </script>
 
 <template>
+  <PageProgress />
   <div v-if="isApp" class="flex min-h-screen bg-background">
     <SideNav v-if="showNav" />
     <main class="flex-1 min-w-0">

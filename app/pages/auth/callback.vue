@@ -13,18 +13,11 @@ onMounted(async () => {
     return
   }
 
-  // Wait for the Privy iframe to be ready before calling completeOAuthLogin
-  if (!isReady.value) {
-    await new Promise<void>((resolve) => {
-      const stop = watch(isReady, (v) => {
-        if (v) { stop(); resolve() }
-      }, { immediate: true })
-    })
-  }
+  // Give Privy iframe time to initialize
+  await new Promise(r => setTimeout(r, 1000))
 
   try {
     await completeOAuthLogin(code, state)
-    // user.value is refreshed inside completeOAuthLogin — check after await
     await navigateTo(user.value?.privy_user_id ? '/app' : '/onboarding')
   } catch (e: any) {
     const msg: string = e?.message || ''

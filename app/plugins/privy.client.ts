@@ -25,7 +25,7 @@ export default defineNuxtPlugin(() => {
         privyRef.setMessagePoster(iframe.contentWindow)
       }
       iframeReady = true
-      // Tell the auth composable it's safe to read existing session
+      // Tell the auth store it's safe to read existing session
       const { restoreSession } = useAuth()
       restoreSession()
     })

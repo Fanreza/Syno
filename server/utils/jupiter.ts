@@ -1,7 +1,7 @@
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import { PublicKey } from '@solana/web3.js'
 
-const JUP = 'https://quote-api.jup.ag/v6'
+const JUP = 'https://api.jup.ag/swap/v1'
 
 export interface JupQuote {
   inputMint: string
@@ -12,6 +12,11 @@ export interface JupQuote {
   swapMode: string
   routePlan: any[]
   [k: string]: any
+}
+
+function jupHeaders(): Record<string, string> {
+  const key = useRuntimeConfig().jupiterApiKey as string | undefined
+  return key ? { 'x-api-key': key } : {}
 }
 
 export async function getJupiterQuote(params: {
@@ -28,7 +33,9 @@ export async function getJupiterQuote(params: {
     slippageBps: String(params.slippageBps ?? 50),
     swapMode: params.swapMode ?? 'ExactIn',
   })
-  return await $fetch<JupQuote>(`${JUP}/quote?${qs.toString()}`)
+  return await $fetch<JupQuote>(`${JUP}/quote?${qs.toString()}`, {
+    headers: jupHeaders(),
+  })
 }
 
 // Derive the Associated Token Account address for a wallet + mint.
@@ -59,6 +66,7 @@ export async function buildJupiterSwapTx(params: {
 
   const res = await $fetch<{ swapTransaction: string }>(`${JUP}/swap`, {
     method: 'POST',
+    headers: jupHeaders(),
     body: {
       quoteResponse: params.quote,
       userPublicKey: params.userPublicKey,

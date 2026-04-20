@@ -11,22 +11,24 @@ import { formatAmount, formatUsd, shortAddr } from '~/utils'
 
 const { user, apiFetch } = useAuth()
 
-const { data: balance, refresh: refreshBalance } = await useAsyncData(
+const { data: balance, refresh: refreshBalance, pending: pendingBalance } = useAsyncData(
   () => `balance-${user.value?.wallet_address}`,
   () => user.value?.wallet_address
     ? $fetch<{ sol: number; usd: number }>(`/api/balance?address=${user.value.wallet_address}`)
     : Promise.resolve({ sol: 0, usd: 0 }),
-  { watch: [user] }
+  { watch: [user], lazy: true }
 )
 
-const { data: stats, refresh: refreshStats } = await useAsyncData(
+const { data: stats, refresh: refreshStats, pending: pendingStats } = useAsyncData(
   'dashboard-stats',
   () => apiFetch<{ sentSol: number; receivedSol: number; openSplits: number }>('/api/stats'),
+  { lazy: true }
 )
 
-const { data: activity, refresh: refreshActivity } = await useAsyncData(
+const { data: activity, refresh: refreshActivity, pending: pendingActivity } = useAsyncData(
   'dashboard-activity',
   () => apiFetch<ActivityItem[]>('/api/activity'),
+  { lazy: true }
 )
 
 type ActivityItem = {
@@ -121,10 +123,12 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
                   <component :is="copied ? Check : Copy" class="h-2.5 w-2.5 text-white/30" />
                 </button>
               </div>
-              <h2 class="mt-1 text-3xl font-bold tracking-tight text-white">
+              <div v-if="pendingBalance" class="mt-1 h-9 w-36 animate-pulse rounded-lg bg-white/10" />
+              <h2 v-else class="mt-1 text-3xl font-bold tracking-tight text-white">
                 {{ formatUsd(balance?.usd || 0) }}
               </h2>
-              <p class="mt-0.5 text-sm text-white/40">
+              <div v-if="pendingBalance" class="mt-1 h-4 w-20 animate-pulse rounded bg-white/10" />
+              <p v-else class="mt-0.5 text-sm text-white/40">
                 {{ formatAmount(balance?.sol || 0) }} SOL
               </p>
             </div>
@@ -169,7 +173,8 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
         <div class="rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between">
           <div>
             <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Sent (30d)</p>
-            <p class="mt-1 text-2xl font-bold">
+            <div v-if="pendingStats" class="mt-1 h-7 w-20 animate-pulse rounded-md bg-secondary" />
+            <p v-else class="mt-1 text-2xl font-bold">
               {{ formatAmount(stats?.sentSol ?? 0) }}
               <span class="text-sm font-medium text-muted-foreground">SOL</span>
             </p>
@@ -179,7 +184,8 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
         <div class="rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between">
           <div>
             <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Received (30d)</p>
-            <p class="mt-1 text-2xl font-bold">
+            <div v-if="pendingStats" class="mt-1 h-7 w-20 animate-pulse rounded-md bg-secondary" />
+            <p v-else class="mt-1 text-2xl font-bold">
               {{ formatAmount(stats?.receivedSol ?? 0) }}
               <span class="text-sm font-medium text-muted-foreground">SOL</span>
             </p>
@@ -192,7 +198,8 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
         >
           <div>
             <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Open Splits</p>
-            <p class="mt-1 text-2xl font-bold">
+            <div v-if="pendingStats" class="mt-1 h-7 w-12 animate-pulse rounded-md bg-secondary" />
+            <p v-else class="mt-1 text-2xl font-bold">
               {{ stats?.openSplits ?? 0 }}
               <span class="text-sm font-medium text-muted-foreground">active</span>
             </p>
@@ -210,8 +217,23 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           </button>
         </div>
 
+        <!-- Skeleton -->
+        <div v-if="pendingActivity" class="divide-y divide-border">
+          <div v-for="i in 4" :key="i" class="flex items-center gap-4 py-3.5">
+            <div class="h-9 w-9 shrink-0 animate-pulse rounded-full bg-secondary" />
+            <div class="flex-1 space-y-1.5">
+              <div class="h-3.5 w-32 animate-pulse rounded bg-secondary" />
+              <div class="h-3 w-20 animate-pulse rounded bg-secondary" />
+            </div>
+            <div class="space-y-1.5 text-right">
+              <div class="h-3.5 w-16 animate-pulse rounded bg-secondary ml-auto" />
+              <div class="h-3 w-10 animate-pulse rounded bg-secondary ml-auto" />
+            </div>
+          </div>
+        </div>
+
         <!-- Empty state -->
-        <div v-if="!activity?.length" class="flex flex-col items-center justify-center py-12 text-center">
+        <div v-else-if="!activity?.length" class="flex flex-col items-center justify-center py-12 text-center">
           <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
             <Inbox class="h-6 w-6 text-muted-foreground" />
           </div>
@@ -226,7 +248,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
         </div>
 
         <!-- Activity list -->
-        <div v-else class="divide-y divide-border">
+        <div v-else-if="activity?.length" class="divide-y divide-border">
           <div
             v-for="item in activity"
             :key="item.id"

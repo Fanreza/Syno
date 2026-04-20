@@ -8,58 +8,58 @@ html.dark {
 }
 
 :root {
-  /* Payra palette — navy monochrome from logo */
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(222 45% 11%);
+  /* Payra palette — violet/indigo accent, warm whites */
+  --background: hsl(250 20% 98%);
+  --foreground: hsl(250 30% 10%);
   --card: hsl(0 0% 100%);
-  --card-foreground: hsl(222 45% 11%);
+  --card-foreground: hsl(250 30% 10%);
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(222 45% 11%);
-  --primary: hsl(222 47% 18%);
+  --popover-foreground: hsl(250 30% 10%);
+  --primary: hsl(252 85% 57%);
   --primary-foreground: hsl(0 0% 100%);
-  --secondary: hsl(220 20% 96%);
-  --secondary-foreground: hsl(222 47% 18%);
-  --muted: hsl(220 20% 96%);
-  --muted-foreground: hsl(222 15% 45%);
-  --accent: hsl(220 30% 94%);
-  --accent-foreground: hsl(222 47% 18%);
+  --secondary: hsl(250 30% 95%);
+  --secondary-foreground: hsl(252 50% 30%);
+  --muted: hsl(250 20% 95%);
+  --muted-foreground: hsl(250 15% 48%);
+  --accent: hsl(252 80% 95%);
+  --accent-foreground: hsl(252 60% 35%);
   --destructive: hsl(0 72% 51%);
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(220 15% 90%);
-  --input: hsl(220 15% 90%);
-  --ring: hsl(222 47% 18%);
+  --border: hsl(250 20% 88%);
+  --input: hsl(250 20% 88%);
+  --ring: hsl(252 85% 57%);
   --radius: 0.75rem;
 
   /* Brand tokens */
-  --brand-navy: hsl(222 47% 18%);
-  --brand-navy-deep: hsl(222 55% 12%);
-  --brand-navy-soft: hsl(222 40% 28%);
+  --brand-navy: hsl(252 85% 57%);
+  --brand-navy-deep: hsl(252 90% 40%);
+  --brand-navy-soft: hsl(252 70% 68%);
 }
 
 .dark {
-  --background: hsl(0 0% 8%);
-  --foreground: hsl(0 0% 93%);
-  --card: hsl(0 0% 11%);
-  --card-foreground: hsl(0 0% 93%);
-  --popover: hsl(0 0% 11%);
-  --popover-foreground: hsl(0 0% 93%);
-  --primary: hsl(0 0% 93%);
-  --primary-foreground: hsl(0 0% 8%);
-  --secondary: hsl(0 0% 15%);
-  --secondary-foreground: hsl(0 0% 80%);
-  --muted: hsl(0 0% 13%);
-  --muted-foreground: hsl(0 0% 50%);
-  --accent: hsl(0 0% 17%);
-  --accent-foreground: hsl(0 0% 92%);
+  --background: hsl(250 20% 7%);
+  --foreground: hsl(250 15% 92%);
+  --card: hsl(250 18% 10%);
+  --card-foreground: hsl(250 15% 92%);
+  --popover: hsl(250 18% 10%);
+  --popover-foreground: hsl(250 15% 92%);
+  --primary: hsl(252 85% 65%);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(250 18% 16%);
+  --secondary-foreground: hsl(250 15% 80%);
+  --muted: hsl(250 15% 13%);
+  --muted-foreground: hsl(250 10% 52%);
+  --accent: hsl(252 40% 20%);
+  --accent-foreground: hsl(252 80% 80%);
   --destructive: hsl(0 72% 58%);
   --destructive-foreground: hsl(0 0% 100%);
-  --border: hsl(0 0% 18%);
-  --input: hsl(0 0% 18%);
-  --ring: hsl(0 0% 60%);
+  --border: hsl(250 18% 18%);
+  --input: hsl(250 18% 18%);
+  --ring: hsl(252 85% 65%);
 
-  --brand-navy: hsl(0 0% 93%);
-  --brand-navy-deep: hsl(0 0% 15%);
-  --brand-navy-soft: hsl(0 0% 20%);
+  --brand-navy: hsl(252 85% 65%);
+  --brand-navy-deep: hsl(250 18% 16%);
+  --brand-navy-soft: hsl(252 60% 50%);
 }
 
 @theme inline {
@@ -97,18 +97,18 @@ html.dark {
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   }
 }
 
-/* Brand gradient — deep navy → slightly lifted navy, matches logo tone */
+/* Brand gradient — violet → indigo */
 .gradient-brand {
-  background: linear-gradient(135deg, hsl(222 55% 12%) 0%, hsl(222 45% 22%) 100%);
+  background: linear-gradient(135deg, hsl(252 90% 40%) 0%, hsl(270 80% 55%) 100%);
 }
 
-/* Legacy alias so existing markup keeps working */
+/* Legacy alias */
 .gradient-card {
-  background: linear-gradient(135deg, hsl(222 55% 12%) 0%, hsl(222 45% 22%) 100%);
+  background: linear-gradient(135deg, hsl(252 90% 40%) 0%, hsl(270 80% 55%) 100%);
 }
 
 /* Landing page animations */

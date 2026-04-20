@@ -1,3 +1,5 @@
+import { authorizationContext } from '../../utils/privy'
+
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
   const body = await readBody<{
@@ -31,7 +33,8 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   await (privy.wallets() as any).solana().signAndSendTransaction(creator.privy_wallet_id, {
     caip2: config.solanaCaip2,
-    transaction: { encoding: 'base64', serializedTransaction: txBase64 }
+    transaction: txBase64,
+    ...authorizationContext()
   })
 
   const { data: gift, error } = await db

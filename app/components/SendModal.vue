@@ -11,6 +11,7 @@ import { shortAddr, formatUsd } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
+const { balance, refresh: refreshBalance } = useBalance()
 
 // ── Friends ────────────────────────────────────────────────────────────────
 const { friends, load: loadFriends } = useFriends()
@@ -135,6 +136,7 @@ async function onSend() {
       }
     })
     successSig.value = res.signature
+    refreshBalance()
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Transaction failed'
   } finally { loading.value = false }
@@ -265,9 +267,18 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
 
             <!-- Amount -->
             <div>
-              <TokenPicker v-model="inputToken" label="Pay with" />
+              <div class="mb-1 flex items-center justify-between">
+                <TokenPicker v-model="inputToken" label="Pay with" class="flex-1" />
+              </div>
               <div class="mt-3 mb-2 flex items-center justify-between">
                 <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Amount</label>
+                <span v-if="balance" class="text-xs text-muted-foreground">
+                  Balance:
+                  <button class="font-semibold text-foreground hover:text-primary transition" @click="amountRaw = balance.sol.toFixed(6); currency = 'TOKEN'">
+                    {{ balance.sol.toFixed(4) }} SOL
+                  </button>
+                  <span class="text-muted-foreground/60"> · {{ formatUsd(balance.usd) }}</span>
+                </span>
               </div>
               <div class="flex gap-2">
                 <button

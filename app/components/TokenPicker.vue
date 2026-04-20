@@ -2,9 +2,13 @@
 import { Search, ChevronDown, Check } from 'lucide-vue-next'
 import type { JupToken } from '~/utils/tokens'
 import { POPULAR_TOKENS } from '~/utils/tokens'
+import { formatUsd } from '~/utils'
+import { useBalance } from '~/composables/useBalance'
 
 defineProps<{ label?: string }>()
 const modelValue = defineModel<JupToken>({ required: true })
+
+const { balance } = useBalance()
 
 const open = ref(false)
 const query = ref('')
@@ -24,7 +28,34 @@ watch(query, (q) => {
   }, 300)
 })
 
-const displayed = computed(() => query.value ? results.value : POPULAR_TOKENS)
+const SOL_MINT = 'So11111111111111111111111111111111111111112'
+
+function tokenBalance(address: string): number {
+  if (!balance.value) return 0
+  if (address === SOL_MINT) return balance.value.sol
+  return balance.value.tokens.find((t: any) => t.mint === address)?.balance ?? 0
+}
+
+function tokenUsd(address: string): number {
+  if (!balance.value) return 0
+  if (address === SOL_MINT) return balance.value.sol * (balance.value.solPrice ?? 0)
+  return balance.value.tokens.find((t: any) => t.mint === address)?.usd ?? 0
+}
+
+const popularSorted = computed(() => {
+  const extra: JupToken[] = (balance.value?.tokens ?? [])
+    .filter((t: any) => !POPULAR_TOKENS.some(p => p.address === t.mint) && t.balance > 0)
+    .map((t: any) => ({
+      address: t.mint,
+      symbol: t.symbol,
+      name: t.name ?? t.symbol,
+      decimals: 6,
+      logoURI: t.logoURI ?? undefined,
+    }))
+  return [...POPULAR_TOKENS, ...extra].sort((a, b) => tokenUsd(b.address) - tokenUsd(a.address))
+})
+
+const displayed = computed(() => query.value ? results.value : popularSorted.value)
 
 function select(token: JupToken) {
   modelValue.value = token
@@ -102,7 +133,13 @@ onMounted(() => {
             <p class="text-sm font-semibold">{{ token.symbol }}</p>
             <p class="truncate text-xs text-muted-foreground">{{ token.name }}</p>
           </div>
-          <Check v-if="modelValue.address === token.address" class="h-4 w-4 shrink-0 text-primary" />
+          <div class="shrink-0 text-right">
+            <template v-if="tokenBalance(token.address) > 0">
+              <p class="text-xs font-semibold">{{ tokenBalance(token.address).toFixed(4) }}</p>
+              <p class="text-[10px] text-muted-foreground">{{ formatUsd(tokenUsd(token.address)) }}</p>
+            </template>
+            <Check v-else-if="modelValue.address === token.address" class="h-4 w-4 text-primary" />
+          </div>
         </button>
       </div>
     </div>

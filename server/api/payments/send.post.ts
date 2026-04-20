@@ -1,3 +1,4 @@
+import { authorizationContext } from '../../utils/privy'
 // Mainnet SPL token mints
 const TOKEN_MINTS: Record<string, string> = {
   SOL: 'So11111111111111111111111111111111111111112',
@@ -122,7 +123,7 @@ export default defineEventHandler(async (event) => {
 
     const result = await (privy.wallets() as any).solana().signAndSendTransaction(
       sender.privy_wallet_id,
-      { caip2: config.solanaCaip2, transaction: { encoding: 'base64', serializedTransaction: swapTxBase64 } }
+      { caip2: config.solanaCaip2, transaction: swapTxBase64, ...authorizationContext() }
     )
     signature = result.signature ?? result.hash ?? result
     actualToken = outputToken
@@ -135,7 +136,7 @@ export default defineEventHandler(async (event) => {
     const txBase64 = await buildTransferSolTx(sender.wallet_address, toAddress!, body.amount)
     const result = await (privy.wallets() as any).solana().signAndSendTransaction(
       sender.privy_wallet_id,
-      { caip2: config.solanaCaip2, transaction: { encoding: 'base64', serializedTransaction: txBase64 } }
+      { caip2: config.solanaCaip2, transaction: txBase64, ...authorizationContext() }
     )
     signature = result.signature ?? result.hash ?? result
   }

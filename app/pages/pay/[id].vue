@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { CheckCircle2, AlertCircle, ExternalLink, Copy, Check, LogIn, Search, ChevronDown } from 'lucide-vue-next'
-import { formatAmount, shortAddr } from '~/utils'
+import { formatAmount, shortAddr, formatUsd } from '~/utils'
 
 definePageMeta({ layout: false })
 
 const route = useRoute()
 const id = route.params.id as string
 const { isAuthenticated, user, apiFetch, isReady } = useAuth()
+const { balance } = useBalance()
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112'
 
@@ -278,6 +279,12 @@ const isSelf = computed(() =>
               <p v-if="needsSwap" class="mt-1.5 text-xs text-muted-foreground pl-1">
                 Auto-converted to {{ outputTokenInfo.symbol }} via Jupiter
               </p>
+
+              <!-- Balance -->
+              <div v-if="isAuthenticated && balance" class="mt-3 flex items-center justify-between rounded-xl bg-secondary px-4 py-2.5 text-xs">
+                <span class="text-muted-foreground">Your balance</span>
+                <span class="font-semibold">{{ balance.sol.toFixed(4) }} SOL <span class="font-normal text-muted-foreground">· {{ formatUsd(balance.usd) }}</span></span>
+              </div>
             </div>
 
             <div v-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">

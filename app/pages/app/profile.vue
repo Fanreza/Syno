@@ -23,12 +23,12 @@ async function exportPrivateKey() {
   } finally { exportLoading.value = false }
 }
 
-const { data: balance } = await useAsyncData(
+const { data: balance, pending: pendingBalance } = useAsyncData(
   () => `profile-balance-${user.value?.wallet_address}`,
   () => user.value?.wallet_address
     ? $fetch<{ sol: number; usd: number }>(`/api/balance?address=${user.value.wallet_address}`)
     : Promise.resolve({ sol: 0, usd: 0 }),
-  { watch: [user] }
+  { watch: [user], lazy: true }
 )
 
 const copiedAddr = ref(false)
@@ -132,8 +132,10 @@ const bannerColors = computed(() => {
 
             <!-- Balance -->
             <div class="text-right">
-              <p class="text-2xl font-bold">{{ formatUsd(balance?.usd || 0) }}</p>
-              <p class="text-sm text-muted-foreground">{{ formatAmount(balance?.sol || 0) }} SOL</p>
+              <div v-if="pendingBalance" class="h-7 w-24 animate-pulse rounded-md bg-secondary ml-auto" />
+              <p v-else class="text-2xl font-bold">{{ formatUsd(balance?.usd || 0) }}</p>
+              <div v-if="pendingBalance" class="mt-1 h-4 w-16 animate-pulse rounded bg-secondary ml-auto" />
+              <p v-else class="text-sm text-muted-foreground">{{ formatAmount(balance?.sol || 0) }} SOL</p>
             </div>
           </div>
         </div>
