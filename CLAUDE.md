@@ -116,3 +116,34 @@ npm run dev
 ```
 
 The `Missing supabase url` warning from `nuxt prepare` during a fresh install is normal before `.env` exists.
+
+## Feature Status (last reviewed 2026-04-18)
+
+When asked to review features, read this section first — do NOT re-read all source files.
+
+### Ready to test
+- **Auth** — email OTP, Google OAuth, Solana wallet SIWS, onboarding/register (creates Privy server wallet)
+- **Dashboard stats** — `GET /api/stats` wired, shows real sent/received/open splits
+- **Recent Activity** — `GET /api/activity` wired, shows payments + splits + gift claims with timeAgo
+- **Send SOL** — `SendModal` → `POST /api/payments/send` → server signs via Privy, records in DB
+- **Payment Link / QR** — `RequestModal` → `POST /api/payments/create-link` → `/pay/[id]` public page with QR
+- **Gift** — `GiftModal` → `POST /api/gifts/create` (pool wallet) → `/gift/[id]` claim page
+- **Profile** — wallet address, balance, export private key (`GET /api/wallet/export`)
+
+### Partial
+- **Split Bill** — fully complete: create (`SplitModal`), index (`/app/split`), detail (`/app/split/[id]`).
+- **Private transfer** — UI toggle exists in `SendModal`, server ignores it. Phase 2.
+
+### Phase 2 (complete)
+- Jupiter auto-convert: `inputToken` field in `POST /api/payments/send` triggers Jupiter swap (USDC→SOL). UI toggle in SendModal.
+- GoldRush on-chain history: `GET /api/history` + `/app/activity` On-chain tab. Requires `GOLDRUSH_API_KEY` env var.
+
+### Still pending
+- Friends list (DB table exists, no API/UI)
+
+### Integrations complete
+- Privy Node SDK: server wallet create, sign+send tx, export private key
+- Supabase: all tables (users, payments, split_bills, split_participants, gifts, gift_claims)
+- Solana devnet RPC: SOL transfer, balance fetch
+- CoinGecko: SOL/USD price in send + request modals
+- QR code: `qrcode` library in `RequestQr.vue` component (used in RequestModal + /pay/[id])

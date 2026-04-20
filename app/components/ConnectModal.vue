@@ -19,8 +19,10 @@ const verifying = ref(false)
 const connectingWallet = ref<string | null>(null)
 
 // Wallet Standard — all compliant Solana wallets register themselves automatically
-interface SolanaWallet { id: string; name: string; icon: string; provider: any }
+interface SolanaWallet { id: string; name: string; icon: string }
 const solanaWallets = ref<SolanaWallet[]>([])
+// Store raw providers outside Vue reactivity to avoid Proxy wrapping breaking private class fields
+const walletProviders = new Map<string, any>()
 
 onMounted(() => {
   const { get, on } = getWallets()
@@ -30,12 +32,12 @@ onMounted(() => {
     const features = Object.keys(wallet.features ?? {})
     const hasSolana = features.some(f => f.startsWith('solana:') || f === 'standard:signMessage')
     if (!hasSolana) return
-    if (solanaWallets.value.some(w => w.id === wallet.name)) return
+    if (walletProviders.has(wallet.name)) return
+    walletProviders.set(wallet.name, wallet)
     solanaWallets.value.push({
       id: wallet.name,
       name: wallet.name,
       icon: wallet.icon,
-      provider: wallet,
     })
   }
 
@@ -88,10 +90,21 @@ async function handleGoogle() {
 async function handleSolanaWallet(wallet: SolanaWallet) {
   connectingWallet.value = wallet.id; error.value = ''
   try {
-    await loginWithSolanaWallet({ ...wallet.provider, name: wallet.name })
+    const provider = walletProviders.get(wallet.id)
+    await loginWithSolanaWallet(provider, wallet.name)
     open.value = false
   } catch (e: any) {
-    error.value = e?.message || 'Wallet connection failed'
+    const msg = e?.message || ''
+    // Surface user-friendly messages for common failures
+    if (msg.includes('User rejected') || msg.includes('rejected')) {
+      error.value = 'Request rejected. Try again and approve in your wallet.'
+    } else if (msg.includes('locked') || msg.includes('unlock')) {
+      error.value = 'Wallet is locked. Unlock it and try again.'
+    } else if (msg.includes('No account')) {
+      error.value = 'No account found. Connect an account in your wallet first.'
+    } else {
+      error.value = msg || 'Wallet connection failed'
+    }
   } finally { connectingWallet.value = null }
 }
 </script>

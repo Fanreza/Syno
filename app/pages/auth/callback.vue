@@ -2,7 +2,7 @@
 definePageMeta({ layout: false })
 
 const route = useRoute()
-const { completeOAuthLogin, user } = useAuth()
+const { isReady, completeOAuthLogin, user } = useAuth()
 const error = ref('')
 
 onMounted(async () => {
@@ -12,6 +12,16 @@ onMounted(async () => {
     error.value = 'Missing OAuth response'
     return
   }
+
+  // Wait for the Privy iframe to be ready before calling completeOAuthLogin
+  if (!isReady.value) {
+    await new Promise<void>((resolve) => {
+      const stop = watch(isReady, (v) => {
+        if (v) { stop(); resolve() }
+      }, { immediate: true })
+    })
+  }
+
   try {
     await completeOAuthLogin(code, state)
     await navigateTo(user.value ? '/app' : '/onboarding')

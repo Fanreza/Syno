@@ -1,11 +1,20 @@
 <script setup lang="ts">
 const route = useRoute()
-const showNav = computed(() => route.path.startsWith('/app') && !route.path.startsWith('/app/pay/'))
+const isApp = computed(() => route.path.startsWith('/app'))
+const showNav = computed(() => isApp.value && !route.path.startsWith('/app/pay/'))
+
+const { init } = useTheme()
+onMounted(() => init())
 </script>
 
 <template>
-  <div :class="route.path.startsWith('/app') ? 'mx-auto min-h-screen max-w-md bg-background pb-20' : 'min-h-screen'">
+  <div v-if="isApp" class="flex min-h-screen bg-background">
+    <SideNav v-if="showNav" />
+    <main class="flex-1 min-w-0">
+      <NuxtPage />
+    </main>
+  </div>
+  <div v-else class="min-h-screen">
     <NuxtPage />
-    <BottomNav v-if="showNav" />
   </div>
 </template>

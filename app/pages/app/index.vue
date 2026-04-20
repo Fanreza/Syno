@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import Card from '~/components/ui/Card.vue'
-import Logo from '~/components/Logo.vue'
-import { Send, QrCode, Users, Gift } from 'lucide-vue-next'
+import SendModal from '~/components/SendModal.vue'
+import SplitModal from '~/components/SplitModal.vue'
+import GiftModal from '~/components/GiftModal.vue'
+import RequestModal from '~/components/RequestModal.vue'
+import {
+  Send, ArrowDownLeft, Users, RefreshCw, Copy, Check, Gift, QrCode,
+  ArrowUpRight, ArrowDownRight, Scissors, Star, Inbox
+} from 'lucide-vue-next'
 import { formatAmount, formatUsd, shortAddr } from '~/utils'
 
-const { user } = useAuth()
+const { user, apiFetch } = useAuth()
 
-const { data: balance } = await useAsyncData(
+const { data: balance, refresh: refreshBalance } = await useAsyncData(
   () => `balance-${user.value?.wallet_address}`,
   () => user.value?.wallet_address
     ? $fetch<{ sol: number; usd: number }>(`/api/balance?address=${user.value.wallet_address}`)
@@ -14,51 +19,273 @@ const { data: balance } = await useAsyncData(
   { watch: [user] }
 )
 
-const actions = [
-  { label: 'Send', icon: Send, to: '/app/send' },
-  { label: 'Receive', icon: QrCode, to: '/app/profile' },
-  { label: 'Split', icon: Users, to: '/app/split' },
-  { label: 'Gift', icon: Gift, to: '/app/gift' }
-]
+const { data: stats, refresh: refreshStats } = await useAsyncData(
+  'dashboard-stats',
+  () => apiFetch<{ sentSol: number; receivedSol: number; openSplits: number }>('/api/stats'),
+)
+
+const { data: activity, refresh: refreshActivity } = await useAsyncData(
+  'dashboard-activity',
+  () => apiFetch<ActivityItem[]>('/api/activity'),
+)
+
+type ActivityItem = {
+  type: 'sent' | 'received' | 'split' | 'gift_claim'
+  id: string
+  amount: number
+  token: string
+  memo: string | null
+  tx_signature: string | null
+  counterparty: string | null
+  status?: string
+  gift_id?: string
+  created_at: string
+}
+
+const showSend = ref(false)
+const showSplit = ref(false)
+const showGift = ref(false)
+const showRequest = ref(false)
+
+const copied = ref(false)
+function copyAddr() {
+  if (!user.value?.wallet_address) return
+  navigator.clipboard.writeText(user.value.wallet_address)
+  copied.value = true
+  setTimeout(() => (copied.value = false), 1500)
+}
+
+function refreshAll() {
+  refreshBalance()
+  refreshStats()
+  refreshActivity()
+}
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const m = Math.floor(diff / 60000)
+  const h = Math.floor(diff / 3600000)
+  const d = Math.floor(diff / 86400000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m}m ago`
+  if (h < 24) return `${h}h ago`
+  return `${d}d ago`
+}
+
+function activityLabel(item: ActivityItem) {
+  if (item.type === 'sent') return item.counterparty ? `To @${item.counterparty}` : 'Sent'
+  if (item.type === 'received') return item.counterparty ? `From @${item.counterparty}` : 'Received'
+  if (item.type === 'split') return item.memo ?? 'Split bill'
+  if (item.type === 'gift_claim') return 'Gift claimed'
+  return ''
+}
+
+// Refresh activity after send modal closes with a success
+watch(showSend, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
+watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
 </script>
 
 <template>
-  <div class="px-5 pt-8">
-    <div class="mb-6 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <Logo size="md" />
-        <div>
-          <p class="text-xs text-muted-foreground">Welcome back</p>
-          <h2 class="text-lg font-bold">@{{ user?.username }}</h2>
+  <div class="min-h-screen p-8">
+
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold">Dashboard</h1>
+        <p class="mt-0.5 text-sm text-muted-foreground">
+          Good to see you, <span class="font-medium text-foreground">@{{ user?.username }}</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-12 gap-4">
+
+      <!-- Balance card -->
+      <div class="col-span-7 relative overflow-hidden rounded-2xl p-6 shadow-lg border border-border"
+        style="background: linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 14%) 50%, hsl(0 0% 11%) 100%)">
+        <div class="pointer-events-none absolute inset-0 opacity-[0.03]"
+          style="background-image: radial-gradient(circle, white 1px, transparent 1px); background-size: 20px 20px" />
+        <div class="pointer-events-none absolute -top-6 right-10 h-32 w-32 rounded-full opacity-10"
+          style="background: radial-gradient(circle, hsl(0 0% 80%) 0%, transparent 70%)" />
+
+        <div class="relative z-10 flex h-full flex-col justify-between">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <p class="text-xs font-medium text-white/50">Total Balance</p>
+                <button
+                  class="flex items-center gap-1 rounded-md bg-white/8 px-2 py-0.5 transition hover:bg-white/12"
+                  @click="copyAddr"
+                >
+                  <span class="font-mono text-[10px] text-white/40">{{ shortAddr(user?.wallet_address, 6) }}</span>
+                  <component :is="copied ? Check : Copy" class="h-2.5 w-2.5 text-white/30" />
+                </button>
+              </div>
+              <h2 class="mt-1 text-3xl font-bold tracking-tight text-white">
+                {{ formatUsd(balance?.usd || 0) }}
+              </h2>
+              <p class="mt-0.5 text-sm text-white/40">
+                {{ formatAmount(balance?.sol || 0) }} SOL
+              </p>
+            </div>
+            <button class="rounded-lg bg-white/10 p-1.5 text-white/30 transition hover:text-white/60" @click="refreshAll()">
+              <RefreshCw class="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div class="mt-5">
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                class="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-xs font-bold text-gray-900 shadow transition hover:scale-[1.02]"
+                @click="showSend = true"
+              >
+                <Send class="h-3.5 w-3.5" /> Send
+              </button>
+              <button
+                class="flex items-center gap-1.5 rounded-xl bg-white/15 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/22"
+                @click="showSplit = true"
+              >
+                <Users class="h-3.5 w-3.5" /> Split
+              </button>
+              <button
+                class="flex items-center gap-1.5 rounded-xl bg-white/15 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/22"
+                @click="showRequest = true"
+              >
+                <QrCode class="h-3.5 w-3.5" /> Request
+              </button>
+              <button
+                class="flex items-center gap-1.5 rounded-xl bg-white/15 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/22"
+                @click="showGift = true"
+              >
+                <Gift class="h-3.5 w-3.5" /> Gift
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-      <NuxtLink to="/app/profile" class="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-        {{ user?.username?.[0]?.toUpperCase() }}
-      </NuxtLink>
+
+      <!-- Stats column -->
+      <div class="col-span-5 grid grid-rows-3 gap-3">
+        <div class="rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Sent (30d)</p>
+            <p class="mt-1 text-2xl font-bold">
+              {{ formatAmount(stats?.sentSol ?? 0) }}
+              <span class="text-sm font-medium text-muted-foreground">SOL</span>
+            </p>
+          </div>
+          <ArrowUpRight class="h-4 w-4 text-muted-foreground opacity-50" />
+        </div>
+        <div class="rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Received (30d)</p>
+            <p class="mt-1 text-2xl font-bold">
+              {{ formatAmount(stats?.receivedSol ?? 0) }}
+              <span class="text-sm font-medium text-muted-foreground">SOL</span>
+            </p>
+          </div>
+          <ArrowDownLeft class="h-4 w-4 text-muted-foreground opacity-50" />
+        </div>
+        <div
+          class="rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between cursor-pointer transition hover:bg-accent"
+          @click="navigateTo('/app/split')"
+        >
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Open Splits</p>
+            <p class="mt-1 text-2xl font-bold">
+              {{ stats?.openSplits ?? 0 }}
+              <span class="text-sm font-medium text-muted-foreground">active</span>
+            </p>
+          </div>
+          <Scissors class="h-4 w-4 text-muted-foreground opacity-50" />
+        </div>
+      </div>
+
+      <!-- Recent activity -->
+      <div class="col-span-12 rounded-2xl border border-border bg-card p-6">
+        <div class="mb-5 flex items-center justify-between">
+          <h3 class="font-semibold">Recent Activity</h3>
+          <button class="text-xs text-muted-foreground transition hover:text-foreground" @click="refreshActivity()">
+            Refresh
+          </button>
+        </div>
+
+        <!-- Empty state -->
+        <div v-if="!activity?.length" class="flex flex-col items-center justify-center py-12 text-center">
+          <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
+            <Inbox class="h-6 w-6 text-muted-foreground" />
+          </div>
+          <p class="font-medium">No activity yet</p>
+          <p class="mt-1 text-sm text-muted-foreground">Send or receive SOL to see it here.</p>
+          <button
+            class="mt-5 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+            @click="showSend = true"
+          >
+            <Send class="h-4 w-4" /> Send your first payment
+          </button>
+        </div>
+
+        <!-- Activity list -->
+        <div v-else class="divide-y divide-border">
+          <div
+            v-for="item in activity"
+            :key="item.id"
+            class="flex items-center gap-4 py-3.5"
+          >
+            <!-- Icon -->
+            <div
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              :class="{
+                'bg-green-500/10': item.type === 'received' || item.type === 'gift_claim',
+                'bg-secondary': item.type === 'sent',
+                'bg-purple-500/10': item.type === 'split',
+              }"
+            >
+              <ArrowDownRight v-if="item.type === 'received' || item.type === 'gift_claim'" class="h-4 w-4 text-green-500" />
+              <ArrowUpRight v-else-if="item.type === 'sent'" class="h-4 w-4 text-muted-foreground" />
+              <Scissors v-else-if="item.type === 'split'" class="h-4 w-4 text-purple-500" />
+              <Star v-else class="h-4 w-4 text-yellow-500" />
+            </div>
+
+            <!-- Label + memo -->
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium">{{ activityLabel(item) }}</p>
+              <p v-if="item.memo && item.type !== 'split'" class="mt-0.5 truncate text-xs text-muted-foreground">
+                {{ item.memo }}
+              </p>
+            </div>
+
+            <!-- Amount + time -->
+            <div class="text-right">
+              <p
+                class="text-sm font-semibold"
+                :class="item.type === 'received' || item.type === 'gift_claim' ? 'text-green-500' : 'text-foreground'"
+              >
+                {{ item.type === 'received' || item.type === 'gift_claim' ? '+' : item.type === 'sent' ? '-' : '' }}{{ formatAmount(item.amount) }} {{ item.token }}
+              </p>
+              <p class="mt-0.5 text-xs text-muted-foreground">{{ timeAgo(item.created_at) }}</p>
+            </div>
+
+            <!-- Explorer link -->
+            <a
+              v-if="item.tx_signature"
+              :href="`https://explorer.solana.com/tx/${item.tx_signature}`"
+              target="_blank"
+              class="shrink-0 text-muted-foreground transition hover:text-foreground"
+            >
+              <ArrowDownRight class="h-3.5 w-3.5 -rotate-45" />
+            </a>
+          </div>
+        </div>
+      </div>
+
     </div>
 
-    <Card class="mb-6 p-6 gradient-brand text-white">
-      <p class="text-sm opacity-80">Total Balance</p>
-      <h1 class="mt-1 text-3xl font-bold">{{ formatUsd(balance?.usd || 0) }}</h1>
-      <p class="mt-1 text-sm opacity-80">{{ formatAmount(balance?.sol || 0) }} SOL</p>
-      <p class="mt-3 text-xs opacity-70">{{ shortAddr(user?.wallet_address) }}</p>
-    </Card>
+    <!-- Modals -->
+    <SendModal v-model:open="showSend" />
+    <SplitModal v-model:open="showSplit" />
+    <GiftModal v-model:open="showGift" />
+    <RequestModal v-model:open="showRequest" />
 
-    <div class="mb-6 grid grid-cols-4 gap-3">
-      <NuxtLink
-        v-for="a in actions"
-        :key="a.label"
-        :to="a.to"
-        class="flex flex-col items-center gap-2 rounded-2xl border bg-card p-4 transition hover:border-primary"
-      >
-        <component :is="a.icon" class="h-5 w-5 text-primary" />
-        <span class="text-xs font-medium">{{ a.label }}</span>
-      </NuxtLink>
-    </div>
-
-    <Card class="p-5">
-      <h3 class="mb-3 font-semibold">Recent Activity</h3>
-      <p class="text-sm text-muted-foreground">No transactions yet.</p>
-    </Card>
   </div>
 </template>

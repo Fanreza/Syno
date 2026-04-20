@@ -1,32 +1,32 @@
-import {
-  getUserEmbeddedEthereumWallet,
-  getUserEmbeddedSolanaWallet,
-  getEntropyDetailsFromAccount,
-  type User as PrivyUser
-} from '@privy-io/js-sdk-core'
+import type Privy from '@privy-io/js-sdk-core'
+import { createSiwsMessage } from '@privy-io/js-sdk-core'
 import { getPrivy } from '~/config/privy'
+
+type PrivyUser = Awaited<ReturnType<Privy['user']['get']>>['user']
 
 export interface AppUser {
   id: string
   privy_user_id: string
   username: string
   wallet_address: string
+  privy_wallet_id: string | null
   email: string | null
 }
 
 export function useAuth() {
-  // useState with a string key is globally shared across all useAuth() calls,
-  // so these behave as singletons while staying inside a Nuxt context.
   const isReady = useState<boolean>('auth:isReady', () => false)
   const isAuthenticated = useState<boolean>('auth:isAuthenticated', () => false)
   const privyUser = useState<PrivyUser | null>('auth:privyUser', () => null)
   const accessToken = useState<string | null>('auth:token', () => null)
-  const solanaAddress = useState<string | null>('auth:solana', () => null)
   const appUser = useState<AppUser | null>('auth:appUser', () => null)
 
-  function privy() {
-    return getPrivy()
-  }
+  // The server wallet address (from DB). This is what we show as "your balance".
+  const walletAddress = computed(() => appUser.value?.wallet_address ?? null)
+
+  // Keep solanaAddress as alias for backwards compat with onboarding/send pages
+  const solanaAddress = walletAddress
+
+  function privy() { return getPrivy() }
 
   async function apiFetch<T>(url: string, opts: any = {}): Promise<T> {
     const headers: Record<string, string> = { ...(opts.headers || {}) }
@@ -34,41 +34,15 @@ export function useAuth() {
     return $fetch<T>(url, { ...opts, headers })
   }
 
-  async function ensureSolanaWallet(user: PrivyUser): Promise<PrivyUser> {
-    let eth = getUserEmbeddedEthereumWallet(user)
-    let sol = getUserEmbeddedSolanaWallet(user)
-
-    if (!eth) {
-      const created = await privy().embeddedWallet.create({})
-      user = (created as any).user ?? user
-      eth = getUserEmbeddedEthereumWallet(user)
-    }
-
-    if (!sol) {
-      const created = await privy().embeddedWallet.createSolana({
-        ethereumAccount: eth ?? undefined
-      } as any)
-      user = (created as any).user ?? user
-      sol = getUserEmbeddedSolanaWallet(user)
-    }
-
-    if (sol) solanaAddress.value = sol.address
-    return user
-  }
-
   async function refreshAppUser() {
-    if (!accessToken.value) {
-      appUser.value = null
-      return null
-    }
+    if (!accessToken.value) { appUser.value = null; return null }
     const me = await apiFetch<AppUser | null>('/api/users/me').catch(() => null)
     appUser.value = me
     return me
   }
 
   async function handlePostLogin(session: { user: PrivyUser }) {
-    const updated = await ensureSolanaWallet(session.user)
-    privyUser.value = updated
+    privyUser.value = session.user
     accessToken.value = (await privy().getAccessToken()) ?? null
     isAuthenticated.value = true
     isReady.value = true
@@ -83,8 +57,6 @@ export function useAuth() {
         const { user } = await privy().user.get()
         if (user) {
           privyUser.value = user
-          const sol = getUserEmbeddedSolanaWallet(user)
-          if (sol) solanaAddress.value = sol.address
           isAuthenticated.value = true
           await refreshAppUser()
         }
@@ -117,62 +89,68 @@ export function useAuth() {
     await handlePostLogin(session as any)
   }
 
-  async function loginWithSolanaWallet(wallet: any) {
-    // Support both Wallet Standard and legacy window.solana providers
-    const isWalletStandard = typeof wallet.features === 'object'
+  async function loginWithSolanaWallet(wallet: any, walletName?: string) {
+    // Check for Wallet Standard by looking for features with solana: or standard: keys
+    const features = wallet.features ?? {}
+    const featureKeys = Object.keys(features)
+    const isWalletStandard = featureKeys.length > 0 && featureKeys.some(k => k.startsWith('solana:') || k.startsWith('standard:'))
 
     let address: string
     let signFn: (msg: Uint8Array) => Promise<Uint8Array>
 
     if (isWalletStandard) {
-      // Wallet Standard: connect via 'standard:connect', sign via 'solana:signMessage'
-      const connectFeature = wallet.features['standard:connect']
-      if (connectFeature) await connectFeature.connect()
-      const account = wallet.accounts?.[0]
-      if (!account) throw new Error('No account found in wallet')
-      address = account.address
+      const connectFeature = features['standard:connect']
+      if (connectFeature) {
+        await connectFeature.connect()
+      }
+      // accounts is a live getter — read after connect()
+      const accounts: any[] = wallet.accounts ?? []
+      const rawAccount = accounts[0]
+      if (!rawAccount) throw new Error('No account found. Make sure your wallet is unlocked and has an account.')
 
-      const signFeature = wallet.features['solana:signMessage'] ?? wallet.features['standard:signMessage']
+      // address may be Uint8Array in some wallets — normalize to base58 string
+      const resolvedAddress: string = typeof rawAccount.address === 'string'
+        ? rawAccount.address
+        : encodeBase58(rawAccount.address as Uint8Array)
+      address = resolvedAddress
+
+      const signFeature = features['solana:signMessage'] ?? features['standard:signMessage']
       if (!signFeature) throw new Error('Wallet does not support signMessage')
       signFn = async (msg: Uint8Array) => {
-        const [result] = await signFeature.signMessage({ account, message: msg })
+        const results = await signFeature.signMessage({ account: rawAccount, message: msg })
+        const [result] = Array.isArray(results) ? results : [results]
         return result.signature
       }
     } else {
-      // Legacy provider (window.solana style)
       if (wallet.connect) await wallet.connect()
-      address = wallet.publicKey.toString()
+      const pubkey = wallet.publicKey
+      if (!pubkey) throw new Error('Wallet not connected or locked. Please unlock your wallet and try again.')
+      address = typeof pubkey.toString === 'function' ? pubkey.toString() : encodeBase58(pubkey.toBytes())
       signFn = async (msg: Uint8Array) => {
         const result = await wallet.signMessage(msg)
         return result.signature ?? result
       }
     }
 
-    const { nonce } = await (privy().auth as any).siws.fetchNonce({ address })
-
-    const issuedAt = new Date().toISOString()
-    const message = [
-      `${window.location.host} wants you to sign in with your Solana account:`,
+    const privyInstance = privy()
+    const siws = (privyInstance.auth as any).siws
+    const { nonce } = await siws.fetchNonce({ address })
+    const message = createSiwsMessage({
       address,
-      '',
-      'By signing, you are proving you own this wallet and logging in.',
-      '',
-      `URI: ${window.location.origin}`,
-      'Version: 1',
-      `Nonce: ${nonce}`,
-      `Issued At: ${issuedAt}`,
-    ].join('\n')
+      nonce,
+      domain: window.location.host,
+      uri: window.location.origin,
+    })
 
     const encoded = new TextEncoder().encode(message)
     const signatureBytes = await signFn(encoded)
-    const signatureBase58 = encodeBase58(signatureBytes)
-
-    const walletName = (isWalletStandard ? wallet.name : wallet.name) ?? 'phantom'
-    const session = await (privy().auth as any).siws.login({
-      mode: 'login-or-link',
+    const signatureBase64 = btoa(String.fromCharCode(...signatureBytes))
+    const resolvedWalletName = (walletName ?? wallet.name ?? 'phantom').toLowerCase().replace(/\s+/g, '_')
+    const session = await siws.login({
+      mode: 'login-or-sign-up',
       message,
-      signature: signatureBase58,
-      walletClientType: walletName.toLowerCase().replace(/\s+/g, '_'),
+      signature: signatureBase64,
+      walletClientType: resolvedWalletName,
       connectorType: 'injected',
     })
     await handlePostLogin(session as any)
@@ -194,35 +172,20 @@ export function useAuth() {
     return encoded
   }
 
-
   async function registerUsername(username: string) {
-    if (!solanaAddress.value) throw new Error('Wallet not ready')
+    // wallet_address no longer sent from client — server creates it
     const me = await apiFetch<AppUser>('/api/users/register', {
       method: 'POST',
-      body: { username, wallet_address: solanaAddress.value }
+      body: { username }
     })
     appUser.value = me
     return me
   }
 
-  async function getSolanaProvider() {
-    const user = privyUser.value
-    if (!user) throw new Error('Not authenticated')
-    const sol = getUserEmbeddedSolanaWallet(user)
-    if (!sol) throw new Error('No Solana wallet')
-    const entropy = getEntropyDetailsFromAccount(sol)
-    return await privy().embeddedWallet.getSolanaProvider(
-      sol,
-      entropy.entropyId,
-      entropy.entropyIdVerifier
-    )
-  }
-
   async function logout() {
-    try { await privy().logout() } catch {}
+    try { await privy().auth.logout() } catch {}
     privyUser.value = null
     accessToken.value = null
-    solanaAddress.value = null
     appUser.value = null
     isAuthenticated.value = false
     await navigateTo('/login')
@@ -234,6 +197,7 @@ export function useAuth() {
     user: appUser,
     privyUser,
     solanaAddress,
+    walletAddress,
     accessToken,
     apiFetch,
     restoreSession,
@@ -243,7 +207,6 @@ export function useAuth() {
     completeOAuthLogin,
     registerUsername,
     refreshAppUser,
-    getSolanaProvider,
     loginWithSolanaWallet,
     logout
   }

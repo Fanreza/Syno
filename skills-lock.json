@@ -1,6 +1,26 @@
 {
   "version": 1,
   "skills": {
+    "integrating-jupiter": {
+      "source": "jup-ag/agent-skills",
+      "sourceType": "github",
+      "computedHash": "fb5b903ff44d20b275edbb0e302eb9338242f878f6105268a6387055507d7a95"
+    },
+    "jupiter-lend": {
+      "source": "jup-ag/agent-skills",
+      "sourceType": "github",
+      "computedHash": "4a22b8577928fab8ec78f086b29ea87447cb3a72124502c033b049eebda5c19e"
+    },
+    "jupiter-swap-migration": {
+      "source": "jup-ag/agent-skills",
+      "sourceType": "github",
+      "computedHash": "f759258e2144081d7175287eb29aa22f564bc7297c6c80d44f78a196801179bb"
+    },
+    "jupiter-vrfd": {
+      "source": "jup-ag/agent-skills",
+      "sourceType": "github",
+      "computedHash": "b6310c352afc23f022d7a0261ab80d89a41964cb8f68bbab131ad842edca96c9"
+    },
     "nuxt": {
       "source": "antfu/skills",
       "sourceType": "github",
@@ -10,6 +30,11 @@
       "source": "antfu/skills",
       "sourceType": "github",
       "computedHash": "8e8346fac8cb76d6f186462b712352d5a651c9c049076ea73559f47210c874ef"
+    },
+    "privy": {
+      "source": "docs.privy.io",
+      "sourceType": "well-known",
+      "computedHash": "3d01137218e025cea7bdc5c2824248b74ea2a1fafd3decc2d1f9ca2a24c547f4"
     },
     "vite": {
       "source": "antfu/skills",

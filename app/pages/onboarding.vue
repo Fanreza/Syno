@@ -3,23 +3,15 @@ import Card from '~/components/ui/Card.vue'
 import Button from '~/components/ui/Button.vue'
 import Input from '~/components/ui/Input.vue'
 import Logo from '~/components/Logo.vue'
-import { Loader2 } from 'lucide-vue-next'
 
 definePageMeta({ layout: false })
 
-const { registerUsername, solanaAddress } = useAuth()
+const { registerUsername } = useAuth()
 const username = ref('')
 const loading = ref(false)
 const error = ref('')
 
-// Wait for embedded wallet to be ready before allowing submit
-const walletReady = computed(() => !!solanaAddress.value)
-
 async function onSubmit() {
-  if (!walletReady.value) {
-    error.value = 'Wallet is still initializing, please wait...'
-    return
-  }
   loading.value = true; error.value = ''
   try {
     await registerUsername(username.value)
@@ -44,19 +36,14 @@ async function onSubmit() {
       </div>
       <p class="mt-2 text-xs text-muted-foreground">3-20 chars, a-z 0-9 _</p>
 
-      <div v-if="!walletReady" class="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 class="h-4 w-4 animate-spin" />
-        Setting up your wallet…
-      </div>
-
       <Button
         class="mt-5 w-full"
         size="lg"
         :loading="loading"
-        :disabled="!username || !walletReady"
+        :disabled="!username"
         @click="onSubmit"
       >
-        Create Account &amp; Wallet
+        Create Account
       </Button>
       <p v-if="error" class="mt-3 text-center text-sm text-destructive">{{ error }}</p>
     </Card>

@@ -6,6 +6,7 @@ create table if not exists users (
   username text unique not null,
   email text,
   wallet_address text not null,
+  privy_wallet_id text,
   created_at timestamptz default now()
 );
 create index if not exists users_username_idx on users (lower(username));
@@ -29,6 +30,7 @@ create table if not exists payments (
   tx_signature text,
   status text not null default 'pending', -- pending | confirmed | failed
   memo text,
+  split_participant_id uuid references split_participants(id),
   created_at timestamptz default now()
 );
 create index if not exists payments_sender_idx on payments (sender_id);

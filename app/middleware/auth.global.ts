@@ -3,7 +3,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (to.path === '/' || to.path === '/landing') return
   if (to.path === '/login' || to.path.startsWith('/auth/')) return
   if (to.path === '/terms' || to.path === '/privacy') return
-  if (to.path.startsWith('/pay/') || to.path.startsWith('/app/pay/')) return
+  if (to.path.startsWith('/pay/')) return
+  if (to.path.startsWith('/gift/')) return
 
   const { isReady, isAuthenticated, user } = useAuth()
 

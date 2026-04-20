@@ -3,6 +3,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<{
     title: string
     totalAmount: number
+    token?: string
     participants: { username: string; amount: number }[]
   }>(event)
   if (!body?.totalAmount || !body.participants?.length) {
@@ -22,7 +23,7 @@ export default defineEventHandler(async (event) => {
       creator_id: me?.id,
       title: body.title || 'Split Bill',
       total_amount: body.totalAmount,
-      token: 'SOL',
+      token: body.token ?? 'So11111111111111111111111111111111111111112',
       status: 'open'
     })
     .select()

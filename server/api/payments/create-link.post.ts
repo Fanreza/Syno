@@ -1,6 +1,12 @@
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
-  const body = await readBody<{ amount: number; memo?: string }>(event)
+  const body = await readBody<{
+    amount: number
+    memo?: string
+    splitParticipantId?: string
+    outputToken?: string       // mint address of token receiver wants
+    outputTokenSymbol?: string // symbol e.g. 'BONK'
+  }>(event)
   if (!body?.amount || body.amount <= 0) {
     throw createError({ statusCode: 400, statusMessage: 'amount required' })
   }
@@ -20,9 +26,10 @@ export default defineEventHandler(async (event) => {
       receiver_id: me.id,
       receiver_address: me.wallet_address,
       amount: body.amount,
-      token: 'SOL',
+      token: body.outputToken ?? 'So11111111111111111111111111111111111111112',
+      memo: body.memo || null,
       status: 'pending',
-      memo: body.memo || null
+      split_participant_id: body.splitParticipantId || null,
     })
     .select('id')
     .single()

@@ -32,6 +32,32 @@
   --brand-navy-soft: hsl(222 40% 28%);
 }
 
+.dark {
+  --background: hsl(0 0% 8%);
+  --foreground: hsl(0 0% 93%);
+  --card: hsl(0 0% 11%);
+  --card-foreground: hsl(0 0% 93%);
+  --popover: hsl(0 0% 11%);
+  --popover-foreground: hsl(0 0% 93%);
+  --primary: hsl(0 0% 93%);
+  --primary-foreground: hsl(0 0% 8%);
+  --secondary: hsl(0 0% 15%);
+  --secondary-foreground: hsl(0 0% 80%);
+  --muted: hsl(0 0% 13%);
+  --muted-foreground: hsl(0 0% 50%);
+  --accent: hsl(0 0% 17%);
+  --accent-foreground: hsl(0 0% 92%);
+  --destructive: hsl(0 72% 58%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(0 0% 18%);
+  --input: hsl(0 0% 18%);
+  --ring: hsl(0 0% 60%);
+
+  --brand-navy: hsl(0 0% 93%);
+  --brand-navy-deep: hsl(0 0% 15%);
+  --brand-navy-soft: hsl(0 0% 20%);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

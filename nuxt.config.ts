@@ -34,6 +34,9 @@ export default defineNuxtConfig({
           'Content-Security-Policy': "frame-ancestors *"
         }
       }
+    },
+    externals: {
+      inline: ['@solana/spl-token', '@solana/web3.js']
     }
   },
 
@@ -42,13 +45,14 @@ export default defineNuxtConfig({
     privyAppSecret: process.env.PRIVY_APP_SECRET || '',
     supabaseUrl: process.env.SUPABASE_URL || '',
     supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || '',
-    solanaRpcUrl: process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+    solanaRpcUrl: process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
+    solanaCaip2: process.env.SOLANA_CAIP2 || 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
     goldrushApiKey: process.env.GOLDRUSH_API_KEY || '',
     public: {
       privyAppId: process.env.NUXT_PUBLIC_PRIVY_APP_ID || process.env.PRIVY_APP_ID || '',
       privyClientId: process.env.NUXT_PUBLIC_PRIVY_CLIENT_ID || '',
-      solanaCluster: process.env.NUXT_PUBLIC_SOLANA_CLUSTER || 'devnet',
-      solanaRpcUrl: process.env.NUXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com',
+      solanaCluster: process.env.NUXT_PUBLIC_SOLANA_CLUSTER || 'mainnet-beta',
+      solanaRpcUrl: process.env.NUXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
       appUrl: process.env.NUXT_PUBLIC_APP_URL || 'http://localhost:3000'
     }
   },
@@ -63,7 +67,10 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/jpeg', href: '/icon.jpeg' },
-        { rel: 'apple-touch-icon', href: '/icon.jpeg' }
+        { rel: 'apple-touch-icon', href: '/icon.jpeg' },
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600&display=swap' }
       ]
     }
   }

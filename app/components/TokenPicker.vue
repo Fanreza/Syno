@@ -1,0 +1,110 @@
+<script setup lang="ts">
+import { Search, ChevronDown, Check } from 'lucide-vue-next'
+import type { JupToken } from '~/utils/tokens'
+import { POPULAR_TOKENS } from '~/utils/tokens'
+
+defineProps<{ label?: string }>()
+const modelValue = defineModel<JupToken>({ required: true })
+
+const open = ref(false)
+const query = ref('')
+const results = ref<JupToken[]>([])
+const searching = ref(false)
+let timer: ReturnType<typeof setTimeout>
+
+watch(query, (q) => {
+  clearTimeout(timer)
+  if (!q.trim()) { results.value = []; return }
+  searching.value = true
+  timer = setTimeout(async () => {
+    try {
+      results.value = await $fetch<JupToken[]>(`/api/tokens/search?q=${encodeURIComponent(q.trim())}`)
+    } catch { results.value = [] }
+    finally { searching.value = false }
+  }, 300)
+})
+
+const displayed = computed(() => query.value ? results.value : POPULAR_TOKENS)
+
+function select(token: JupToken) {
+  modelValue.value = token
+  open.value = false
+  query.value = ''
+  results.value = []
+}
+
+function close() { open.value = false; query.value = ''; results.value = [] }
+
+// Close on outside click
+const containerRef = ref<HTMLElement>()
+onMounted(() => {
+  document.addEventListener('click', (e) => {
+    if (containerRef.value && !containerRef.value.contains(e.target as Node)) close()
+  })
+})
+</script>
+
+<template>
+  <div ref="containerRef" class="relative">
+    <label v-if="label" class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+      {{ label }}
+    </label>
+
+    <!-- Trigger -->
+    <button
+      type="button"
+      class="flex w-full items-center gap-3 rounded-xl border border-border bg-secondary px-4 py-3 transition hover:bg-accent"
+      @click="open = !open"
+    >
+      <img v-if="modelValue.logoURI" :src="modelValue.logoURI" :alt="modelValue.symbol" class="h-7 w-7 rounded-full object-cover" />
+      <div v-else class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
+        {{ modelValue.symbol[0] }}
+      </div>
+      <div class="flex-1 text-left">
+        <p class="text-sm font-semibold">{{ modelValue.symbol }}</p>
+        <p class="text-xs text-muted-foreground">{{ modelValue.name }}</p>
+      </div>
+      <ChevronDown class="h-4 w-4 shrink-0 text-muted-foreground transition-transform" :class="open ? 'rotate-180' : ''" />
+    </button>
+
+    <!-- Dropdown -->
+    <div v-if="open" class="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+      <!-- Search input -->
+      <div class="flex items-center gap-2 border-b border-border px-3 py-2.5">
+        <Search class="h-4 w-4 shrink-0 text-muted-foreground" />
+        <input
+          v-model="query"
+          placeholder="Search by name, symbol, or paste CA..."
+          autofocus
+          class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+        <span v-if="searching" class="text-xs text-muted-foreground animate-pulse">...</span>
+      </div>
+
+      <!-- Token list -->
+      <div class="max-h-52 overflow-y-auto">
+        <p v-if="!displayed.length && !searching" class="py-6 text-center text-sm text-muted-foreground">
+          {{ query ? 'No tokens found' : 'Start typing to search' }}
+        </p>
+        <button
+          v-for="token in displayed"
+          :key="token.address"
+          type="button"
+          class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-accent"
+          :class="modelValue.address === token.address ? 'bg-accent' : ''"
+          @click="select(token)"
+        >
+          <img v-if="token.logoURI" :src="token.logoURI" :alt="token.symbol" class="h-8 w-8 rounded-full object-cover" />
+          <div v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
+            {{ token.symbol[0] }}
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold">{{ token.symbol }}</p>
+            <p class="truncate text-xs text-muted-foreground">{{ token.name }}</p>
+          </div>
+          <Check v-if="modelValue.address === token.address" class="h-4 w-4 shrink-0 text-primary" />
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
