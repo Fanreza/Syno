@@ -1,19 +1,21 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 Guidance for Claude Code when working in this repo. Keep this file short and load-bearing — update it when architecture changes, not when features are added.
 
 ## What this is
 
-**Payra** — GoPay-style crypto payment app on Solana devnet. Send by `@username`, payment links, split bills.
+**Payra** — GoPay-style crypto payment app on Solana devnet. Send by `@username`, payment links, split bills, gift envelopes, friends list.
 
 ## Stack (all latest majors)
 
 - **Nuxt 4** (srcDir = `app/`)
 - **Tailwind v4** via `@tailwindcss/vite` (CSS-first, no `tailwind.config.ts`, no PostCSS)
 - **shadcn-vue** primitives backed by **reka-ui** (`components.json` configured for `npx shadcn-vue@latest add ...`)
-- **Supabase** for auth (email OTP + Google OAuth) and Postgres, via `@nuxtjs/supabase`
+- **Supabase** for auth (email OTP + Google OAuth + Solana SIWS) and Postgres, via `@nuxtjs/supabase`
 - **Privy** for Solana wallets, **server-side only** via `@privy-io/node`
-- `@solana/web3.js`, `@solana/spl-token`, Jupiter v6 (phase 2), GoldRush (phase 2)
+- `@solana/web3.js`, `@solana/spl-token`, Jupiter Swap v2 (wired), GoldRush (wired)
 
 ## The architecture rule that matters most
 
@@ -29,82 +31,130 @@ Do not introduce a client-side Privy SDK. If you need to change how transactions
 
 ```
 app/                    # srcDir — ~/ resolves here
-  app.vue, assets/, components/{ui,BottomNav.vue},
-  composables/, middleware/, pages/, utils/
-server/                 # Nitro (rootDir, not under app/)
-  utils/{supabase,privy,solana,jupiter}.ts
-  api/{users,payments,split,balance.get.ts}
+  app.vue               # layout root: SideNav + <NuxtPage>
+  assets/css/main.css   # Tailwind v4 CSS vars, dark mode under .dark class
+  components/
+    ui/                 # shadcn-vue primitives
+    SideNav.vue         # desktop nav with dark mode toggle
+    SendModal.vue       # send token to @username or address
+    RequestModal.vue    # create payment link + QR
+    SplitModal.vue      # create split bill
+    GiftModal.vue       # create gift envelope
+    TokenPicker.vue     # reusable token selector (JupToken, POPULAR_TOKENS)
+    RequestQr.vue       # QR code renderer
+  composables/
+    useAuth.ts          # ONLY place for auth state — wraps Supabase + Privy SIWS
+    useFriends.ts       # cached friend list (useState), used in SendModal + SplitModal
+    useTheme.ts         # dark mode toggle, applies .dark to <html>
+  middleware/auth.global.ts
+  pages/
+    app/index.vue       # dashboard
+    app/friends.vue     # friends list + add/remove
+    app/split/          # split index + detail
+    app/activity/       # on-chain + in-app activity tabs
+    app/profile.vue
+    pay/[id].vue        # public payment link page
+    gift/[id].vue       # public gift claim page
+  utils/
+    tokens.ts           # JupToken interface, SOL_TOKEN, POPULAR_TOKENS (auto-imported)
+    index.ts            # cn(), shortAddr(), formatUsd(), formatAmount() (auto-imported)
+server/
+  utils/
+    supabase.ts         # requireUser(event), adminDb()
+    privy.ts            # getPrivy(), createSolanaWallet(), signAndSendSolana()
+    solana.ts           # buildTransferSolTx(), getSolBalance(), getConnection()
+    jupiter.ts          # getJupiterQuote(), buildJupiterSwapTx()
+  api/
+    users/              # register, me, search
+    payments/           # send.post, create-link.post, [id].get
+    split/              # create.post, index.get, [id].get
+    gifts/              # create.post, claim.post, [id].get
+    friends/            # index.get, add.post, remove.post
+    tokens/search.get   # Jupiter token search proxy
+    activity.get, history.get, stats.get, balance.get, wallet/export.get
 supabase/schema.sql
-components.json         # shadcn-vue CLI config
-nuxt.config.ts, package.json, tsconfig.json, .env.example
 ```
 
 ## Auto-imports — don't import these, just use them
 
-- **`app/utils/**`** → auto-imported into Vue components. `cn()`, `shortAddr()`, `formatUsd()`, `formatAmount()` are globals in `.vue` files.
-- **`server/utils/**`** → auto-imported into Nitro handlers. Inside `server/api/**/*.ts`, these are globals: `requireUser`, `adminDb` (from `supabase.ts`); `getPrivy`, `createSolanaWallet`, `signAndSendSolana` (from `privy.ts`); `buildTransferSolTx`, `getSolBalance`, `getConnection` (from `solana.ts`); `getJupiterQuote`, `buildJupiterSwapTx` (from `jupiter.ts`).
-- **Supabase server helpers** come from `#supabase/server`: `serverSupabaseUser`, `serverSupabaseServiceRole`. These are wrapped in [server/utils/supabase.ts](server/utils/supabase.ts) — use `requireUser(event)` and `adminDb(event)` instead of the raw helpers.
+- **`app/utils/**`** → auto-imported into Vue components. `cn()`, `shortAddr()`, `formatUsd()`, `formatAmount()`, `JupToken`, `SOL_TOKEN`, `POPULAR_TOKENS` are globals in `.vue` files.
+- **`server/utils/**`** → auto-imported into Nitro handlers. Inside `server/api/**/*.ts`, these are globals: `requireUser`, `adminDb`; `getPrivy`, `createSolanaWallet`, `signAndSendSolana`; `buildTransferSolTx`, `getSolBalance`, `getConnection`; `getJupiterQuote`, `buildJupiterSwapTx`.
 - **Client Supabase**: `useSupabaseClient()`, `useSupabaseUser()` auto-imported by `@nuxtjs/supabase`.
 
-If an IDE shows "cannot find name" for any of the above, that's stale `.nuxt/` types — run `npm install` (triggers `nuxt prepare`) or `npx nuxt prepare`.
+If an IDE shows "cannot find name" for any of the above, that's stale `.nuxt/` types — run `npx nuxt prepare`.
 
 ## Auth flow
 
-- Supabase session lives in a cookie. Middleware is [app/middleware/auth.global.ts](app/middleware/auth.global.ts) — skips `/login`, `/confirm`, `/pay/*`; pushes to `/onboarding` if Supabase user exists but `users` row doesn't.
-- [app/composables/useAuth.ts](app/composables/useAuth.ts) wraps Supabase auth methods + `/api/users/me` + `/api/users/register`. It is the **only** place pages should touch auth state. Don't call `supabase.auth.*` directly from pages.
-- `/confirm` handles OAuth + magic-link redirects.
+- Supabase session lives in a cookie. Middleware is [app/middleware/auth.global.ts](app/middleware/auth.global.ts) — skips `/login`, `/confirm`, `/pay/*`, `/gift/*`; pushes to `/onboarding` if Supabase user exists but `users` row doesn't.
+- [app/composables/useAuth.ts](app/composables/useAuth.ts) wraps Supabase auth methods + Privy SIWS wallet login + `/api/users/me` + `/api/users/register`. It is the **only** place pages should touch auth state.
+- SIWS flow: `fetchNonce` → `createSiwsMessage` (from `@privy-io/js-sdk-core`) → wallet signs → signature encoded as **base64** (not base58) → `siws.login({ mode: 'login-or-sign-up', ... })`.
+- Wallet objects from browser providers (Phantom, OKX, etc.) must **never** be stored in Vue `ref([])` — ES private class fields (`#t`) break under Vue's Proxy. Store raw providers in a plain `Map` outside reactivity.
 
 ## Payment flow (the critical path)
 
-Send SOL:
+Send any token:
 
-1. Page: [app/pages/send.vue](app/pages/send.vue) posts to `/api/payments/send` with `{ toUsername | toAddress, amount, memo }`. No auth header — cookie carries the Supabase session.
-2. [server/api/payments/send.post.ts](server/api/payments/send.post.ts): `requireUser` → lookup sender's `privy_wallet_id` → `buildTransferSolTx(from, to, sol)` → `signAndSendSolana(walletId, txBase64)` → insert `payments` row → return `{ signature }`.
-3. If `splitParticipantId` is present, the row in `split_participants` is flipped to `paid`.
+1. `SendModal` → `POST /api/payments/send` with `{ toUsername | toAddress, amount, memo, inputToken? }`.
+2. [server/api/payments/send.post.ts](server/api/payments/send.post.ts): `requireUser` → lookup sender's `privy_wallet_id` → if `inputToken` differs from output, run Jupiter swap via `getJupiterQuote` + `buildJupiterSwapTx` → else `buildTransferSolTx` → `signAndSendSolana` → insert `payments` row → return `{ signature }`.
 
-Payment link: [server/api/payments/create-link.post.ts](server/api/payments/create-link.post.ts) inserts a pending row; [app/pages/pay/[id].vue](app/pages/pay/%5Bid%5D.vue) loads it and re-uses `/api/payments/send` for the actual transfer.
+Payment link: `RequestModal` → `POST /api/payments/create-link` (stores mint address as `token`) → `/pay/[id]` public page with token picker for payer.
+
+Gift: `GiftModal` → `POST /api/gifts/create` (creates dedicated Privy pool wallet, funds it) → `/gift/[id]` claim page → `POST /api/gifts/claim`.
+
+## Token handling
+
+All token references use **mint addresses** (not symbols like `'SOL'`). The SOL mint is `So11111111111111111111111111111111111111112`.
+
+- `app/utils/tokens.ts` exports `JupToken` interface, `SOL_TOKEN`, and `POPULAR_TOKENS` — auto-imported everywhere, do not re-declare locally.
+- `TokenPicker.vue` is the shared component for all token selection UI. Use `<TokenPicker v-model="token" label="..." />`.
+- Token price fetching: CoinGecko for SOL (`api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd`), Jupiter Price API for others (`api.jup.ag/price/v2?ids={mint}`). Never use `lite.jup.ag`.
+- Jupiter token search: proxied via `GET /api/tokens/search?q=...` (hits `tokens.jup.ag`).
+
+## Friends
+
+- `useFriends()` composable caches the friend list in `useState` — call `load()` once on modal open, reuse across components.
+- In `SendModal`: icon button (Users icon) in the "To" input toggles a friend dropdown.
+- In `SplitModal`: each participant row has a Users icon button that shows a friend dropdown below that row.
+- Friends are excluded from search results in `app/pages/app/friends.vue` by filtering out the current user's username.
+
+## Dark mode
+
+- Toggled by `useTheme()` composable — applies/removes `.dark` class on `<html>`.
+- CSS vars for dark mode live in `app/assets/css/main.css` under `.dark { ... }` — neutral gray palette (not navy).
+- `SideNav.vue` has the toggle button. Initialize with `useTheme().init()` in `app.vue` `onMounted`.
 
 ## Conventions
 
 - **TypeScript strict.** No `any` in new code unless it's a `$fetch` response that can't be typed.
-- **No `useFetch` caching foot-guns**: payment/send routes use `$fetch` directly. Only use `useFetch`/`useAsyncData` for SSR-cacheable reads (e.g., `/api/payments/[id]` on the pay page).
-- **Env vars**: public ones live under `runtimeConfig.public` in [nuxt.config.ts](nuxt.config.ts). Server secrets (`privyAppSecret`, `solanaCaip2`, `goldrushApiKey`) are top-level `runtimeConfig`. Never read `process.env` from pages/composables.
-- **Solana cluster** is controlled by two env vars that must agree: `SOLANA_RPC_URL` (for the Nitro Connection) and `SOLANA_CAIP2` (passed to Privy). Devnet default is set in `nuxt.config.ts`.
-- **shadcn-vue components**: to add new ones, run `npx shadcn-vue@latest add <name>` — [components.json](components.json) is already configured with the `~/components/ui` alias.
-- **Icons**: `lucide-vue-next`, imported per-component.
+- **No `useFetch` caching foot-guns**: mutation routes use `$fetch` directly. Only use `useFetch`/`useAsyncData` for SSR-cacheable reads.
+- **Env vars**: public ones under `runtimeConfig.public` in [nuxt.config.ts](nuxt.config.ts). Server secrets top-level `runtimeConfig`. Never read `process.env` from pages/composables.
+- **Solana cluster** controlled by `SOLANA_RPC_URL` and `SOLANA_CAIP2` — both must agree. Devnet default in `nuxt.config.ts`.
+- **`<script setup>` cannot contain `export`** — shared types/constants go in `app/utils/` (auto-imported), not exported from `.vue` files.
 
 ## Supabase schema
 
-In [supabase/schema.sql](supabase/schema.sql). Notable: `users.supabase_user_id` is a FK to `auth.users(id) on delete cascade` — this is how we tie Privy-wallet rows to Supabase auth identities. Username is unique, lowercased, indexed.
+In [supabase/schema.sql](supabase/schema.sql). Key tables: `users` (privy_wallet_id, wallet_address, username), `payments`, `split_bills`, `split_participants`, `gifts` (pool_wallet, pool_privy_wallet_id, token), `gift_claims`, `friends` (user_id, friend_id).
 
-RLS is **not** enabled. All DB access goes through Nitro with the service role key. Do not add client-side `supabase.from(...)` calls for data tables — go through `/api/*`.
-
-## Phase 2 (stubbed, not wired)
-
-- **Jupiter auto-convert** — helpers in [server/utils/jupiter.ts](server/utils/jupiter.ts) (`getJupiterQuote`, `buildJupiterSwapTx`). Wire into `/api/payments/send` by adding an `inputMint` field: quote → build swap tx → `signAndSendSolana`.
-- **SPL transfers** — extend [server/utils/solana.ts](server/utils/solana.ts) with `buildTransferSplTx` using `@solana/spl-token`'s `getOrCreateAssociatedTokenAccount` + `createTransferInstruction`.
-- **Gift/Daget** — tables `gifts`, `gift_claims` exist. Needs a pool Privy wallet per gift, deposit tx, and claim API that signs from the pool.
-- **GoldRush history** — not wired. Use `GOLDRUSH_API_KEY` in a new `/api/history.get.ts` to populate the dashboard.
-- **Friends** — `friends` table exists, no API/UI.
+RLS is **not** enabled. All DB access goes through Nitro with the service role key. Do not add client-side `supabase.from(...)` calls for data tables.
 
 ## Things NOT to do
 
-- Don't add `@privy-io/react-auth`, `@privy-io/js-sdk-core`, or any client-side Privy package. They don't fit this architecture and the first attempt at this app failed because of it.
-- Don't re-enable `@nuxtjs/tailwindcss` or `postcss.config.js`. Tailwind v4 is wired via `@tailwindcss/vite` in [nuxt.config.ts](nuxt.config.ts). A second pipeline will silently break `@theme` and CSS vars.
-- Don't add `@vueuse/nuxt` — it currently peer-conflicts with Nuxt 4. Import from `@vueuse/core` directly where needed.
-- Don't put API auth in headers. The Supabase cookie is the source of truth; `$fetch` from the client inherits it automatically.
-- Don't write to `app/utils/**` from server code, or import `#supabase/server` from client code — the build will break at different stages with unhelpful errors.
+- Don't add `@privy-io/react-auth`, `@privy-io/js-sdk-core`, or any client-side Privy package.
+- Don't re-enable `@nuxtjs/tailwindcss` or `postcss.config.js` — Tailwind v4 is wired via `@tailwindcss/vite`.
+- Don't add `@vueuse/nuxt` — peer-conflicts with Nuxt 4. Import from `@vueuse/core` directly.
+- Don't put API auth in headers. The Supabase cookie is the source of truth.
+- Don't export types/constants from `<script setup>` blocks — use `app/utils/` instead.
+- Don't use `lite.jup.ag` — use `api.jup.ag`.
+- Don't store wallet provider objects in Vue reactive state (ref/reactive) — use a plain `Map`.
 
 ## Copy and tone rules
 
-All user-facing text in this app must follow these rules. No exceptions.
+All user-facing text must follow these rules:
 
-- **No em dashes.** Never use `—`. Use a comma, period, or restructure the sentence.
+- **No em dashes.** Never use `—`.
 - **No AI-sounding phrases.** Banned: "seamlessly", "effortlessly", "unlock", "leverage", "cutting-edge", "next-generation", "revolutionize", "powerful", "robust", "streamline", "harness", "game-changing", "intuitive", "comprehensive", "dive into".
-- **No stiff or formal language.** Write like a person talking to a friend, not a press release. Short sentences. Active voice.
-- **No filler.** Cut anything that doesn't add meaning. "Join thousands of users" → delete it. "The smarter way" → say what's smart about it.
-
-If you are writing any UI copy, button labels, section headers, descriptions, or onboarding text, apply these rules before committing.
+- **No stiff or formal language.** Short sentences. Active voice.
+- **No filler.** Cut anything that doesn't add meaning.
 
 ## Running locally
 
@@ -115,35 +165,20 @@ npm install
 npm run dev
 ```
 
-The `Missing supabase url` warning from `nuxt prepare` during a fresh install is normal before `.env` exists.
+## Feature Status (last reviewed 2026-04-20)
 
-## Feature Status (last reviewed 2026-04-18)
-
-When asked to review features, read this section first — do NOT re-read all source files.
-
-### Ready to test
-- **Auth** — email OTP, Google OAuth, Solana wallet SIWS, onboarding/register (creates Privy server wallet)
-- **Dashboard stats** — `GET /api/stats` wired, shows real sent/received/open splits
-- **Recent Activity** — `GET /api/activity` wired, shows payments + splits + gift claims with timeAgo
-- **Send SOL** — `SendModal` → `POST /api/payments/send` → server signs via Privy, records in DB
-- **Payment Link / QR** — `RequestModal` → `POST /api/payments/create-link` → `/pay/[id]` public page with QR
-- **Gift** — `GiftModal` → `POST /api/gifts/create` (pool wallet) → `/gift/[id]` claim page
-- **Profile** — wallet address, balance, export private key (`GET /api/wallet/export`)
-
-### Partial
-- **Split Bill** — fully complete: create (`SplitModal`), index (`/app/split`), detail (`/app/split/[id]`).
-- **Private transfer** — UI toggle exists in `SendModal`, server ignores it. Phase 2.
-
-### Phase 2 (complete)
-- Jupiter auto-convert: `inputToken` field in `POST /api/payments/send` triggers Jupiter swap (USDC→SOL). UI toggle in SendModal.
-- GoldRush on-chain history: `GET /api/history` + `/app/activity` On-chain tab. Requires `GOLDRUSH_API_KEY` env var.
+### Complete
+- **Auth** — email OTP, Google OAuth, Solana wallet SIWS (Phantom, OKX, Jupiter)
+- **Dashboard** — stats (`GET /api/stats`), recent activity (`GET /api/activity`)
+- **Send** — `SendModal` with `TokenPicker` (pay with any token, Jupiter auto-convert)
+- **Payment Link / QR** — `RequestModal` with `TokenPicker` → `/pay/[id]` public page
+- **Split Bill** — `SplitModal` with `TokenPicker`, friends picker per row, index + detail pages
+- **Gift** — `GiftModal` with `TokenPicker` → `/gift/[id]` claim page (pool wallet per gift)
+- **Friends** — `GET/POST /api/friends/{index,add,remove}` + `/app/friends` page
+- **Profile** — balance, export private key (`GET /api/wallet/export`)
+- **Jupiter swap** — `inputToken` in `POST /api/payments/send` triggers swap
+- **GoldRush on-chain history** — `GET /api/history` + `/app/activity` on-chain tab (needs `GOLDRUSH_API_KEY`)
+- **Dark mode** — neutral gray palette, toggled via `useTheme()`
 
 ### Still pending
-- Friends list (DB table exists, no API/UI)
-
-### Integrations complete
-- Privy Node SDK: server wallet create, sign+send tx, export private key
-- Supabase: all tables (users, payments, split_bills, split_participants, gifts, gift_claims)
-- Solana devnet RPC: SOL transfer, balance fetch
-- CoinGecko: SOL/USD price in send + request modals
-- QR code: `qrcode` library in `RequestQr.vue` component (used in RequestModal + /pay/[id])
+- Private transfer (UI toggle exists in `SendModal`, server ignores it)

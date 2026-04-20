@@ -18,6 +18,7 @@ export function useAuth() {
   const isAuthenticated = useState<boolean>('auth:isAuthenticated', () => false)
   const privyUser = useState<PrivyUser | null>('auth:privyUser', () => null)
   const accessToken = useState<string | null>('auth:token', () => null)
+  const identityToken = useState<string | null>('auth:identityToken', () => null)
   const appUser = useState<AppUser | null>('auth:appUser', () => null)
 
   // The server wallet address (from DB). This is what we show as "your balance".
@@ -29,8 +30,16 @@ export function useAuth() {
   function privy() { return getPrivy() }
 
   async function apiFetch<T>(url: string, opts: any = {}): Promise<T> {
+    // Always get a fresh token — Privy access tokens expire and the cached value may be stale
+    const fresh = await privy().getAccessToken().catch(() => null)
+    if (fresh) accessToken.value = fresh
     const headers: Record<string, string> = { ...(opts.headers || {}) }
-    if (accessToken.value) headers.Authorization = `Bearer ${accessToken.value}`
+    const token = fresh ?? accessToken.value
+    if (token) headers.Authorization = `Bearer ${token}`
+    const freshIdToken = await privy().getIdentityToken().catch(() => null)
+    if (freshIdToken) identityToken.value = freshIdToken
+    const idToken = freshIdToken ?? identityToken.value
+    if (idToken) headers['x-identity-token'] = idToken
     return $fetch<T>(url, { ...opts, headers })
   }
 
@@ -44,6 +53,7 @@ export function useAuth() {
   async function handlePostLogin(session: { user: PrivyUser }) {
     privyUser.value = session.user
     accessToken.value = (await privy().getAccessToken()) ?? null
+    identityToken.value = (await privy().getIdentityToken().catch(() => null)) ?? (session as any).identity_token ?? null
     isAuthenticated.value = true
     isReady.value = true
     await refreshAppUser()

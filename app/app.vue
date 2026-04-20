@@ -3,8 +3,13 @@ const route = useRoute()
 const isApp = computed(() => route.path.startsWith('/app'))
 const showNav = computed(() => isApp.value && !route.path.startsWith('/app/pay/'))
 
-const { init } = useTheme()
+const { init, isDark } = useTheme()
 onMounted(() => init())
+
+// Only apply dark class when inside /app routes
+watch([isApp, isDark], ([app, dark]) => {
+  document.documentElement.classList.toggle('dark', app && dark)
+}, { immediate: false })
 </script>
 
 <template>
@@ -14,7 +19,7 @@ onMounted(() => init())
       <NuxtPage />
     </main>
   </div>
-  <div v-else class="min-h-screen">
+  <div v-else class="min-h-screen bg-white text-foreground">
     <NuxtPage />
   </div>
 </template>

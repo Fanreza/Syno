@@ -43,11 +43,15 @@ export default defineNuxtConfig({
   runtimeConfig: {
     privyAppId: process.env.PRIVY_APP_ID || '',
     privyAppSecret: process.env.PRIVY_APP_SECRET || '',
+    privyAuthorizationKeyId: process.env.PRIVY_AUTHORIZATION_KEY_ID || '',
+    privyAuthorizationPublicKey: process.env.PRIVY_AUTHORIZATION_PUBLIC_KEY || '',
+    privyAuthorizationKey: process.env.PRIVY_AUTHORIZATION_KEY || '',
     supabaseUrl: process.env.SUPABASE_URL || '',
     supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || '',
     solanaRpcUrl: process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
     solanaCaip2: process.env.SOLANA_CAIP2 || 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
     goldrushApiKey: process.env.GOLDRUSH_API_KEY || '',
+    jupiterApiKey: process.env.JUPITER_API_KEY || '',
     public: {
       privyAppId: process.env.NUXT_PUBLIC_PRIVY_APP_ID || process.env.PRIVY_APP_ID || '',
       privyClientId: process.env.NUXT_PUBLIC_PRIVY_CLIENT_ID || '',

@@ -6,12 +6,9 @@ import {
   LAMPORTS_PER_SOL
 } from '@solana/web3.js'
 
-let conn: Connection | null = null
 export function getConnection(): Connection {
-  if (conn) return conn
   const config = useRuntimeConfig()
-  conn = new Connection(config.solanaRpcUrl, 'confirmed')
-  return conn
+  return new Connection(config.solanaRpcUrl, 'confirmed')
 }
 
 export async function buildTransferSolTx(from: string, to: string, sol: number): Promise<string> {

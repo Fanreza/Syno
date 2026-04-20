@@ -1,7 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
+
+html.dark {
+  color-scheme: dark;
+}
 
 :root {
   /* Payra palette — navy monochrome from logo */

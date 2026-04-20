@@ -11,8 +11,10 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "@jup-ag/lend": "^0.1.9",
+    "@jup-ag/lend-read": "^0.0.12",
     "@privy-io/js-sdk-core": "^0.60.4",
-    "@privy-io/node": "^0.2.0",
+    "@privy-io/node": "^0.15.0",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.95.4",
     "@supabase/supabase-js": "^2.46.0",
@@ -20,6 +22,7 @@
     "@vueuse/core": "^12.0.0",
     "@wallet-standard/app": "^1.1.0",
     "@wallet-standard/wallet": "^1.1.0",
+    "bn.js": "^5.2.3",
     "bs58": "^6.0.0",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
@@ -35,7 +38,7 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^22.19.17",
     "@types/qrcode": "^1.5.6",
     "typescript": "^5.7.2"
   }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, User, LogOut, Scissors, Activity, Sun, Moon, Users } from 'lucide-vue-next'
+import { Home, User, LogOut, Scissors, Activity, Sun, Moon, Users, TrendingUp } from 'lucide-vue-next'
 
 const route = useRoute()
 const { user, logout } = useAuth()
@@ -8,6 +8,7 @@ const { isDark, toggle } = useTheme()
 const items = [
   { to: '/app', icon: Home, label: 'Home' },
   { to: '/app/split', icon: Scissors, label: 'Splits' },
+  { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
   { to: '/app/friends', icon: Users, label: 'Friends' },
   { to: '/app/activity', icon: Activity, label: 'Activity' },
   { to: '/app/profile', icon: User, label: 'Profile' },

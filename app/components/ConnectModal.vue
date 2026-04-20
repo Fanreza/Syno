@@ -78,7 +78,12 @@ async function handleVerify() {
     await loginWithEmail(email.value.trim(), otpCode.value)
     open.value = false
   } catch (e: any) {
-    error.value = e?.message || 'Invalid code'
+    const msg: string = e?.message || ''
+    if (msg.includes('already linked') || msg.includes('already exists')) {
+      error.value = 'This email is linked to a different sign-in method. Try Google or a Solana wallet instead.'
+    } else {
+      error.value = msg || 'Invalid code'
+    }
   } finally { verifying.value = false }
 }
 

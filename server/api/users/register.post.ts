@@ -32,7 +32,33 @@ export default defineEventHandler(async (event) => {
   let privyWalletId: string
 
   try {
-    const wallet = await (privy.wallets() as any).create({ chain_type: 'solana' })
+    const config = useRuntimeConfig()
+    const appId = config.privyAppId
+    const appSecret = config.privyAppSecret
+    const basicAuth = Buffer.from(`${appId}:${appSecret}`).toString('base64')
+    const privyHeaders = {
+      'Authorization': `Basic ${basicAuth}`,
+      'privy-app-id': appId,
+      'Content-Type': 'application/json',
+    }
+
+    // Create a key quorum per user: auth key (threshold 1) + user_id
+    // This lets server export via auth key, and wallet appears in user's Privy dashboard
+    let ownerParam: Record<string, any> = {}
+    if (config.privyAuthorizationPublicKey) {
+      const quorum = await $fetch<any>('https://api.privy.io/v1/key_quorums', {
+        method: 'POST',
+        headers: privyHeaders,
+        body: {
+          authorization_threshold: 1,
+          public_keys: [config.privyAuthorizationPublicKey],
+          user_ids: [auth.userId],
+        },
+      })
+      ownerParam = { owner_id: quorum.id }
+    }
+
+    const wallet = await (privy.wallets() as any).create({ chain_type: 'solana', ...ownerParam })
     walletAddress = wallet.address
     privyWalletId = wallet.id
   } catch (e: any) {

@@ -12,9 +12,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Wallet not found' })
   }
 
-  const privy = getPrivy()
+  const config = useRuntimeConfig()
+  if (!config.privyAuthorizationKey) {
+    throw createError({ statusCode: 500, statusMessage: 'Authorization key not configured' })
+  }
+
   try {
-    const { private_key } = await (privy.wallets() as any).exportPrivateKey(user.privy_wallet_id, {})
+    const privy = getPrivy()
+    const { private_key } = await (privy.wallets() as any).exportPrivateKey(user.privy_wallet_id, {
+      authorization_context: {
+        authorization_private_keys: [config.privyAuthorizationKey],
+      },
+    })
     return {
       wallet_address: user.wallet_address,
       private_key,
