@@ -4,46 +4,46 @@ import { Shield, Users, RefreshCw, ArrowRight, ChevronDown, Plus, Minus } from '
 definePageMeta({ layout: false, ssr: false })
 
 const tickerItems = [
-  { from: '@budi', to: '@rina', amount: '0.05 SOL', note: 'Dinner split' },
-  { from: '@alex', to: '@mia', amount: '0.12 SOL', note: 'Coffee ☕' },
-  { from: '@joko', to: '@sari', amount: '0.30 SOL', note: 'Rent share' },
-  { from: '@devi', to: '@hana', amount: '0.08 SOL', note: 'Grab split' },
-  { from: '@rafi', to: '@nina', amount: '0.20 SOL', note: 'Movie night' },
-  { from: '@tama', to: '@lena', amount: '0.15 SOL', note: 'Birthday gift 🎂' },
+  { from: '@budi', to: '@rina', amount: '0.05 SOL', note: 'dinner split' },
+  { from: '@alex', to: '@mia', amount: '0.12 SOL', note: 'coffee run' },
+  { from: '@joko', to: '@sari', amount: '0.30 SOL', note: 'rent share' },
+  { from: '@devi', to: '@hana', amount: '0.08 SOL', note: 'grab split' },
+  { from: '@rafi', to: '@nina', amount: '0.20 SOL', note: 'movie night' },
+  { from: '@tama', to: '@lena', amount: '0.15 SOL', note: 'birthday gift' },
 ]
 
 const faqItems = [
   {
-    q: 'Is Payra really free?',
-    a: 'Yes. Creating an account and sending payments costs nothing. Solana network fees are tiny (usually under $0.001). Auto-convert transactions have a small routing fee from Jupiter, shown before you confirm.',
+    q: 'Is Payra free?',
+    a: 'Sending and receiving costs nothing. Solana network fees are usually under $0.001. If you use auto-convert, Jupiter charges a small routing fee that you see before confirming.',
   },
   {
     q: 'Do I need a crypto wallet to sign up?',
-    a: 'No. Sign up with your email or Google account and Payra creates a Solana wallet for you automatically. You can also connect an existing wallet like Phantom or Solflare if you prefer.',
+    a: 'No. Sign up with email or Google and Payra creates a Solana wallet for you. You can also connect Phantom or Solflare if you already have one.',
   },
   {
-    q: 'How does the private transaction feature work?',
-    a: 'Payra routes your payment through a privacy layer that hides the amount and recipient from public blockchain explorers. Only the sender and receiver can see the full details inside the app.',
+    q: 'How do private transactions work?',
+    a: 'Your payment goes through a privacy layer that hides the amount and recipient from public blockchain explorers. Only the sender and receiver can see the details.',
   },
   {
-    q: 'What tokens can I send?',
-    a: 'Any SPL token on Solana. SOL, USDC, USDT, BONK, and more. The auto-convert feature lets you send one token and have the recipient receive a different one, using the best available rate on Jupiter.',
+    q: 'Which tokens can I send?',
+    a: 'Any SPL token on Solana — SOL, USDC, USDT, BONK, and more. Auto-convert lets you pay with one token while the recipient gets a different one, routed through Jupiter.',
   },
   {
     q: 'Can I split a bill unevenly?',
-    a: 'Yes. When creating a split you can set a custom amount for each participant. The default is an even split, but you can adjust per person before sending the payment links.',
+    a: 'Yes. The default is an even split, but you can set a custom amount per person before sending.',
   },
   {
-    q: 'What happens if someone never pays their split?',
-    a: "The split stays open until everyone pays or you manually close it. You can send a reminder from the split detail page. There's no automatic time-out.",
+    q: 'What if someone never pays their share?',
+    a: 'The split stays open until everyone pays or you close it manually. You can nudge people from the split detail page.',
   },
   {
-    q: 'Is my wallet self-custodial?',
-    a: "Your embedded wallet is managed by Privy. The private key is never exposed to Payra's servers or your browser. You retain full ownership. You can also connect your own Phantom or Solflare wallet instead.",
+    q: 'Who controls the wallet keys?',
+    a: "Privy manages the embedded wallet. The private key never touches Payra's servers or your browser. You can also export it anytime from your profile.",
   },
   {
     q: 'Which network is this on?',
-    a: 'Currently on Solana devnet for testing. Mainnet launch is coming once the beta period is complete.',
+    a: 'Solana devnet right now. Mainnet when the beta wraps up.',
   },
 ]
 
@@ -68,7 +68,7 @@ onMounted(() => {
         if (e.target.id === 'feat3') feat3Visible.value = true
       }
     })
-  }, { threshold: 0.2 })
+  }, { threshold: 0.15 })
 
   ;['feat1', 'feat2', 'feat3'].forEach(id => {
     const el = document.getElementById(id)
@@ -82,16 +82,16 @@ onMounted(() => {
 
     <!-- Navbar -->
     <header class="fixed top-0 z-50 w-full border-b border-border/40 bg-white/80 backdrop-blur-xl">
-      <div class="mx-auto flex max-w-6xl items-center justify-between px-10 py-4">
+      <div class="mx-auto flex max-w-6xl items-center justify-between px-5 md:px-10 py-4">
         <div class="flex items-center gap-2.5">
           <img src="/icon.jpeg" alt="Payra" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
           <span class="text-lg font-bold tracking-tight">Payra</span>
         </div>
-        <div class="flex items-center gap-6">
-          <a href="#features" class="text-sm text-muted-foreground transition hover:text-foreground">Features</a>
-          <a href="#how" class="text-sm text-muted-foreground transition hover:text-foreground">How it works</a>
-          <a href="#faq" class="text-sm text-muted-foreground transition hover:text-foreground">FAQ</a>
-          <NuxtLink to="/login" class="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow transition hover:opacity-90">
+        <div class="flex items-center gap-3 md:gap-6">
+          <a href="#features" class="hidden md:block text-sm text-muted-foreground transition hover:text-foreground">Features</a>
+          <a href="#how" class="hidden md:block text-sm text-muted-foreground transition hover:text-foreground">How it works</a>
+          <a href="#faq" class="hidden md:block text-sm text-muted-foreground transition hover:text-foreground">FAQ</a>
+          <NuxtLink to="/login" class="rounded-xl bg-primary px-4 md:px-6 py-2 md:py-2.5 text-sm font-semibold text-white shadow transition hover:opacity-90">
             Get Started
           </NuxtLink>
         </div>
@@ -102,48 +102,42 @@ onMounted(() => {
     <section class="relative flex min-h-screen items-center overflow-hidden pt-20">
 
       <div class="pointer-events-none absolute inset-0">
-        <div class="absolute -top-40 left-1/2 h-[700px] w-[700px] -translate-x-1/2 rounded-full opacity-20"
+        <div class="absolute -top-40 left-1/2 h-[500px] w-[500px] md:h-[700px] md:w-[700px] -translate-x-1/2 rounded-full opacity-20"
           style="background: radial-gradient(circle, hsl(222 55% 35%) 0%, transparent 70%)" />
-        <div class="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full opacity-10"
+        <div class="absolute bottom-0 right-0 h-[300px] w-[300px] md:h-[400px] md:w-[400px] rounded-full opacity-10"
           style="background: radial-gradient(circle, hsl(222 55% 45%) 0%, transparent 70%)" />
       </div>
 
       <div class="pointer-events-none absolute inset-0 opacity-[0.03]"
         style="background-image: radial-gradient(circle, hsl(222 55% 12%) 1px, transparent 1px); background-size: 32px 32px" />
 
-      <div class="relative mx-auto max-w-6xl px-10 py-20">
-        <div class="flex items-center gap-20">
+      <div class="relative mx-auto w-full max-w-6xl px-5 md:px-10 py-16 md:py-20">
+        <div class="flex flex-col md:flex-row items-center gap-12 md:gap-20">
 
           <!-- Left -->
-          <div class="flex-1" :class="heroVisible ? 'animate-slide-up' : 'opacity-0'">
-            <div class="mb-5 inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-4 py-1.5">
-              <span class="h-2 w-2 animate-pulse rounded-full bg-green-500"></span>
-              <span class="text-xs font-medium text-green-700">Live on Solana. Sub-second finality.</span>
-            </div>
-
-            <h1 class="text-7xl font-extrabold leading-[1.05] tracking-tight">
+          <div class="flex-1 text-center md:text-left" :class="heroVisible ? 'animate-slide-up' : 'opacity-0'">
+            <h1 class="text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight">
               Crypto<br />payments,<br />
-              <span class="text-shimmer">reimagined.</span>
+              <span class="text-shimmer">done right.</span>
             </h1>
 
-            <p class="mt-6 max-w-md text-xl leading-relaxed text-muted-foreground">
-              Private transactions. Instant split bills. Auto-convert any token.
-              Send to <span class="font-semibold text-foreground">@username</span>, not a 44-character address.
+            <p class="mt-6 mx-auto md:mx-0 max-w-md text-lg md:text-xl leading-relaxed text-muted-foreground">
+              Send to <span class="font-semibold text-foreground">@username</span> instead of a 44-character address. Split bills, go private, auto-convert any token.
             </p>
 
-            <div class="mt-10 flex items-center gap-4">
+            <div class="mt-8 md:mt-10 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 md:gap-4">
               <NuxtLink to="/login"
-                class="group flex items-center gap-2 rounded-2xl px-8 py-4 text-base font-bold text-white shadow-xl transition-all hover:scale-[1.02] hover:shadow-2xl"
+                class="group w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl px-8 py-4 text-base font-bold text-white shadow-xl transition-all hover:scale-[1.02] hover:shadow-2xl"
                 style="background: linear-gradient(135deg, hsl(222 55% 12%) 0%, hsl(222 40% 28%) 100%)">
                 Start for free
                 <ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </NuxtLink>
-              <a href="#features" class="flex items-center gap-2 rounded-2xl border border-border px-8 py-4 text-base font-semibold transition hover:bg-secondary">
+              <a href="#features" class="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl border border-border px-8 py-4 text-base font-semibold transition hover:bg-secondary">
                 See features <ChevronDown class="h-4 w-4" />
               </a>
             </div>
 
-            <div class="mt-12 flex items-center gap-8">
+            <div class="mt-10 flex items-center justify-center md:justify-start gap-8">
               <div v-for="s in [{ v: '<1s', l: 'settlement' }, { v: '~$0', l: 'gas fees' }, { v: 'SOL', l: 'powered by' }]" :key="s.l">
                 <p class="text-2xl font-extrabold text-primary">{{ s.v }}</p>
                 <p class="text-xs text-muted-foreground">{{ s.l }}</p>
@@ -151,8 +145,8 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- Right: Floating UI cards -->
-          <div class="relative w-96 shrink-0" :class="heroVisible ? 'animate-fade-in delay-300' : 'opacity-0'">
+          <!-- Right: Floating UI cards — hidden on small screens -->
+          <div class="relative w-80 md:w-96 shrink-0 hidden sm:block" :class="heroVisible ? 'animate-fade-in delay-300' : 'opacity-0'">
 
             <div class="animate-float relative z-10 overflow-hidden rounded-3xl shadow-2xl animate-pulse-glow"
               style="background: linear-gradient(135deg, hsl(222 55% 12%) 0%, hsl(222 40% 22%) 100%)">
@@ -232,29 +226,29 @@ onMounted(() => {
     </div>
 
     <!-- Features -->
-    <section id="features" class="py-32">
-      <div class="mx-auto max-w-6xl px-10">
-        <div class="mb-20 text-center">
+    <section id="features" class="py-20 md:py-32">
+      <div class="mx-auto max-w-6xl px-5 md:px-10">
+        <div class="mb-12 md:mb-20 text-center">
           <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-primary/70">Why Payra</p>
-          <h2 class="text-5xl font-extrabold tracking-tight">Three things we do<br />better than anyone.</h2>
+          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight">What makes it<br />different.</h2>
         </div>
 
         <!-- Feature 1: Private Transaction -->
-        <div id="feat1" class="mb-24 flex items-center gap-20 transition-all duration-700"
+        <div id="feat1" class="mb-16 md:mb-24 flex flex-col md:flex-row items-center gap-10 md:gap-20 transition-all duration-700"
           :class="feat1Visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'">
-          <div class="relative w-96 shrink-0">
-            <div class="relative overflow-hidden rounded-3xl p-8 shadow-2xl noise"
+          <div class="relative w-full md:w-96 md:shrink-0">
+            <div class="relative overflow-hidden rounded-3xl p-6 md:p-8 shadow-2xl noise"
               style="background: linear-gradient(135deg, hsl(222 55% 10%) 0%, hsl(240 40% 18%) 100%)">
               <div class="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-20"
                 style="background: radial-gradient(circle, hsl(260 80% 70%) 0%, transparent 70%)" />
               <div class="relative z-10 space-y-3">
                 <div class="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3">
                   <Shield class="h-5 w-5 text-purple-300 shrink-0" />
-                  <div>
+                  <div class="min-w-0">
                     <p class="text-sm font-semibold text-white">Transaction hidden</p>
                     <p class="text-xs text-white/50">Only sender and receiver can see</p>
                   </div>
-                  <span class="ml-auto rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300">PRIVATE</span>
+                  <span class="ml-auto shrink-0 rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-bold text-purple-300">PRIVATE</span>
                 </div>
                 <div class="rounded-2xl bg-white/5 px-4 py-3">
                   <p class="text-xs text-white/40">Transaction hash</p>
@@ -270,21 +264,21 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-            <div class="absolute -right-6 -top-4 rounded-2xl bg-purple-600 px-4 py-2 text-sm font-bold text-white shadow-lg">
+            <div class="absolute -right-3 md:-right-6 -top-4 rounded-2xl bg-purple-600 px-3 md:px-4 py-2 text-sm font-bold text-white shadow-lg">
               🔒 Private
             </div>
           </div>
-          <div class="flex-1">
+          <div class="flex-1 text-center md:text-left">
             <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-purple-50 px-4 py-1.5">
               <Shield class="h-4 w-4 text-purple-600" />
               <span class="text-sm font-semibold text-purple-700">Private Transactions</span>
             </div>
-            <h3 class="mb-4 text-4xl font-extrabold tracking-tight leading-tight">Your money,<br />your business.</h3>
-            <p class="mb-6 text-lg leading-relaxed text-muted-foreground">
-              Traditional crypto is public. Every transaction, every amount, every wallet is visible to anyone. Payra keeps your payment details between you and the recipient.
+            <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">Your money,<br />your business.</h3>
+            <p class="mb-6 text-base md:text-lg leading-relaxed text-muted-foreground">
+              On-chain transactions are public by default. Anyone can look up your wallet and see exactly what you sent, to whom, and when. Payra routes payments through a privacy layer so that doesn't happen.
             </p>
-            <ul class="space-y-3">
-              <li v-for="t in ['Amount hidden from public blockchain explorers', 'Recipient address obfuscated on-chain', 'Full audit trail only for the parties involved']" :key="t"
+            <ul class="space-y-3 text-left">
+              <li v-for="t in ['Amount hidden from public explorers', 'Recipient address not exposed on-chain', 'Only the two parties can see the details']" :key="t"
                 class="flex items-start gap-3 text-sm">
                 <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-600 text-xs font-bold">✓</span>
                 <span class="text-muted-foreground">{{ t }}</span>
@@ -294,33 +288,33 @@ onMounted(() => {
         </div>
 
         <!-- Feature 2: Split Bill -->
-        <div id="feat2" class="mb-24 flex items-center gap-20 transition-all duration-700"
+        <div id="feat2" class="mb-16 md:mb-24 flex flex-col-reverse md:flex-row items-center gap-10 md:gap-20 transition-all duration-700"
           :class="feat2Visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'">
-          <div class="flex-1">
+          <div class="flex-1 text-center md:text-left">
             <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-1.5">
               <Users class="h-4 w-4 text-blue-600" />
               <span class="text-sm font-semibold text-blue-700">Split Bills</span>
             </div>
-            <h3 class="mb-4 text-4xl font-extrabold tracking-tight leading-tight">No more awkward<br />"you owe me" texts.</h3>
-            <p class="mb-6 text-lg leading-relaxed text-muted-foreground">
-              Create a split in seconds, share a payment link to each person, and watch the status update as everyone pays. Dinners, trips, rent — anything works.
+            <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">No more awkward<br />"you owe me" texts.</h3>
+            <p class="mb-6 text-base md:text-lg leading-relaxed text-muted-foreground">
+              Create a split, share a link to each person, and watch who pays. No more chasing people down or doing mental math on who owes what.
             </p>
-            <ul class="space-y-3">
-              <li v-for="t in ['Split evenly or set custom amounts per person', 'One-tap payment link per participant', 'Live status so you know exactly who has paid']" :key="t"
+            <ul class="space-y-3 text-left">
+              <li v-for="t in ['Even split or custom amount per person', 'Each participant gets their own payment link', 'Live status updates as people pay']" :key="t"
                 class="flex items-start gap-3 text-sm">
                 <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-xs font-bold">✓</span>
                 <span class="text-muted-foreground">{{ t }}</span>
               </li>
             </ul>
           </div>
-          <div class="relative w-96 shrink-0">
-            <div class="overflow-hidden rounded-3xl bg-white p-6 shadow-2xl" style="border: 1px solid hsl(220 15% 88%)">
-              <div class="mb-4 flex items-center justify-between">
-                <div>
-                  <p class="font-bold">🍣 Sushi Tei Dinner</p>
+          <div class="relative w-full md:w-96 md:shrink-0">
+            <div class="overflow-hidden rounded-3xl bg-white p-5 md:p-6 shadow-2xl" style="border: 1px solid hsl(220 15% 88%)">
+              <div class="mb-4 flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="truncate font-bold">🍣 Sushi Tei Dinner</p>
                   <p class="text-xs text-muted-foreground">0.45 SOL total · 4 people</p>
                 </div>
-                <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">Open</span>
+                <span class="shrink-0 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">Open</span>
               </div>
               <div class="mb-4 h-2 overflow-hidden rounded-full bg-secondary">
                 <div class="h-full w-3/4 rounded-full transition-all" style="background: linear-gradient(90deg, hsl(222 55% 12%), hsl(222 40% 35%))" />
@@ -335,7 +329,7 @@ onMounted(() => {
                 ]" :key="i" class="flex items-center justify-between rounded-xl px-3 py-2.5"
                   :class="p.paid ? 'bg-green-50' : 'bg-orange-50'">
                   <span class="text-sm font-medium">{{ p.n }}</span>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 shrink-0">
                     <span class="text-xs text-muted-foreground">{{ p.amt }}</span>
                     <span :class="p.paid ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
                       class="rounded-full px-2 py-0.5 text-[10px] font-bold">
@@ -345,23 +339,23 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-            <div class="absolute -left-6 -top-4 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-lg">
+            <div class="absolute -left-3 md:-left-6 -top-4 rounded-2xl bg-blue-600 px-3 md:px-4 py-2 text-sm font-bold text-white shadow-lg">
               👥 Split
             </div>
           </div>
         </div>
 
         <!-- Feature 3: Auto Convert -->
-        <div id="feat3" class="flex items-center gap-20 transition-all duration-700"
+        <div id="feat3" class="flex flex-col md:flex-row items-center gap-10 md:gap-20 transition-all duration-700"
           :class="feat3Visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'">
-          <div class="relative w-96 shrink-0">
-            <div class="overflow-hidden rounded-3xl p-8 shadow-2xl noise"
+          <div class="relative w-full md:w-96 md:shrink-0">
+            <div class="overflow-hidden rounded-3xl p-6 md:p-8 shadow-2xl noise"
               style="background: linear-gradient(135deg, hsl(160 60% 10%) 0%, hsl(180 50% 14%) 100%)">
               <div class="space-y-4">
                 <div class="rounded-2xl bg-white/10 px-5 py-4">
                   <p class="mb-2 text-xs text-white/50">You pay with</p>
                   <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-400 font-bold text-white text-sm">$</div>
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-400 font-bold text-white text-sm">$</div>
                     <div>
                       <p class="font-bold text-white">USDC</p>
                       <p class="text-sm text-white/60">100.00 USDC</p>
@@ -376,7 +370,7 @@ onMounted(() => {
                 <div class="rounded-2xl bg-white/10 px-5 py-4">
                   <p class="mb-2 text-xs text-white/50">Recipient gets</p>
                   <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-400 font-bold text-white text-sm">◎</div>
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-purple-400 to-pink-400 font-bold text-white text-sm">◎</div>
                     <div>
                       <p class="font-bold text-white">SOL</p>
                       <p class="text-sm text-white/60">0.8712 SOL</p>
@@ -389,21 +383,21 @@ onMounted(() => {
                 </div>
               </div>
             </div>
-            <div class="absolute -right-6 -top-4 rounded-2xl bg-green-600 px-4 py-2 text-sm font-bold text-white shadow-lg">
+            <div class="absolute -right-3 md:-right-6 -top-4 rounded-2xl bg-green-600 px-3 md:px-4 py-2 text-sm font-bold text-white shadow-lg">
               ⚡ Auto-Convert
             </div>
           </div>
-          <div class="flex-1">
+          <div class="flex-1 text-center md:text-left">
             <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-green-50 px-4 py-1.5">
               <RefreshCw class="h-4 w-4 text-green-600" />
               <span class="text-sm font-semibold text-green-700">Auto-Convert</span>
             </div>
-            <h3 class="mb-4 text-4xl font-extrabold tracking-tight leading-tight">Pay in any token.<br />Receive any token.</h3>
-            <p class="mb-6 text-lg leading-relaxed text-muted-foreground">
-              Powered by Jupiter, the top DEX aggregator on Solana. Send USDC, BONK, or any SPL token and the recipient gets exactly what they want. No manual swaps, no extra steps.
+            <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">Pay in any token.<br />Receive any token.</h3>
+            <p class="mb-6 text-base md:text-lg leading-relaxed text-muted-foreground">
+              You pay with whatever token you have. The recipient gets whatever token they want. Jupiter finds the best rate automatically — you just hit send.
             </p>
-            <ul class="space-y-3">
-              <li v-for="t in ['Best rate across all Solana DEXes automatically', 'Send any SPL token, receive any SPL token', 'Slippage protection built in']" :key="t"
+            <ul class="space-y-3 text-left">
+              <li v-for="t in ['Best rate across Solana DEXes, automatically', 'Works with any SPL token on both ends', 'Slippage protection built in']" :key="t"
                 class="flex items-start gap-3 text-sm">
                 <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600 text-xs font-bold">✓</span>
                 <span class="text-muted-foreground">{{ t }}</span>
@@ -416,36 +410,36 @@ onMounted(() => {
     </section>
 
     <!-- How it works -->
-    <section id="how" class="py-28" style="background: hsl(220 20% 97%)">
-      <div class="mx-auto max-w-6xl px-10">
-        <div class="mb-16 text-center">
-          <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-primary/70">Simple by design</p>
-          <h2 class="text-5xl font-extrabold tracking-tight">Up and running<br />in 60 seconds.</h2>
+    <section id="how" class="py-20 md:py-28" style="background: hsl(220 20% 97%)">
+      <div class="mx-auto max-w-6xl px-5 md:px-10">
+        <div class="mb-12 md:mb-16 text-center">
+          <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-primary/70">How it works</p>
+          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight">Up and running<br />in 60 seconds.</h2>
         </div>
-        <div class="grid grid-cols-3 gap-10">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
           <div v-for="(s, i) in [
-            { num: '01', title: 'Sign up instantly', desc: 'Email or Google. No seed phrase, no browser extension. Your Solana wallet is created automatically.' },
-            { num: '02', title: 'Claim your @handle', desc: 'Pick a username once. That is your payment address forever. Share it like a social handle.' },
-            { num: '03', title: 'Send, split and swap', desc: 'Everything in one place. Direct payments, split bills with live tracking, auto token conversion.' },
+            { num: '01', title: 'Sign up', desc: 'Email or Google. No seed phrase, no browser extension. Payra creates a Solana wallet for you.' },
+            { num: '02', title: 'Grab your @handle', desc: 'Pick a username once. That\'s your payment address. Share it like you\'d share a phone number.' },
+            { num: '03', title: 'Start sending', desc: 'Pay by username, split a bill, or send a gift envelope. Everything is in one place.' },
           ]" :key="i" class="relative">
-            <div class="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl text-2xl font-extrabold text-white shadow-lg"
+            <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl text-xl font-extrabold text-white shadow-lg"
               style="background: linear-gradient(135deg, hsl(222 55% 12%) 0%, hsl(222 40% 28%) 100%)">
               {{ s.num }}
             </div>
-            <div v-if="i < 2" class="absolute top-8 h-0.5 bg-border" style="left: 4.5rem; right: -1rem" />
-            <h3 class="mb-3 text-xl font-bold">{{ s.title }}</h3>
-            <p class="leading-relaxed text-muted-foreground">{{ s.desc }}</p>
+            <div v-if="i < 2" class="absolute top-7 hidden md:block h-0.5 bg-border" style="left: 3.8rem; right: -1rem" />
+            <h3 class="mb-3 text-lg md:text-xl font-bold">{{ s.title }}</h3>
+            <p class="leading-relaxed text-muted-foreground text-sm md:text-base">{{ s.desc }}</p>
           </div>
         </div>
       </div>
     </section>
 
     <!-- FAQ -->
-    <section id="faq" class="py-28">
-      <div class="mx-auto max-w-3xl px-10">
-        <div class="mb-16 text-center">
+    <section id="faq" class="py-20 md:py-28">
+      <div class="mx-auto max-w-3xl px-5 md:px-10">
+        <div class="mb-12 md:mb-16 text-center">
           <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-primary/70">FAQ</p>
-          <h2 class="text-5xl font-extrabold tracking-tight">Questions people<br />actually ask.</h2>
+          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight">Common<br />questions.</h2>
         </div>
         <div class="space-y-3">
           <div
@@ -455,17 +449,17 @@ onMounted(() => {
             :class="openFaq === i ? 'bg-secondary/60' : 'bg-white hover:bg-secondary/30'"
           >
             <button
-              class="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+              class="flex w-full items-center justify-between gap-4 px-5 md:px-6 py-4 md:py-5 text-left"
               @click="toggleFaq(i)"
             >
-              <span class="text-base font-semibold">{{ item.q }}</span>
-              <span class="shrink-0 text-muted-foreground transition-transform" :class="openFaq === i ? 'rotate-0' : ''">
+              <span class="text-sm md:text-base font-semibold">{{ item.q }}</span>
+              <span class="shrink-0 text-muted-foreground">
                 <Minus v-if="openFaq === i" class="h-4 w-4" />
                 <Plus v-else class="h-4 w-4" />
               </span>
             </button>
-            <div v-if="openFaq === i" class="px-6 pb-5">
-              <p class="text-[15px] leading-relaxed text-muted-foreground">{{ item.a }}</p>
+            <div v-if="openFaq === i" class="px-5 md:px-6 pb-4 md:pb-5">
+              <p class="text-sm md:text-[15px] leading-relaxed text-muted-foreground">{{ item.a }}</p>
             </div>
           </div>
         </div>
@@ -473,7 +467,7 @@ onMounted(() => {
     </section>
 
     <!-- CTA -->
-    <section class="relative overflow-hidden py-32 noise"
+    <section class="relative overflow-hidden py-24 md:py-32 noise"
       style="background: linear-gradient(135deg, hsl(222 55% 10%) 0%, hsl(240 45% 15%) 100%)">
       <div class="pointer-events-none absolute inset-0">
         <div class="absolute left-1/4 top-0 h-64 w-64 rounded-full opacity-20"
@@ -481,27 +475,27 @@ onMounted(() => {
         <div class="absolute bottom-0 right-1/4 h-64 w-64 rounded-full opacity-15"
           style="background: radial-gradient(circle, hsl(180 80% 50%) 0%, transparent 70%)" />
       </div>
-      <div class="relative mx-auto max-w-3xl px-10 text-center">
-        <p class="mb-4 text-sm font-semibold uppercase tracking-widest text-white/50">Get started today</p>
-        <h2 class="mb-6 text-5xl font-extrabold tracking-tight text-white">The future of<br />payments is private.</h2>
-        <p class="mb-10 text-xl text-white/60">Send crypto the smarter way. Free forever.</p>
+      <div class="relative mx-auto max-w-3xl px-5 md:px-10 text-center">
+        <p class="mb-4 text-sm font-semibold uppercase tracking-widest text-white/50">Ready?</p>
+        <h2 class="mb-6 text-3xl md:text-5xl font-extrabold tracking-tight text-white">Crypto payments<br />without the friction.</h2>
+        <p class="mb-8 md:mb-10 text-lg md:text-xl text-white/60">Free to use. Takes about a minute to set up.</p>
         <NuxtLink to="/login"
-          class="group inline-flex items-center gap-3 rounded-2xl bg-white px-10 py-5 text-lg font-bold text-primary shadow-2xl transition-all hover:scale-105">
-          Create your account
+          class="group inline-flex items-center gap-3 rounded-2xl bg-white px-8 md:px-10 py-4 md:py-5 text-base md:text-lg font-bold text-primary shadow-2xl transition-all hover:scale-105">
+          Create an account
           <ArrowRight class="h-5 w-5 transition-transform group-hover:translate-x-1" />
         </NuxtLink>
       </div>
     </section>
 
     <!-- Footer -->
-    <footer class="border-t border-border py-10">
-      <div class="mx-auto max-w-6xl px-10">
-        <div class="flex items-center justify-between">
+    <footer class="border-t border-border py-8 md:py-10">
+      <div class="mx-auto max-w-6xl px-5 md:px-10">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-2">
             <img src="/icon.jpeg" alt="Payra" class="h-6 w-6 rounded-lg object-cover" />
             <span class="text-sm font-semibold">Payra</span>
           </div>
-          <div class="flex items-center gap-6 text-sm text-muted-foreground">
+          <div class="flex items-center gap-4 md:gap-6 text-sm text-muted-foreground">
             <a href="#features" class="transition hover:text-foreground">Features</a>
             <a href="#faq" class="transition hover:text-foreground">FAQ</a>
             <NuxtLink to="/terms" class="transition hover:text-foreground">Terms</NuxtLink>

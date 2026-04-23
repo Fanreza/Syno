@@ -10,6 +10,7 @@ import {
 import { formatAmount, formatUsd, shortAddr } from '~/utils'
 
 const { user, apiFetch } = useAuth()
+const { isDark } = useTheme()
 
 const { data: balance, refresh: refreshBalance, pending: pendingBalance } = useAsyncData(
   () => `balance-${user.value?.wallet_address}`,
@@ -125,9 +126,13 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
   <div class="min-h-screen">
 
     <!-- ── Balance card (full width, gradient) ─────────────────────────── -->
-    <div class="relative overflow-hidden px-4 pt-6 pb-8 md:px-8 md:pt-8"
-      style="background: linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 14%) 50%, hsl(0 0% 11%) 100%)">
-      <div class="pointer-events-none absolute inset-0 opacity-[0.03]"
+    <div
+      class="relative overflow-hidden px-4 pt-6 pb-8 md:px-8 md:pt-8"
+      :style="isDark
+        ? 'background: linear-gradient(135deg, hsl(250 20% 10%) 0%, hsl(250 18% 13%) 50%, hsl(250 20% 10%) 100%)'
+        : 'background: linear-gradient(135deg, hsl(252 60% 28%) 0%, hsl(258 55% 35%) 50%, hsl(252 60% 28%) 100%)'"
+    >
+      <div class="pointer-events-none absolute inset-0 opacity-[0.04]"
         style="background-image: radial-gradient(circle, white 1px, transparent 1px); background-size: 20px 20px" />
 
       <div class="relative z-10">
