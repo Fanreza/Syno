@@ -1,3 +1,20 @@
+const SOL_MINT = 'So11111111111111111111111111111111111111112'
+
+const KNOWN_SYMBOLS: Record<string, string> = {
+  [SOL_MINT]: 'SOL',
+  'SOL': 'SOL',
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 'USDC',
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 'USDT',
+}
+
+function resolveSymbol(token: string): string {
+  if (!token) return 'SOL'
+  if (KNOWN_SYMBOLS[token]) return KNOWN_SYMBOLS[token]
+  // If it looks like a mint address (base58, long), shorten it
+  if (token.length > 10) return token.slice(0, 4) + '…' + token.slice(-4)
+  return token
+}
+
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
   const db = adminDb()
@@ -10,7 +27,6 @@ export default defineEventHandler(async (event) => {
 
   if (!me) throw createError({ statusCode: 404, statusMessage: 'User not found' })
 
-  // Payments sent or received (confirmed only)
   const { data: payments } = await db
     .from('payments')
     .select(`
@@ -24,7 +40,6 @@ export default defineEventHandler(async (event) => {
     .order('created_at', { ascending: false })
     .limit(20)
 
-  // Split bills created by user
   const { data: splits } = await db
     .from('split_bills')
     .select('id, title, total_amount, token, status, created_at')
@@ -32,7 +47,6 @@ export default defineEventHandler(async (event) => {
     .order('created_at', { ascending: false })
     .limit(10)
 
-  // Gift claims received
   const { data: claims } = await db
     .from('gift_claims')
     .select('id, amount, tx_signature, created_at, gift_id')
@@ -40,13 +54,12 @@ export default defineEventHandler(async (event) => {
     .order('created_at', { ascending: false })
     .limit(10)
 
-  // Merge and sort all activity by created_at descending
   const activity = [
     ...(payments ?? []).map((p) => ({
       type: (p.sender_id === me.id ? 'sent' : 'received') as 'sent' | 'received',
       id: p.id,
       amount: Number(p.amount),
-      token: p.token,
+      token: resolveSymbol(p.token),
       memo: p.memo,
       tx_signature: p.tx_signature,
       counterparty: p.sender_id === me.id
@@ -58,7 +71,7 @@ export default defineEventHandler(async (event) => {
       type: 'split' as const,
       id: s.id,
       amount: Number(s.total_amount),
-      token: s.token,
+      token: resolveSymbol(s.token),
       memo: s.title,
       tx_signature: null,
       counterparty: null,

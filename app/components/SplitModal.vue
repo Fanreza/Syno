@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
-import Input from '~/components/ui/Input.vue'
-import Button from '~/components/ui/Button.vue'
+import Input from '~/components/ui/input/Input.vue'
+import { Button } from '~/components/ui/button'
 import { X, Plus, Trash2, AlertCircle, CheckCircle2, Users } from 'lucide-vue-next'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -239,7 +239,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
               <AlertCircle class="h-4 w-4 shrink-0" />{{ error }}
             </div>
 
-            <Button class="w-full" size="lg" :disabled="!canCreate" :loading="loading" @click="onCreate">
+            <Button class="w-full" size="lg" :disabled="!canCreate || loading" @click="onCreate">
               Create split
             </Button>
           </div>

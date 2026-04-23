@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
-import Input from '~/components/ui/Input.vue'
-import Button from '~/components/ui/Button.vue'
+import Input from '~/components/ui/input/Input.vue'
+import { Button } from '~/components/ui/button'
 import { X, Copy, Check, Link, QrCode, ExternalLink, DollarSign } from 'lucide-vue-next'
 import { formatAmount } from '~/utils'
 

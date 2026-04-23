@@ -339,7 +339,7 @@ const totalEarningUsd = computed(() => {
             </div>
             <p class="text-xl font-bold">{{ modal.mode === 'deposit' ? 'Deposited' : 'Withdrawn' }}</p>
             <p class="mt-1 text-sm text-muted-foreground">{{ amountNum.toFixed(4) }} {{ modal.market.symbol }}</p>
-            <a :href="`https://explorer.solana.com/tx/${successSig}`" target="_blank"
+            <a :href="`https://solscan.io/tx/${successSig}`" target="_blank"
               class="mt-4 inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
               View on explorer <ExternalLink class="h-3 w-3" />
             </a>

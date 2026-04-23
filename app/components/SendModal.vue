@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
-import Input from '~/components/ui/Input.vue'
-import Button from '~/components/ui/Button.vue'
+import Input from '~/components/ui/input/Input.vue'
+import { Button } from '~/components/ui/button'
 import {
   X, Search, Loader2, CheckCircle2, AlertCircle, User,
-  Coins, DollarSign, Send, ExternalLink, Users
+  Coins, DollarSign, Send, ExternalLink, Users, ShieldCheck
 } from 'lucide-vue-next'
 import { watchDebounced } from '@vueuse/core'
 import { shortAddr, formatUsd } from '~/utils'
@@ -21,8 +21,9 @@ watch(open, (v) => { if (v) loadFriends() })
 // ── Recipient ──────────────────────────────────────────────────────────────
 const recipientRaw = ref('')
 const recipientUser = ref<{ username: string; wallet_address: string } | null>(null)
-const recipientStatus = ref<'idle' | 'searching' | 'found' | 'not-found' | 'address'>('idle')
-const isRawAddress = (v: string) => v.length >= 32 && !v.startsWith('@')
+const recipientStatus = ref<'idle' | 'searching' | 'found' | 'not-found' | 'address' | 'invalid-address'>('idle')
+const isRawAddress = (v: string) => !v.startsWith('@') && isValidSolanaAddress(v)
+const looksLikeAddress = (v: string) => !v.startsWith('@') && v.length >= 32
 
 function selectRecipient(u: { username: string; wallet_address: string }) {
   recipientRaw.value = '@' + u.username
@@ -33,7 +34,19 @@ function selectRecipient(u: { username: string; wallet_address: string }) {
 watchDebounced(recipientRaw, async (v) => {
   const val = v.trim()
   if (!val) { recipientStatus.value = 'idle'; recipientUser.value = null; return }
-  if (isRawAddress(val)) { recipientStatus.value = 'address'; recipientUser.value = null; return }
+
+  if (looksLikeAddress(val)) {
+    if (!isRawAddress(val)) { recipientStatus.value = 'invalid-address'; recipientUser.value = null; return }
+    // Valid Solana address — lookup if registered on Payra
+    recipientStatus.value = 'searching'; recipientUser.value = null
+    try {
+      const results = await $fetch<{ username: string; wallet_address: string }[]>('/api/users/search', { query: { q: val } })
+      if (results[0]) { recipientUser.value = results[0]; recipientStatus.value = 'found' }
+      else recipientStatus.value = 'address'
+    } catch { recipientStatus.value = 'address' }
+    return
+  }
+
   const q = val.replace(/^@/, '')
   if (q.length < 2) { recipientStatus.value = 'idle'; recipientUser.value = null; return }
   recipientStatus.value = 'searching'; recipientUser.value = null
@@ -109,15 +122,36 @@ function toggleCurrency() {
 }
 
 const memo = ref('')
+const isPrivate = ref(false)
+
+// Tokens supported for private transfers (Umbra: USDC + USDT)
+const PRIVATE_TOKENS = [
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
+]
+
+const SOL_MINT = 'So11111111111111111111111111111111111111112'
+
+const selectedTokenBalance = computed(() => {
+  if (!balance.value) return null
+  if (inputToken.value.address === SOL_MINT) {
+    return { amount: balance.value.sol, usd: balance.value.sol * (balance.value.solPrice ?? 0), symbol: 'SOL' }
+  }
+  const t = balance.value.tokens?.find((t: any) => t.mint === inputToken.value.address)
+  if (!t) return null
+  return { amount: t.balance, usd: t.usd, symbol: t.symbol }
+})
 
 // ── Submit ─────────────────────────────────────────────────────────────────
 const loading = ref(false)
 const error = ref('')
 const successSig = ref('')
 
+const privateTooSmall = computed(() => false)
+
 const canSend = computed(() =>
   (recipientStatus.value === 'found' || recipientStatus.value === 'address') &&
-  amountInToken.value > 0 && !loading.value
+  amountInToken.value > 0 && !loading.value && !privateTooSmall.value
 )
 
 async function onSend() {
@@ -125,17 +159,22 @@ async function onSend() {
   loading.value = true
   try {
     const isAddr = isRawAddress(recipientRaw.value.trim())
-    const res = await apiFetch<{ signature: string }>('/api/payments/send', {
-      method: 'POST',
-      body: {
-        toUsername: isAddr ? undefined : recipientRaw.value.trim(),
-        toAddress: isAddr ? recipientRaw.value.trim() : undefined,
-        amount: amountInToken.value,
-        memo: memo.value,
-        inputToken: inputToken.value.address !== SOL_TOKEN.address ? inputToken.value.address : undefined,
-      }
-    })
-    successSig.value = res.signature
+    const endpoint = isPrivate.value ? '/api/payments/private-send-umbra' : '/api/payments/send'
+    const body: Record<string, any> = {
+      toUsername: isAddr ? undefined : recipientRaw.value.trim(),
+      toAddress: isAddr ? recipientRaw.value.trim() : undefined,
+      amount: amountInToken.value,
+      memo: memo.value,
+    }
+    if (isPrivate.value) {
+      body.mint = inputToken.value.address
+      body.decimals = inputToken.value.decimals
+    } else if (inputToken.value.address !== SOL_TOKEN.address) {
+      body.inputToken = inputToken.value.address
+      body.decimals = inputToken.value.decimals
+    }
+    const res = await apiFetch<{ signature?: string; withdrawSignature?: string }>(endpoint, { method: 'POST', body })
+    successSig.value = res.withdrawSignature ?? res.signature ?? ''
     refreshBalance()
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Transaction failed'
@@ -144,7 +183,7 @@ async function onSend() {
 
 function reset() {
   recipientRaw.value = ''; recipientUser.value = null; recipientStatus.value = 'idle'
-  amountRaw.value = ''; memo.value = ''
+  amountRaw.value = ''; memo.value = ''; isPrivate.value = false
   error.value = ''; successSig.value = ''; currency.value = 'TOKEN'; inputToken.value = SOL_TOKEN
 }
 
@@ -162,16 +201,24 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
           <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
             <CheckCircle2 class="h-8 w-8 text-green-500" />
           </div>
-          <DialogTitle class="text-xl font-bold">Payment sent</DialogTitle>
+          <DialogTitle class="text-xl font-bold">
+            {{ isPrivate ? 'Private payment sent' : 'Payment sent' }}
+          </DialogTitle>
           <p class="mt-2 text-sm text-muted-foreground">
-            {{ amountInToken.toFixed(6) }} {{ inputToken.symbol }} to
-            <span class="font-semibold text-foreground">
-              {{ recipientUser ? '@' + recipientUser.username : shortAddr(recipientRaw.trim()) }}
-            </span>
+            <template v-if="isPrivate">
+              <span class="inline-flex items-center gap-1 text-violet-400 font-semibold"><ShieldCheck class="h-3.5 w-3.5" /> Amount hidden on-chain</span>
+              <br />to <span class="font-semibold text-foreground">{{ recipientUser ? '@' + recipientUser.username : shortAddr(recipientRaw.trim()) }}</span>
+            </template>
+            <template v-else>
+              {{ amountInToken.toFixed(6) }} {{ inputToken.symbol }} to
+              <span class="font-semibold text-foreground">
+                {{ recipientUser ? '@' + recipientUser.username : shortAddr(recipientRaw.trim()) }}
+              </span>
+            </template>
           </p>
           <div class="mt-4 flex items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-3">
             <span class="font-mono text-xs text-muted-foreground">{{ successSig.slice(0, 28) }}…</span>
-            <a :href="`https://explorer.solana.com/tx/${successSig}`" target="_blank" class="text-primary hover:opacity-70">
+            <a :href="`https://solscan.io/tx/${successSig}`" target="_blank" class="text-primary hover:opacity-70">
               <ExternalLink class="h-3.5 w-3.5" />
             </a>
           </div>
@@ -185,10 +232,24 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
         <template v-else>
           <!-- Header -->
           <div class="flex items-center justify-between border-b border-border px-6 py-4">
-            <DialogTitle class="text-base font-bold">Send SOL</DialogTitle>
-            <button class="rounded-lg p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground" @click="open = false">
-              <X class="h-4 w-4" />
-            </button>
+            <DialogTitle class="text-base font-bold">Send</DialogTitle>
+            <div class="flex items-center gap-2">
+              <button
+                class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition"
+                :class="isPrivate ? 'bg-violet-500/10 text-violet-500' : 'text-muted-foreground hover:bg-accent hover:text-foreground'"
+                @click="() => {
+                  isPrivate = !isPrivate
+                  if (isPrivate && !PRIVATE_TOKENS.includes(inputToken.address))
+                    inputToken = POPULAR_TOKENS[1] // default to USDC
+                }"
+              >
+                <ShieldCheck class="h-3.5 w-3.5" />
+                {{ isPrivate ? 'Private' : 'Public' }}
+              </button>
+              <button class="rounded-lg p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground" @click="open = false">
+                <X class="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <div class="space-y-4 p-6">
@@ -263,21 +324,32 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                 <AlertCircle class="h-4 w-4 shrink-0" />
                 No user found
               </div>
+              <div v-else-if="recipientStatus === 'invalid-address'"
+                class="mt-2 flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+                <AlertCircle class="h-4 w-4 shrink-0" />
+                Invalid Solana address
+              </div>
+            </div>
+
+            <!-- Private mode banner -->
+            <div v-if="isPrivate" class="flex items-start gap-2.5 rounded-xl border border-violet-500/20 bg-violet-500/5 px-3.5 py-2.5 text-xs text-violet-400">
+              <ShieldCheck class="h-4 w-4 shrink-0 mt-0.5" />
+              <span>Amount hidden on-chain via Umbra. Recipient receives tokens directly — no action needed.</span>
             </div>
 
             <!-- Amount -->
             <div>
               <div class="mb-1 flex items-center justify-between">
-                <TokenPicker v-model="inputToken" label="Pay with" class="flex-1" />
+                <TokenPicker v-model="inputToken" label="Pay with" class="flex-1" :filter="isPrivate ? PRIVATE_TOKENS : undefined" />
               </div>
               <div class="mt-3 mb-2 flex items-center justify-between">
                 <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Amount</label>
-                <span v-if="balance" class="text-xs text-muted-foreground">
+                <span v-if="selectedTokenBalance" class="text-xs text-muted-foreground">
                   Balance:
-                  <button class="font-semibold text-foreground hover:text-primary transition" @click="amountRaw = balance.sol.toFixed(6); currency = 'TOKEN'">
-                    {{ balance.sol.toFixed(4) }} SOL
+                  <button class="font-semibold text-foreground hover:text-primary transition" @click="amountRaw = selectedTokenBalance.amount.toFixed(6); currency = 'TOKEN'">
+                    {{ selectedTokenBalance.amount.toFixed(4) }} {{ selectedTokenBalance.symbol }}
                   </button>
-                  <span class="text-muted-foreground/60"> · {{ formatUsd(balance.usd) }}</span>
+                  <span class="text-muted-foreground/60"> · {{ formatUsd(selectedTokenBalance.usd) }}</span>
                 </span>
               </div>
               <div class="flex gap-2">
@@ -304,10 +376,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                   />
                 </div>
               </div>
-              <p v-if="convertLabel" class="mt-1.5 pl-1 text-xs text-muted-foreground">{{ convertLabel }}</p>
-              <p v-if="inputToken.address !== SOL_TOKEN.address" class="mt-1.5 pl-1 text-xs text-muted-foreground">
-                Auto-converted to SOL via Jupiter
-              </p>
+              <p v-if="convertLabel && !isPrivate" class="mt-1.5 pl-1 text-xs text-muted-foreground">{{ convertLabel }}</p>
             </div>
 
             <!-- Memo -->
@@ -324,7 +393,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Submit -->
-            <Button class="w-full" size="lg" :disabled="!canSend" :loading="loading" @click="onSend">
+            <Button class="w-full" size="lg" :disabled="!canSend || loading" @click="onSend">
               <Send v-if="!loading" class="h-4 w-4" />
               {{ loading ? 'Sending…' : `Send${amountInToken > 0 ? ' ' + amountInToken.toFixed(4) + ' ' + inputToken.symbol : ''}` }}
             </Button>

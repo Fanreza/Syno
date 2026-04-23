@@ -1,3 +1,18 @@
+// Server-level SOL price cache — shared across all requests, refreshed every 60s
+let _solPriceCache = 0
+let _solPriceFetchedAt = 0
+
+async function getCachedSolPrice(): Promise<number> {
+  const now = Date.now()
+  if (_solPriceCache > 0 && now - _solPriceFetchedAt < 60_000) return _solPriceCache
+  try {
+    const res = await $fetch<any>('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
+    const price = res?.solana?.usd
+    if (price) { _solPriceCache = price; _solPriceFetchedAt = now }
+  } catch { /* keep stale value */ }
+  return _solPriceCache
+}
+
 export default defineEventHandler(async (event) => {
   const { address } = getQuery(event) as { address?: string }
   if (!address) throw createError({ statusCode: 400, statusMessage: 'address required' })
@@ -5,8 +20,7 @@ export default defineEventHandler(async (event) => {
   const rpcUrl = useRuntimeConfig().solanaRpcUrl as string
   const { LAMPORTS_PER_SOL } = await import('@solana/web3.js')
 
-  // Fetch SOL balance + all token assets in parallel via Helius DAS
-  const [lamportsRes, assetsRes, solPriceRes]: [any, any, any] = await Promise.all([
+  const [lamportsRes, assetsRes, solPrice]: [any, any, number] = await Promise.all([
     $fetch<any>(rpcUrl, {
       method: 'POST',
       body: { jsonrpc: '2.0', id: 1, method: 'getBalance', params: [address] },
@@ -18,11 +32,10 @@ export default defineEventHandler(async (event) => {
         params: { ownerAddress: address, page: 1, limit: 100, displayOptions: { showFungible: true, showNativeBalance: true } },
       },
     }).catch(() => null),
-    $fetch<any>('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd').catch(() => null),
+    getCachedSolPrice(),
   ])
 
   const sol = lamportsRes?.result?.value ? lamportsRes.result.value / LAMPORTS_PER_SOL : 0
-  const solPrice: number = solPriceRes?.solana?.usd ?? 0
 
   const tokens: any[] = []
   const assets: any[] = assetsRes?.result?.items ?? []
@@ -46,5 +59,5 @@ export default defineEventHandler(async (event) => {
   }
 
   const usd = sol * solPrice + tokens.reduce((s, t) => s + t.usd, 0)
-  return { address, sol, usd, solPrice, tokens }
+  return { address, sol, usd, solPrice: solPrice, tokens }
 })

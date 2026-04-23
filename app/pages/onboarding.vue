@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import Card from '~/components/ui/Card.vue'
-import Button from '~/components/ui/Button.vue'
-import Input from '~/components/ui/Input.vue'
+import Card from '~/components/ui/card/Card.vue'
+import { Button } from '~/components/ui/button'
+import Input from '~/components/ui/input/Input.vue'
 import Logo from '~/components/Logo.vue'
+import { Loader2 } from 'lucide-vue-next'
 
 definePageMeta({ layout: false })
 
@@ -39,10 +40,10 @@ async function onSubmit() {
       <Button
         class="mt-5 w-full"
         size="lg"
-        :loading="loading"
-        :disabled="!username"
+        :disabled="!username || loading"
         @click="onSubmit"
       >
+        <Loader2 v-if="loading" class="mr-2 h-4 w-4 animate-spin" />
         Create Account
       </Button>
       <p v-if="error" class="mt-3 text-center text-sm text-destructive">{{ error }}</p>

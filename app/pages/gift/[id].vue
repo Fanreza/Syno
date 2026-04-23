@@ -127,7 +127,7 @@ if (import.meta.client) {
             <p class="text-2xl">🎉</p>
             <p class="mt-2 font-bold text-green-600 dark:text-green-400">You got {{ claimResult.amount.toFixed(4) }} {{ tokenSymbol }}!</p>
             <a
-              :href="`https://explorer.solana.com/tx/${claimResult.signature}`"
+              :href="`https://solscan.io/tx/${claimResult.signature}`"
               target="_blank"
               class="mt-2 inline-block text-xs text-muted-foreground underline hover:text-foreground"
             >

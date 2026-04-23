@@ -1,15 +1,44 @@
 import { authorizationContext } from '../../utils/privy'
-// Mainnet SPL token mints
-const TOKEN_MINTS: Record<string, string> = {
-  SOL: 'So11111111111111111111111111111111111111112',
-  USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // mainnet USDC
-  USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // mainnet USDT
+import { Connection, Transaction, VersionedTransaction } from '@solana/web3.js'
+
+const SOL_MINT = 'So11111111111111111111111111111111111111112'
+
+// Known decimals for common mints — fallback to Jupiter price API for unknown tokens
+const KNOWN_DECIMALS: Record<string, number> = {
+  'So11111111111111111111111111111111111111112': 9,
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 6, // USDC
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 6, // USDT
 }
 
-const TOKEN_DECIMALS: Record<string, number> = {
-  SOL: 9,
-  USDC: 6,
-  USDT: 6,
+async function getTokenDecimals(mint: string): Promise<number> {
+  if (KNOWN_DECIMALS[mint] !== undefined) return KNOWN_DECIMALS[mint]
+  try {
+    const res = await $fetch<any>(`https://tokens.jup.ag/token/${mint}`)
+    return res?.decimals ?? 6
+  } catch {
+    return 6
+  }
+}
+
+async function signAndBroadcast(
+  privy: any,
+  walletId: string,
+  txBase64: string,
+  connection: Connection,
+  blockhash: string,
+  lastValidBlockHeight: number,
+  authCtx: object
+): Promise<string> {
+  const signed = await privy.wallets().solana().signTransaction(walletId, { transaction: txBase64, ...authCtx })
+  const buf = Buffer.from(signed.signed_transaction, 'base64')
+  let tx: Transaction | VersionedTransaction
+  try { tx = VersionedTransaction.deserialize(buf) } catch { tx = Transaction.from(buf) }
+  const sig = await connection.sendRawTransaction(
+    tx instanceof VersionedTransaction ? tx.serialize() : (tx as Transaction).serialize(),
+    { skipPreflight: false, preflightCommitment: 'confirmed' }
+  )
+  await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed')
+  return sig
 }
 
 export default defineEventHandler(async (event) => {
@@ -17,11 +46,12 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<{
     toUsername?: string
     toAddress?: string
-    amount: number        // in output token units
+    amount: number
     memo?: string
     paymentLinkId?: string
-    inputToken?: string   // what payer pays with (default: SOL)
-    outputToken?: string  // what receiver wants (default: SOL); triggers Jupiter if differs from inputToken
+    inputToken?: string  // mint address of token sender is paying with (default: SOL mint)
+    outputToken?: string // mint address receiver wants (only from payment links)
+    decimals?: number    // optional hint from frontend
   }>(event)
 
   if (!body?.amount || body.amount <= 0) {
@@ -45,10 +75,10 @@ export default defineEventHandler(async (event) => {
 
   let toAddress = body.toAddress
   let receiverId: string | null = null
-  let outputToken = (body.outputToken ?? 'SOL').toUpperCase()
-  const inputToken = (body.inputToken ?? 'SOL').toUpperCase()
+  const inputMint = body.inputToken ?? SOL_MINT
+  // outputMint defaults to inputMint — only payment links can specify a different output
+  let outputMint = body.outputToken ?? inputMint
 
-  // Load recipient + desired output token from payment link
   if (body.paymentLinkId && !body.toAddress && !body.toUsername) {
     const { data: link } = await db
       .from('payments')
@@ -59,7 +89,8 @@ export default defineEventHandler(async (event) => {
     if (!link) throw createError({ statusCode: 404, statusMessage: 'Payment link not found or already paid' })
     toAddress = link.receiver_address
     receiverId = link.receiver_id
-    outputToken = (link.token ?? 'SOL').toUpperCase()
+    // payment links store mint address in token column
+    outputMint = link.token ?? SOL_MINT
   } else if (body.toUsername) {
     const { data: recipient } = await db
       .from('users')
@@ -80,28 +111,23 @@ export default defineEventHandler(async (event) => {
 
   const config = useRuntimeConfig()
   const privy = getPrivy()
+  const authCtx = authorizationContext()
   let signature = ''
-  let actualToken = outputToken
+  let actualToken = outputMint
   let actualAmount = body.amount
 
-  const needsSwap = inputToken !== outputToken
+  const needsSwap = inputMint !== outputMint
 
   if (needsSwap) {
-    // ── Jupiter swap: inputToken → outputToken (ExactOut) ─────────────────
-    const inMint = TOKEN_MINTS[inputToken]
-    const outMint = TOKEN_MINTS[outputToken]
-    if (!inMint) throw createError({ statusCode: 400, statusMessage: `Unsupported input token: ${inputToken}` })
-    if (!outMint) throw createError({ statusCode: 400, statusMessage: `Unsupported output token: ${outputToken}` })
-
-    const outDecimals = TOKEN_DECIMALS[outputToken] ?? 9
-    // ExactOut: amount = exact output units receiver will receive
+    // ── Jupiter swap: payer pays with inputMint, receiver gets outputMint ──
+    const outDecimals = body.decimals ?? await getTokenDecimals(outputMint)
     const outUnits = Math.round(body.amount * Math.pow(10, outDecimals))
 
     let quote: any
     try {
       quote = await getJupiterQuote({
-        inputMint: inMint,
-        outputMint: outMint,
+        inputMint,
+        outputMint,
         amount: outUnits,
         swapMode: 'ExactOut',
         slippageBps: 100,
@@ -112,36 +138,35 @@ export default defineEventHandler(async (event) => {
 
     let swapTxBase64: string
     try {
-      swapTxBase64 = await buildJupiterSwapTx({
-        quote,
-        userPublicKey: sender.wallet_address,
-        destinationWallet: toAddress,  // ATA derived automatically inside buildJupiterSwapTx
-      })
+      swapTxBase64 = await buildJupiterSwapTx({ quote, userPublicKey: sender.wallet_address, destinationWallet: toAddress })
     } catch (e: any) {
       throw createError({ statusCode: 502, statusMessage: `Jupiter swap build failed: ${e.message}` })
     }
 
+    // Jupiter returns a transaction with fresh blockhash — use signAndSendTransaction directly
     const result = await (privy.wallets() as any).solana().signAndSendTransaction(
       sender.privy_wallet_id,
-      { caip2: config.solanaCaip2, transaction: swapTxBase64, ...authorizationContext() }
+      { caip2: config.solanaCaip2, transaction: swapTxBase64, ...authCtx }
     )
     signature = result.signature ?? result.hash ?? result
-    actualToken = outputToken
     actualAmount = Number(quote.outAmount) / Math.pow(10, outDecimals)
-  } else if (outputToken !== 'SOL') {
-    // Direct SPL transfer (same token, non-SOL) — not yet implemented
-    throw createError({ statusCode: 400, statusMessage: `Direct ${outputToken} transfer not supported. Choose a different input token to trigger Jupiter swap.` })
-  } else {
+
+  } else if (inputMint === SOL_MINT) {
     // ── Direct SOL transfer ────────────────────────────────────────────────
-    const txBase64 = await buildTransferSolTx(sender.wallet_address, toAddress!, body.amount)
-    const result = await (privy.wallets() as any).solana().signAndSendTransaction(
-      sender.privy_wallet_id,
-      { caip2: config.solanaCaip2, transaction: txBase64, ...authorizationContext() }
-    )
-    signature = result.signature ?? result.hash ?? result
+    const connection = new Connection(config.solanaRpcUrl, 'confirmed')
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+    const txBase64 = await buildTransferSolTx(sender.wallet_address, toAddress!, body.amount, blockhash)
+    signature = await signAndBroadcast(privy, sender.privy_wallet_id, txBase64, connection, blockhash, lastValidBlockHeight, authCtx)
+
+  } else {
+    // ── Direct SPL transfer (any token: USDC, USDT, JUP, etc.) ────────────
+    const decimals = body.decimals ?? await getTokenDecimals(inputMint)
+    const connection = new Connection(config.solanaRpcUrl, 'confirmed')
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+    const txBase64 = await buildTransferSplTx(sender.wallet_address, toAddress!, inputMint, body.amount, decimals, blockhash)
+    signature = await signAndBroadcast(privy, sender.privy_wallet_id, txBase64, connection, blockhash, lastValidBlockHeight, authCtx)
   }
 
-  // Record / update payment
   if (body.paymentLinkId) {
     const { data: link } = await db.from('payments')
       .update({ sender_id: sender.id, status: 'confirmed', tx_signature: signature })

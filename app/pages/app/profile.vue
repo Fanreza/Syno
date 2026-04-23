@@ -48,7 +48,7 @@ function copyPrivKey() {
 }
 
 const explorerUrl = computed(() =>
-  user.value?.wallet_address ? `https://explorer.solana.com/address/${user.value.wallet_address}` : '#'
+  user.value?.wallet_address ? `https://solscan.io/address/${user.value.wallet_address}` : '#'
 )
 
 const avatarSvg = computed(() => {

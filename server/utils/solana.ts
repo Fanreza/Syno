@@ -6,19 +6,23 @@ import {
   VersionedTransaction,
   LAMPORTS_PER_SOL
 } from '@solana/web3.js'
-import { getAssociatedTokenAddressSync } from '@solana/spl-token'
+import {
+  getAssociatedTokenAddressSync,
+  createTransferCheckedInstruction,
+  createAssociatedTokenAccountInstruction,
+} from '@solana/spl-token'
 
 export function getConnection(): Connection {
   const config = useRuntimeConfig()
   return new Connection(config.solanaRpcUrl, 'confirmed')
 }
 
-export async function buildTransferSolTx(from: string, to: string, sol: number): Promise<string> {
+export async function buildTransferSolTx(from: string, to: string, sol: number, blockhash?: string): Promise<string> {
   const connection = getConnection()
   const fromPk = new PublicKey(from)
   const toPk = new PublicKey(to)
-  const { blockhash } = await connection.getLatestBlockhash()
-  const tx = new Transaction({ feePayer: fromPk, recentBlockhash: blockhash }).add(
+  const hash = blockhash ?? (await connection.getLatestBlockhash('confirmed')).blockhash
+  const tx = new Transaction({ feePayer: fromPk, recentBlockhash: hash }).add(
     SystemProgram.transfer({
       fromPubkey: fromPk,
       toPubkey: toPk,
@@ -31,7 +35,7 @@ export async function buildTransferSolTx(from: string, to: string, sol: number):
 
 export async function refreshBlockhash(base64Tx: string, blockhash?: string): Promise<string> {
   const connection = getConnection()
-  const hash = blockhash ?? (await connection.getLatestBlockhash()).blockhash
+  const hash = blockhash ?? (await connection.getLatestBlockhash('confirmed')).blockhash
   const buf = Buffer.from(base64Tx, 'base64')
   try {
     const tx = VersionedTransaction.deserialize(buf)
@@ -42,6 +46,32 @@ export async function refreshBlockhash(base64Tx: string, blockhash?: string): Pr
     tx.recentBlockhash = hash
     return Buffer.from(tx.serialize({ requireAllSignatures: false, verifySignatures: false })).toString('base64')
   }
+}
+
+export async function buildTransferSplTx(
+  from: string, to: string, mint: string, amount: number, decimals: number, blockhash?: string
+): Promise<string> {
+  const connection = getConnection()
+  const fromPk = new PublicKey(from)
+  const toPk = new PublicKey(to)
+  const mintPk = new PublicKey(mint)
+  const hash = blockhash ?? (await connection.getLatestBlockhash('confirmed')).blockhash
+
+  const fromAta = getAssociatedTokenAddressSync(mintPk, fromPk)
+  const toAta = getAssociatedTokenAddressSync(mintPk, toPk)
+
+  const tx = new Transaction({ feePayer: fromPk, recentBlockhash: hash })
+
+  // Create recipient ATA if it doesn't exist
+  const toAtaInfo = await connection.getAccountInfo(toAta)
+  if (!toAtaInfo) {
+    tx.add(createAssociatedTokenAccountInstruction(fromPk, toAta, toPk, mintPk))
+  }
+
+  const rawAmount = BigInt(Math.round(amount * Math.pow(10, decimals)))
+  tx.add(createTransferCheckedInstruction(fromAta, mintPk, toAta, fromPk, rawAmount, decimals))
+
+  return Buffer.from(tx.serialize({ requireAllSignatures: false, verifySignatures: false })).toString('base64')
 }
 
 export async function getSolBalance(address: string): Promise<number> {

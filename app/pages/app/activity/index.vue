@@ -203,7 +203,7 @@ function refresh() {
 
           <a
             v-if="item.tx_signature"
-            :href="`https://explorer.solana.com/tx/${item.tx_signature}`"
+            :href="`https://solscan.io/tx/${item.tx_signature}`"
             target="_blank"
             class="shrink-0 text-muted-foreground transition hover:text-foreground"
           >
@@ -234,7 +234,7 @@ function refresh() {
           <Inbox class="h-6 w-6 text-muted-foreground" />
         </div>
         <p class="font-medium">On-chain history unavailable</p>
-        <p class="mt-1 text-sm text-muted-foreground">GoldRush API key is not configured.</p>
+        <p class="mt-1 text-sm text-muted-foreground">Could not load transaction history.</p>
       </div>
 
       <!-- Empty -->
@@ -279,7 +279,7 @@ function refresh() {
           </div>
 
           <a
-            :href="`https://explorer.solana.com/tx/${tx.tx_hash}`"
+            :href="`https://solscan.io/tx/${tx.tx_hash}`"
             target="_blank"
             class="shrink-0 text-muted-foreground transition hover:text-foreground"
           >

@@ -14,10 +14,43 @@ const { user, apiFetch } = useAuth()
 const { data: balance, refresh: refreshBalance, pending: pendingBalance } = useAsyncData(
   () => `balance-${user.value?.wallet_address}`,
   () => user.value?.wallet_address
-    ? $fetch<{ sol: number; usd: number }>(`/api/balance?address=${user.value.wallet_address}`)
-    : Promise.resolve({ sol: 0, usd: 0 }),
+    ? $fetch<{ sol: number; usd: number; solPrice: number; tokens: any[] }>(`/api/balance?address=${user.value.wallet_address}`)
+    : Promise.resolve({ sol: 0, usd: 0, solPrice: 0, tokens: [] }),
   { watch: [user], lazy: true }
 )
+
+const { data: earnPositions, refresh: refreshEarn } = useAsyncData(
+  'dashboard-earn-positions',
+  () => apiFetch<any[]>('/api/earn/positions'),
+  { lazy: true, default: () => [] }
+)
+
+const totalUsd = computed(() => {
+  const balUsd = balance.value?.usd ?? 0
+  const earnUsd = (earnPositions.value ?? []).reduce((s: number, p: any) => {
+    // JupUSD earn positions: 1 underlying ≈ $1 (USDC-denominated), others use SOL price
+    const price = p.symbol?.toLowerCase().includes('sol') ? (balance.value?.solPrice ?? 0) : 1
+    return s + p.balance * price
+  }, 0)
+  return balUsd + earnUsd
+})
+
+type TokenRow = { mint: string; symbol: string; name?: string; logoURI: string | null; balance: number; usd: number; tag?: string }
+
+const allTokens = computed<TokenRow[]>(() => {
+  const rows: TokenRow[] = []
+  const solPrice = balance.value?.solPrice ?? 0
+  const sol = balance.value?.sol ?? 0
+  if (sol > 0) rows.push({ mint: 'So11111111111111111111111111111111111111112', symbol: 'SOL', name: 'Solana', logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png', balance: sol, usd: sol * solPrice })
+  for (const t of balance.value?.tokens ?? []) {
+    rows.push({ mint: t.mint, symbol: t.symbol, name: t.name, logoURI: t.logoURI, balance: t.balance, usd: t.usd })
+  }
+  for (const p of earnPositions.value ?? []) {
+    const price = p.symbol?.toLowerCase().includes('sol') ? solPrice : 1
+    rows.push({ mint: p.jlMint, symbol: p.symbol, name: p.symbol, logoURI: p.logoURI, balance: p.balance, usd: p.balance * price, tag: 'Earning' })
+  }
+  return rows.sort((a, b) => b.usd - a.usd)
+})
 
 const { data: stats, refresh: refreshStats, pending: pendingStats } = useAsyncData(
   'dashboard-stats',
@@ -61,6 +94,7 @@ function refreshAll() {
   refreshBalance()
   refreshStats()
   refreshActivity()
+  refreshEarn()
 }
 
 function timeAgo(iso: string) {
@@ -125,7 +159,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
               </div>
               <div v-if="pendingBalance" class="mt-1 h-9 w-36 animate-pulse rounded-lg bg-white/10" />
               <h2 v-else class="mt-1 text-3xl font-bold tracking-tight text-white">
-                {{ formatUsd(balance?.usd || 0) }}
+                {{ formatUsd(totalUsd) }}
               </h2>
               <div v-if="pendingBalance" class="mt-1 h-4 w-20 animate-pulse rounded bg-white/10" />
               <p v-else class="mt-0.5 text-sm text-white/40">
@@ -205,6 +239,47 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
             </p>
           </div>
           <Scissors class="h-4 w-4 text-muted-foreground opacity-50" />
+        </div>
+      </div>
+
+      <!-- Token holdings -->
+      <div class="col-span-12 rounded-2xl border border-border bg-card p-6">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="font-semibold">Holdings</h3>
+          <span class="text-xs text-muted-foreground">{{ formatUsd(totalUsd) }}</span>
+        </div>
+        <div v-if="pendingBalance" class="space-y-3">
+          <div v-for="i in 3" :key="i" class="flex items-center gap-3">
+            <div class="h-9 w-9 shrink-0 animate-pulse rounded-full bg-secondary" />
+            <div class="flex-1 space-y-1.5">
+              <div class="h-3.5 w-24 animate-pulse rounded bg-secondary" />
+              <div class="h-3 w-16 animate-pulse rounded bg-secondary" />
+            </div>
+            <div class="space-y-1.5 text-right">
+              <div class="h-3.5 w-16 animate-pulse rounded bg-secondary ml-auto" />
+              <div class="h-3 w-10 animate-pulse rounded bg-secondary ml-auto" />
+            </div>
+          </div>
+        </div>
+        <div v-else-if="allTokens.length === 0" class="py-8 text-center text-sm text-muted-foreground">
+          No tokens found
+        </div>
+        <div v-else class="divide-y divide-border">
+          <div v-for="token in allTokens" :key="token.mint" class="flex items-center gap-3 py-3">
+            <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-secondary">
+              <img v-if="token.logoURI" :src="token.logoURI" :alt="token.symbol" class="h-full w-full object-cover" @error="($event.target as HTMLImageElement).style.display='none'" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-medium">{{ token.symbol }}</p>
+                <span v-if="token.tag" class="rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-semibold text-green-500">{{ token.tag }}</span>
+              </div>
+              <p class="text-xs text-muted-foreground">{{ formatAmount(token.balance) }} {{ token.symbol }}</p>
+            </div>
+            <div class="text-right">
+              <p class="text-sm font-semibold">{{ formatUsd(token.usd) }}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -291,7 +366,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
             <!-- Explorer link -->
             <a
               v-if="item.tx_signature"
-              :href="`https://explorer.solana.com/tx/${item.tx_signature}`"
+              :href="`https://solscan.io/tx/${item.tx_signature}`"
               target="_blank"
               class="shrink-0 text-muted-foreground transition hover:text-foreground"
             >

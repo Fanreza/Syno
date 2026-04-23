@@ -166,7 +166,7 @@ const isSelf = computed(() =>
             </span>
           </p>
           <a
-            :href="`https://explorer.solana.com/tx/${successSig}`"
+            :href="`https://solscan.io/tx/${successSig}`"
             target="_blank"
             class="mt-4 flex items-center justify-center gap-1.5 text-xs text-primary hover:opacity-80 transition"
           >

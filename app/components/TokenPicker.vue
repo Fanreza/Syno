@@ -5,7 +5,7 @@ import { POPULAR_TOKENS } from '~/utils/tokens'
 import { formatUsd } from '~/utils'
 import { useBalance } from '~/composables/useBalance'
 
-defineProps<{ label?: string }>()
+const props = defineProps<{ label?: string; filter?: string[] }>()
 const modelValue = defineModel<JupToken>({ required: true })
 
 const { balance } = useBalance()
@@ -55,7 +55,11 @@ const popularSorted = computed(() => {
   return [...POPULAR_TOKENS, ...extra].sort((a, b) => tokenUsd(b.address) - tokenUsd(a.address))
 })
 
-const displayed = computed(() => query.value ? results.value : popularSorted.value)
+const displayed = computed(() => {
+  const list = query.value ? results.value : popularSorted.value
+  if (props.filter) return list.filter(t => props.filter!.includes(t.address))
+  return list
+})
 
 function select(token: JupToken) {
   modelValue.value = token
