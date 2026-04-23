@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   if (!address) throw createError({ statusCode: 400, statusMessage: 'address required' })
 
   const rpcUrl = useRuntimeConfig().solanaRpcUrl as string
-  const LAMPORTS_PER_SOL = 1_000_000_000
+  const { LAMPORTS_PER_SOL } = await import('@solana/web3.js')
 
   const [lamportsRes, assetsRes, solPrice]: [any, any, number] = await Promise.all([
     $fetch<any>(rpcUrl, {
