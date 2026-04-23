@@ -170,21 +170,21 @@ const totalEarningUsd = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen p-8">
+  <div class="min-h-screen p-4 md:p-8">
 
     <!-- Header row -->
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-6 flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold">Earn</h1>
         <p class="mt-0.5 text-sm text-muted-foreground">Deposit tokens and earn yield via Jupiter Lend.</p>
       </div>
     </div>
 
-    <div class="grid grid-cols-12 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
 
       <!-- Hero card — your earnings summary -->
       <div
-        class="col-span-7 relative overflow-hidden rounded-2xl border border-border p-6 shadow-lg"
+        class="md:col-span-7 relative overflow-hidden rounded-2xl border border-border p-6 shadow-lg"
         style="background: linear-gradient(135deg, hsl(142 60% 12%) 0%, hsl(142 50% 16%) 50%, hsl(142 60% 12%) 100%)"
       >
         <div class="pointer-events-none absolute inset-0 opacity-[0.03]"
@@ -192,7 +192,7 @@ const totalEarningUsd = computed(() => {
         <div class="pointer-events-none absolute -top-6 right-8 h-32 w-32 rounded-full opacity-10"
           style="background: radial-gradient(circle, hsl(142 60% 60%) 0%, transparent 70%)" />
 
-        <div class="relative z-10 flex h-full flex-col justify-between gap-6">
+        <div class="relative z-10 flex flex-col justify-between gap-4 md:gap-6 min-h-35 md:h-full">
           <div class="flex items-start justify-between">
             <div>
               <p class="text-xs font-medium text-white/50">Total deposited</p>
@@ -236,40 +236,40 @@ const totalEarningUsd = computed(() => {
       </div>
 
       <!-- Stats sidebar -->
-      <div class="col-span-5 grid grid-rows-3 gap-3">
-        <div class="rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between">
+      <div class="md:col-span-5 grid grid-cols-3 md:grid-cols-1 md:grid-rows-3 gap-3">
+        <div class="rounded-2xl border border-border bg-card px-4 py-3 md:px-5 md:py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-1">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Best APR</p>
-            <p class="mt-1 text-2xl font-bold text-green-500">
+            <p class="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-muted-foreground">Best APR</p>
+            <p class="mt-0.5 text-lg md:text-2xl font-bold text-green-500">
               {{ markets?.length ? formatApr(Math.max(...markets.map(m => Number(m.supplyApr)))) : '—' }}
             </p>
           </div>
-          <TrendingUp class="h-4 w-4 text-muted-foreground opacity-50" />
+          <TrendingUp class="hidden md:block h-4 w-4 text-muted-foreground opacity-50" />
         </div>
-        <div class="rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between">
+        <div class="rounded-2xl border border-border bg-card px-4 py-3 md:px-5 md:py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-1">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Markets</p>
-            <p class="mt-1 text-2xl font-bold">
+            <p class="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-muted-foreground">Markets</p>
+            <p class="mt-0.5 text-lg md:text-2xl font-bold">
               {{ markets?.length ?? '—' }}
-              <span class="text-sm font-medium text-muted-foreground">available</span>
+              <span class="text-xs md:text-sm font-medium text-muted-foreground">avail.</span>
             </p>
           </div>
-          <ArrowDownToLine class="h-4 w-4 text-muted-foreground opacity-50" />
+          <ArrowDownToLine class="hidden md:block h-4 w-4 text-muted-foreground opacity-50" />
         </div>
-        <div class="rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between">
+        <div class="rounded-2xl border border-border bg-card px-4 py-3 md:px-5 md:py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-1">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Your positions</p>
-            <p class="mt-1 text-2xl font-bold">
+            <p class="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-muted-foreground">Positions</p>
+            <p class="mt-0.5 text-lg md:text-2xl font-bold">
               {{ positions?.length ?? 0 }}
-              <span class="text-sm font-medium text-muted-foreground">active</span>
+              <span class="text-xs md:text-sm font-medium text-muted-foreground">active</span>
             </p>
           </div>
-          <ArrowUpFromLine class="h-4 w-4 text-muted-foreground opacity-50" />
+          <ArrowUpFromLine class="hidden md:block h-4 w-4 text-muted-foreground opacity-50" />
         </div>
       </div>
 
       <!-- Markets table -->
-      <div class="col-span-12 rounded-2xl border border-border bg-card p-6">
+      <div class="col-span-1 md:col-span-12 rounded-2xl border border-border bg-card p-4 md:p-6">
         <div class="mb-5 flex items-center justify-between">
           <h3 class="font-semibold">Available Markets</h3>
           <span class="text-xs text-muted-foreground">Powered by Jupiter Lend</span>
@@ -288,38 +288,38 @@ const totalEarningUsd = computed(() => {
           <div
             v-for="m in markets"
             :key="m.mint"
-            class="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0"
+            class="flex items-center gap-3 py-3.5 first:pt-0 last:pb-0"
           >
             <!-- Icon -->
-            <img v-if="m.logoURI" :src="m.logoURI" class="h-9 w-9 rounded-full shrink-0" />
-            <div v-else class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+            <img v-if="m.logoURI" :src="m.logoURI" class="h-8 w-8 rounded-full shrink-0" />
+            <div v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
               {{ (m.symbol || '?')[0] }}
             </div>
 
             <!-- Name -->
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5 flex-wrap">
                 <p class="text-sm font-semibold">{{ m.symbol }}</p>
                 <span
                   v-if="positionFor(m.mint)"
                   class="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400"
                 >Deposited</span>
               </div>
-              <p class="text-xs text-muted-foreground">TVL {{ formatTvl(m.totalAssets, m.decimals, m.price) }}</p>
+              <p class="truncate text-xs text-muted-foreground">TVL {{ formatTvl(m.totalAssets, m.decimals, m.price) }}</p>
             </div>
 
             <!-- APR -->
-            <div class="text-right shrink-0 w-20">
-              <p class="text-base font-bold text-green-500">{{ formatApr(m.supplyApr) }}</p>
+            <div class="text-right shrink-0">
+              <p class="text-sm font-bold text-green-500">{{ formatApr(m.supplyApr) }}</p>
               <p class="text-[10px] text-muted-foreground uppercase tracking-wide">APR</p>
             </div>
 
             <!-- Deposit -->
             <button
-              class="shrink-0 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground transition hover:opacity-90 active:scale-95"
+              class="shrink-0 flex items-center gap-1 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition hover:opacity-90 active:scale-95"
               @click="openDeposit(m)"
             >
-              <ArrowDownToLine class="h-3.5 w-3.5" /> Deposit
+              <ArrowDownToLine class="h-3 w-3" /> Deposit
             </button>
           </div>
         </div>

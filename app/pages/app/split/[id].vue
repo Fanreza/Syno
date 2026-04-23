@@ -59,7 +59,7 @@ const tokenSymbol = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen p-8">
+  <div class="min-h-screen p-4 md:p-8">
 
     <!-- Header -->
     <div class="mb-8 flex items-center gap-3">

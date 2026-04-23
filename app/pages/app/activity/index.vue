@@ -86,7 +86,7 @@ function refresh() {
 </script>
 
 <template>
-  <div class="min-h-screen p-8">
+  <div class="min-h-screen p-4 md:p-8">
 
     <!-- Header -->
     <div class="mb-8 flex items-center justify-between">
@@ -167,8 +167,9 @@ function refresh() {
         <div
           v-for="item in filtered"
           :key="item.id"
-          class="flex items-center gap-4 px-5 py-4"
+          class="flex items-center gap-3 px-4 py-3 overflow-hidden"
         >
+          <!-- icon -->
           <div
             class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
             :class="{
@@ -184,23 +185,26 @@ function refresh() {
             <Star v-else class="h-4 w-4 text-yellow-500" />
           </div>
 
+          <!-- label + memo -->
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium">{{ activityLabel(item) }}</p>
+            <p class="truncate text-sm font-medium">{{ activityLabel(item) }}</p>
             <p v-if="item.memo && item.type !== 'split'" class="mt-0.5 truncate text-xs text-muted-foreground">
               {{ item.memo }}
             </p>
           </div>
 
-          <div class="text-right">
+          <!-- amount + time -->
+          <div class="shrink-0 text-right">
             <p
               class="text-sm font-semibold"
               :class="item.type === 'received' || item.type === 'gift_claim' ? 'text-green-500' : ''"
             >
-              {{ item.type === 'received' || item.type === 'gift_claim' ? '+' : item.type === 'sent' ? '-' : '' }}{{ formatAmount(item.amount) }} {{ item.token }}
+              {{ item.type === 'received' || item.type === 'gift_claim' ? '+' : item.type === 'sent' ? '-' : '' }}{{ formatAmount(item.amount) }} <span class="text-xs font-normal">{{ item.token }}</span>
             </p>
             <p class="mt-0.5 text-xs text-muted-foreground">{{ timeAgo(item.created_at) }}</p>
           </div>
 
+          <!-- external link -->
           <a
             v-if="item.tx_signature"
             :href="`https://solscan.io/tx/${item.tx_signature}`"
