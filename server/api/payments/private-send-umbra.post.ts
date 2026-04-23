@@ -22,7 +22,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Token not supported for private transfer. Use USDC or USDT.' })
 
   const decimals = body.decimals ?? 6
-
   const db = adminDb()
 
   const { data: sender } = await db
@@ -51,35 +50,47 @@ export default defineEventHandler(async (event) => {
   if (!(config as any).privyAuthorizationKey)
     throw createError({ statusCode: 500, statusMessage: 'Authorization key not configured' })
 
+  // Pre-flight: check sender has enough token balance
+  const { getAssociatedTokenAddressSync } = await import('@solana/spl-token')
+  const { PublicKey, Connection } = await import('@solana/web3.js')
+  const rpcUrl = (config as any).solanaRpcUrl || 'https://api.mainnet-beta.solana.com'
+  const connection = new Connection(rpcUrl, 'confirmed')
+  try {
+    const ata = getAssociatedTokenAddressSync(new PublicKey(mintAddress), new PublicKey(sender.wallet_address))
+    const acct = await connection.getTokenAccountBalance(ata)
+    const senderBalance = acct.value.uiAmount ?? 0
+    if (senderBalance < body.amount)
+      throw createError({ statusCode: 400, statusMessage: `Insufficient balance. You have ${senderBalance} but tried to send ${body.amount}.` })
+  } catch (e: any) {
+    if (e.statusCode) throw e
+    throw createError({ statusCode: 400, statusMessage: `Token account not found. You need USDC or USDT in your wallet to send privately.` })
+  }
+
   const privy = getPrivy()
   const { private_key } = await (privy.wallets() as any).exportPrivateKey(sender.privy_wallet_id, {
     authorization_context: { authorization_private_keys: [(config as any).privyAuthorizationKey] },
   })
 
   const rawAmount = toUmbraRawAmount(body.amount, decimals)
-  const rpcUrl = (config as any).solanaRpcUrl || 'https://api.mainnet-beta.solana.com'
-  const cluster = (config.public as any).solanaCluster || 'mainnet-beta'
-  const network = cluster === 'devnet' ? 'devnet' : 'mainnet'
 
-  const { depositSignature, withdrawSignature } = await umbraPrivateSend({
+  const { signature } = await umbraPrivateSend({
     senderPrivyWalletSecret: bs58.decode(private_key),
     recipientAddress,
     rawAmount,
     mint: mintAddress,
     rpcUrl,
-    network,
   })
 
   await db.from('payments').insert({
     sender_id: sender.id,
     receiver_id: recipientId,
     receiver_address: recipientAddress,
-    amount: 0,
+    amount: body.amount,
     token: 'PRIVATE',
-    tx_signature: withdrawSignature,
+    tx_signature: signature,
     status: 'confirmed',
     memo: body.memo ?? null,
   })
 
-  return { depositSignature, withdrawSignature }
+  return { signature }
 })

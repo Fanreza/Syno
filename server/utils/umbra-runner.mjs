@@ -53,12 +53,13 @@ async function main() {
     const withdrawResult = await withdraw(opts.recipientAddress, opts.mint, rawAmount)
 
     process.stdout.write(JSON.stringify({
-      depositSignature: depositResult.callbackSignature,
-      withdrawSignature: withdrawResult.callbackSignature,
+      depositSignature: depositResult.callbackSignature ?? depositResult.queueSignature,
+      withdrawSignature: withdrawResult.callbackSignature ?? withdrawResult.queueSignature,
     }))
     process.exit(0)
   } catch (err) {
-    process.stdout.write(JSON.stringify({ error: err?.message ?? String(err) }))
+    const detail = err?.logs ? `${err.message}\nLogs: ${err.logs.join('\n')}` : (err?.message ?? String(err))
+    process.stdout.write(JSON.stringify({ error: detail, stack: err?.stack?.slice(0, 500) }))
     process.exit(1)
   }
 }

@@ -12,7 +12,7 @@ export function isUmbraSupported(mintAddress: string): boolean {
   return SUPPORTED_SET.has(mintAddress as any)
 }
 
-const RUNNER_PATH = join(process.cwd(), 'server/utils/umbra-runner.mjs')
+const RUNNER_PATH = join(process.cwd(), 'server/utils/magicblock-runner.mjs')
 
 export async function umbraPrivateSend(opts: {
   senderPrivyWalletSecret: Uint8Array
@@ -21,14 +21,13 @@ export async function umbraPrivateSend(opts: {
   mint: string
   rpcUrl: string
   network?: string
-}): Promise<{ depositSignature: string; withdrawSignature: string }> {
+}): Promise<{ signature: string }> {
   const input = JSON.stringify({
     senderSecretKey: Array.from(opts.senderPrivyWalletSecret),
     recipientAddress: opts.recipientAddress,
     rawAmount: opts.rawAmount.toString(),
     mint: opts.mint,
     rpcUrl: opts.rpcUrl,
-    network: opts.network ?? 'mainnet',
   })
 
   return new Promise((resolve, reject) => {
@@ -47,7 +46,7 @@ export async function umbraPrivateSend(opts: {
         if (result.error) return reject(new Error(result.error))
         resolve(result)
       } catch {
-        reject(new Error(`Umbra runner failed (exit ${code}): ${stderr || stdout}`))
+        reject(new Error(`MagicBlock runner failed (exit ${code}): ${stderr || stdout}`))
       }
     })
 
