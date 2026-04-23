@@ -13,12 +13,17 @@ const { user, apiFetch } = useAuth()
 const { isDark } = useTheme()
 
 const { data: balance, refresh: refreshBalance, pending: pendingBalance } = useAsyncData(
-  () => `balance-${user.value?.wallet_address}`,
+  'dashboard-balance',
   () => user.value?.wallet_address
     ? $fetch<{ sol: number; usd: number; solPrice: number; tokens: any[] }>(`/api/balance?address=${user.value.wallet_address}`)
     : Promise.resolve({ sol: 0, usd: 0, solPrice: 0, tokens: [] }),
-  { watch: [user], lazy: true }
+  { lazy: true }
 )
+
+// Re-fetch balance when wallet address becomes available (e.g. after session restore in PWA)
+watch(() => user.value?.wallet_address, (addr) => {
+  if (addr) refreshBalance()
+}, { immediate: true })
 
 const { data: earnPositions, refresh: refreshEarn } = useAsyncData(
   'dashboard-earn-positions',
@@ -56,7 +61,7 @@ const allTokens = computed<TokenRow[]>(() => {
 const { data: stats, refresh: refreshStats, pending: pendingStats } = useAsyncData(
   'dashboard-stats',
   () => apiFetch<{ sentSol: number; receivedSol: number; openSplits: number }>('/api/stats'),
-  { lazy: true }
+  { lazy: true, immediate: false }
 )
 
 const { data: activity, refresh: refreshActivity, pending: pendingActivity } = useAsyncData(
@@ -77,6 +82,15 @@ type ActivityItem = {
   gift_id?: string
   created_at: string
 }
+
+// Fire stats + activity once user is available (handles PWA session restore delay)
+watch(user, (u) => {
+  if (u) {
+    refreshStats()
+    refreshActivity()
+    refreshEarn()
+  }
+}, { immediate: true })
 
 const showSend = ref(false)
 const showSplit = ref(false)
