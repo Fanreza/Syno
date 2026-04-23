@@ -171,14 +171,12 @@ npm run dev
 - **Auth** — email OTP, Google OAuth, Solana wallet SIWS (Phantom, OKX, Jupiter)
 - **Dashboard** — stats (`GET /api/stats`), recent activity (`GET /api/activity`)
 - **Send** — `SendModal` with `TokenPicker` (pay with any token, Jupiter auto-convert)
+- **Private send** — `POST /api/payments/private-send-umbra` via MagicBlock ephemeral rollup. USDC/USDT only. Direct delivery, no recipient claim. Server exports Privy key → `magicblock-runner.mjs` calls MagicBlock API → signs → broadcasts.
 - **Payment Link / QR** — `RequestModal` with `TokenPicker` → `/pay/[id]` public page
 - **Split Bill** — `SplitModal` with `TokenPicker`, friends picker per row, index + detail pages
 - **Gift** — `GiftModal` with `TokenPicker` → `/gift/[id]` claim page (pool wallet per gift)
 - **Friends** — `GET/POST /api/friends/{index,add,remove}` + `/app/friends` page
 - **Profile** — balance, export private key (`GET /api/wallet/export`)
 - **Jupiter swap** — `inputToken` in `POST /api/payments/send` triggers swap
-- **GoldRush on-chain history** — `GET /api/history` + `/app/activity` on-chain tab (needs `GOLDRUSH_API_KEY`)
+- **On-chain history** — `GET /api/history` via Helius `getSignaturesForAddress` + `/app/activity` on-chain tab
 - **Dark mode** — neutral gray palette, toggled via `useTheme()`
-
-### Still pending
-- Private transfer (UI toggle exists in `SendModal`, server ignores it)

@@ -11,7 +11,8 @@ Send crypto on Solana like sending a DM. Pay by `@username`, split bills, send g
 - **Privy** (`@privy-io/node`) — server-side wallet creation and signing (TEE)
 - **Supabase** — Postgres database via service role key (no RLS)
 - **Jupiter** — token swap and earn (lending)
-- **GoldRush** — on-chain transaction history
+- **MagicBlock** — private SPL token transfers via ephemeral rollup
+- **Helius DAS** — on-chain transaction history and token balances
 - **@vite-pwa/nuxt** — installable PWA
 
 ## Architecture
@@ -32,12 +33,13 @@ Browser (Privy js-sdk-core) ──Bearer token──▶ Nitro /server/api ──
 ## Features
 
 - **Send** — SOL or any SPL token by `@username` or address. Jupiter auto-converts if needed.
+- **Private send** — USDC or USDT via MagicBlock ephemeral rollup. Amount hidden on-chain, direct delivery to recipient.
 - **Request** — payment link with QR code. Payer can pay in any token.
 - **Split bill** — create a split, share per-person links, track who paid.
 - **Gift** — send a gift envelope with a claim link. Dedicated pool wallet per gift.
 - **Earn** — deposit tokens into Jupiter Lend markets, withdraw anytime.
 - **Friends** — add friends, use them as quick-pick in Send and Split modals.
-- **Activity** — in-app history + on-chain history via GoldRush.
+- **Activity** — in-app history + on-chain history via Helius.
 - **Profile** — balance, export private key.
 - **Dark mode** — neutral gray palette, toggled via `useTheme()`.
 - **PWA** — installable, works offline shell.
@@ -71,7 +73,6 @@ Open `http://localhost:3000`.
 | `SOLANA_CAIP2` | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` (mainnet) |
 | `NUXT_PUBLIC_SOLANA_CLUSTER` | `mainnet-beta` |
 | `JUPITER_API_KEY` | [jup.ag](https://jup.ag) developer portal |
-| `GOLDRUSH_API_KEY` | [goldrush.dev](https://goldrush.dev) |
 | `NUXT_PUBLIC_APP_URL` | deployed URL, e.g. `https://payra.app` |
 
 ## Supabase setup
@@ -93,17 +94,19 @@ app/                          # srcDir (~/  resolves here)
   app.vue                     # layout root: SideNav + NuxtPage
   assets/css/main.css         # Tailwind v4 CSS vars, dark mode under .dark
   components/
-    ui/                       # shadcn-vue primitives
-    SideNav.vue               # desktop sidebar + mobile bottom bar
-    SendModal.vue
-    RequestModal.vue
-    SplitModal.vue
-    GiftModal.vue
-    TokenPicker.vue
+    ui/                       # shadcn-vue primitives (subdirectory per component)
+    SideNav.vue               # desktop sidebar + mobile bottom bar (Home/Activity/Splits/Profile + More sheet)
+    SendModal.vue             # public or private send (MagicBlock toggle)
+    RequestModal.vue          # create payment link + QR
+    SplitModal.vue            # create split bill + friends picker per row
+    GiftModal.vue             # create gift envelope
+    TokenPicker.vue           # reusable token selector (filter prop for mint whitelist)
+    RequestQr.vue             # QR code renderer
   composables/
     useAuth.ts                # auth state — Privy js-sdk-core + apiFetch
     useFriends.ts             # cached friend list
     useTheme.ts               # dark mode toggle
+    useBalance.ts             # wallet balance cache
   middleware/auth.global.ts
   pages/
     index.vue                 # landing page
@@ -117,9 +120,6 @@ app/                          # srcDir (~/  resolves here)
     app/split/
     pay/[id].vue              # public payment link
     gift/[id].vue             # public gift claim
-  utils/
-    tokens.ts                 # JupToken, SOL_TOKEN, POPULAR_TOKENS
-    index.ts                  # cn(), shortAddr(), formatUsd(), formatAmount()
 
 server/
   utils/
@@ -127,9 +127,11 @@ server/
     privy.ts                  # getPrivy(), requireUser(), signAndBroadcast()
     solana.ts                 # buildTransferSolTx(), buildTransferSplTx()
     jupiter.ts                # getJupiterQuote(), buildJupiterSwapTx()
+    umbra.ts                  # umbraPrivateSend() — wraps magicblock-runner.mjs child process
+    magicblock-runner.mjs     # standalone ESM script: calls MagicBlock API, signs tx, broadcasts
   api/
     users/                    # register, me, search
-    payments/                 # send, create-link, [id], private-send
+    payments/                 # send, create-link, [id], private-send-umbra
     split/                    # create, index, [id]
     gifts/                    # create, claim, [id]
     friends/                  # index, add, remove
@@ -148,7 +150,7 @@ nuxt.config.ts
 ## Auth flow
 
 1. User opens `/login`, clicks "Get Started".
-2. `ConnectModal` shows email, Google, and wallet options.
+2. Email OTP, Google OAuth, or Solana wallet SIWS options.
 3. After login, Privy issues an access token stored in `useAuth` state.
 4. `GET /api/users/me` checks if a `users` row exists for this Privy user ID.
 5. If not, router pushes to `/onboarding` to pick a username.
@@ -161,6 +163,16 @@ nuxt.config.ts
 3. If `inputToken` differs from the output token, Jupiter swap is used instead of a direct transfer.
 4. Server signs via Privy (`signTransaction`) and broadcasts via the configured RPC.
 5. Payment row inserted in Supabase, signature returned to client.
+
+## Private send flow
+
+1. `SendModal` (Private mode) → `POST /api/payments/private-send-umbra` with `{ toUsername | toAddress, amount, mint, decimals }`.
+2. Server checks sender has enough USDC/USDT balance (pre-flight).
+3. Server exports sender private key from Privy via `exportPrivateKey()`.
+4. `magicblock-runner.mjs` calls `POST https://payments.magicblock.app/v1/spl/transfer` with `privacy: 'private'`.
+5. MagicBlock returns unsigned transaction. Runner signs with sender keypair and broadcasts.
+6. Single on-chain transaction — recipient receives tokens directly, no claim required.
+7. Payment row inserted with `token='PRIVATE'`.
 
 ## Scripts
 
