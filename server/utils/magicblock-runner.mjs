@@ -26,11 +26,13 @@ async function main() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        owner: senderKeypair.publicKey.toBase58(),
-        destination: opts.recipientAddress,
+        from: senderKeypair.publicKey.toBase58(),
+        to: opts.recipientAddress,
         amount: parseInt(opts.rawAmount),
         mint: opts.mint,
-        privacy: 'private',
+        visibility: 'private',
+        fromBalance: 'base',
+        toBalance: 'base',
         initIfMissing: true,
       }),
     })
