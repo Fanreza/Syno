@@ -36,7 +36,7 @@ export default defineNuxtConfig({
       }
     },
     externals: {
-      inline: ['@solana/spl-token', '@solana/web3.js'],
+      inline: ['@solana/spl-token', '@solana/web3.js', 'jayson'],
       external: ['@umbra-privacy/sdk', '@umbra-privacy/web-zk-prover']
     }
   },
