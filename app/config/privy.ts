@@ -12,3 +12,7 @@ export function getPrivy(): Privy {
   })
   return privyInstance
 }
+
+export function resetPrivy(): void {
+  privyInstance = null
+}

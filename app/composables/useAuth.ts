@@ -1,6 +1,6 @@
 import type Privy from '@privy-io/js-sdk-core'
 import { createSiwsMessage } from '@privy-io/js-sdk-core'
-import { getPrivy } from '~/config/privy'
+import { getPrivy, resetPrivy } from '~/config/privy'
 
 type PrivyUser = Awaited<ReturnType<Privy['user']['get']>>['user']
 
@@ -181,11 +181,24 @@ export function useAuth() {
 
   async function logout() {
     try { await privy().auth.logout() } catch {}
+    // Clear all privy keys from localStorage so no session bleeds into next login
+    try {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('privy'))
+      keys.forEach(k => localStorage.removeItem(k))
+    } catch {}
+    // Remove the privy iframe so the old session cannot be restored
+    try {
+      const iframe = document.getElementById('privy-iframe')
+      if (iframe) iframe.remove()
+    } catch {}
+    // Reset the privy singleton so a fresh instance is created on next login
+    resetPrivy()
     privyUser.value = null
     accessToken.value = null
     identityToken.value = null
     appUser.value = null
     isAuthenticated.value = false
+    isReady.value = false
     await navigateTo('/login')
   }
 
