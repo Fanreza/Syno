@@ -20,9 +20,9 @@ const { data: balance, refresh: refreshBalance, pending: pendingBalance } = useA
   { lazy: true }
 )
 
-// Re-fetch balance when wallet address becomes available (e.g. after session restore in PWA)
-watch(() => user.value?.wallet_address, (addr) => {
-  if (addr) refreshBalance()
+// Fetch balance once wallet address is available
+watch(() => user.value?.wallet_address, (addr, prev) => {
+  if (addr && addr !== prev) refreshBalance()
 }, { immediate: true })
 
 const { data: earnPositions, refresh: refreshEarn } = useAsyncData(
@@ -83,9 +83,9 @@ type ActivityItem = {
   created_at: string
 }
 
-// Fire stats + activity once user is available (handles PWA session restore delay)
-watch(user, (u) => {
-  if (u) {
+// Fire stats + activity once user is available
+watch(user, (u, prev) => {
+  if (u && !prev) {
     refreshStats()
     refreshActivity()
     refreshEarn()
