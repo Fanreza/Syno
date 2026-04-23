@@ -1,161 +1,171 @@
 # Payra
 
-GoPay-style crypto payment app on Solana. Nuxt 4 + Tailwind + shadcn-vue + Supabase Auth + Privy (server wallets) + Jupiter + GoldRush.
+Send crypto on Solana like sending a DM. Pay by `@username`, split bills, send gift envelopes, earn yield — no seed phrase required.
+
+## Stack
+
+- **Nuxt 4** (`srcDir = app/`), SSR disabled (SPA)
+- **Tailwind v4** via `@tailwindcss/vite` — CSS-first, no config file
+- **shadcn-vue** + **reka-ui** for UI primitives
+- **Privy** (`@privy-io/js-sdk-core`) — client-side auth (email, Google OAuth, Solana wallet SIWS)
+- **Privy** (`@privy-io/node`) — server-side wallet creation and signing (TEE)
+- **Supabase** — Postgres database via service role key (no RLS)
+- **Jupiter** — token swap and earn (lending)
+- **GoldRush** — on-chain transaction history
+- **@vite-pwa/nuxt** — installable PWA
 
 ## Architecture
 
-After reviewing Privy's SDKs ([docs.privy.io/wallets/overview](https://docs.privy.io/wallets/overview)), this project uses the **server-wallet** pattern because Privy ships no browser SDK for non-React/non-mobile frameworks:
+Privy has no browser SDK for Vue/Nuxt. This app uses the **server-wallet** pattern:
 
-- **Auth**: [`@nuxtjs/supabase`](https://supabase.nuxtjs.org) handles email OTP + Google OAuth with SSR cookies and a Vue-native API.
-- **Wallets**: [`@privy-io/node`](https://docs.privy.io/basics/nodeJS/quickstart) creates and controls a Solana wallet per user, fully server-side.
-- **Signing**: all transactions are built and signed in Nitro routes via `privy.wallets().solana().signAndSendTransaction()`. The browser never touches a private key or a Privy SDK.
+1. User authenticates via Privy's `js-sdk-core` in the browser (email OTP, Google OAuth, or Solana wallet SIWS).
+2. Browser gets a Privy access token, sends it as `Authorization: Bearer` on every API call.
+3. Nitro verifies the token with `@privy-io/node`, looks up the user's `privy_wallet_id`, builds and signs transactions server-side.
+4. The browser never imports a signing SDK and never touches a private key.
 
 ```
-Browser ──cookie auth──▶ Nuxt /server/api ──PrivyClient──▶ Privy wallets ──▶ Solana RPC
-                                     │
-                                     └─ Supabase (users, payments, splits)
+Browser (Privy js-sdk-core) ──Bearer token──▶ Nitro /server/api ──PrivyClient──▶ Privy TEE ──▶ Solana RPC
+                                                        │
+                                                        └─ Supabase Postgres
 ```
 
-## Scope (Phase 1)
+## Features
 
-- ✅ Supabase email-OTP + Google OAuth
-- ✅ Username system + search + resolve
-- ✅ Per-user Privy Solana wallet (auto-created on onboarding)
-- ✅ Send SOL by `@username` or address — server-signed via Privy
-- ✅ Payment link `/pay/[id]` — pending payment row, receiver-signed confirmation flow
-- ✅ Split bill creation + progress UI
-- ✅ Balance dashboard (SOL + USD)
-
-**Phase 2** (files stubbed, not wired): Jupiter auto-convert ([`server/utils/jupiter.ts`](server/utils/jupiter.ts)), gift/daget pool wallets, GoldRush history, SPL transfers.
+- **Send** — SOL or any SPL token by `@username` or address. Jupiter auto-converts if needed.
+- **Request** — payment link with QR code. Payer can pay in any token.
+- **Split bill** — create a split, share per-person links, track who paid.
+- **Gift** — send a gift envelope with a claim link. Dedicated pool wallet per gift.
+- **Earn** — deposit tokens into Jupiter Lend markets, withdraw anytime.
+- **Friends** — add friends, use them as quick-pick in Send and Split modals.
+- **Activity** — in-app history + on-chain history via GoldRush.
+- **Profile** — balance, export private key.
+- **Dark mode** — neutral gray palette, toggled via `useTheme()`.
+- **PWA** — installable, works offline shell.
 
 ## Setup
 
 ```bash
-# 1. Install
+cp .env.example .env   # fill in all secrets
+# run supabase/schema.sql in the Supabase SQL editor
 npm install
-
-# 2. Copy env and fill in secrets
-cp .env.example .env
-
-# 3. Run Supabase schema
-# Open supabase/schema.sql in the Supabase SQL editor and run it.
-
-# 4. Dev server
 npm run dev
 ```
 
-http://localhost:3000
+Open `http://localhost:3000`.
 
 ## Env vars
 
-| Var | Source |
+| Var | Where to get it |
 |---|---|
-| `SUPABASE_URL` | supabase project settings → API |
-| `SUPABASE_KEY` | supabase project settings → API (anon) |
-| `SUPABASE_SERVICE_KEY` | supabase project settings → API (service_role) |
-| `PRIVY_APP_ID` | dashboard.privy.io → app settings |
-| `PRIVY_APP_SECRET` | dashboard.privy.io → app settings |
-| `SOLANA_RPC_URL` | devnet default; use Helius/Quicknode for prod |
-| `SOLANA_CAIP2` | `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1` (devnet) or `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` (mainnet-beta) |
-| `GOLDRUSH_API_KEY` | goldrush.dev (phase 2) |
+| `PRIVY_APP_ID` | [dashboard.privy.io](https://dashboard.privy.io) → App Settings |
+| `PRIVY_APP_SECRET` | dashboard.privy.io → App Settings |
+| `PRIVY_AUTHORIZATION_KEY_ID` | dashboard.privy.io → Authorization Keys |
+| `PRIVY_AUTHORIZATION_PUBLIC_KEY` | dashboard.privy.io → Authorization Keys |
+| `PRIVY_AUTHORIZATION_KEY` | dashboard.privy.io → Authorization Keys |
+| `NUXT_PUBLIC_PRIVY_APP_ID` | same as `PRIVY_APP_ID` |
+| `NUXT_PUBLIC_PRIVY_CLIENT_ID` | dashboard.privy.io → App Settings → Client ID |
+| `SUPABASE_URL` | Supabase project → Settings → API |
+| `SUPABASE_SERVICE_KEY` | Supabase project → Settings → API → service_role |
+| `SOLANA_RPC_URL` | Helius/Quicknode RPC URL (server-side) |
+| `NUXT_PUBLIC_SOLANA_RPC_URL` | Helius/Quicknode RPC URL (client-side) |
+| `SOLANA_CAIP2` | `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` (mainnet) |
+| `NUXT_PUBLIC_SOLANA_CLUSTER` | `mainnet-beta` |
+| `JUPITER_API_KEY` | [jup.ag](https://jup.ag) developer portal |
+| `GOLDRUSH_API_KEY` | [goldrush.dev](https://goldrush.dev) |
+| `NUXT_PUBLIC_APP_URL` | deployed URL, e.g. `https://payra.app` |
 
-## Supabase config
+## Supabase setup
 
-In the Supabase dashboard:
-1. **Auth → Providers → Email**: enable "Enable email OTP" (6-digit code).
-2. **Auth → Providers → Google**: enable and paste Google OAuth client id/secret.
-3. **Auth → URL Configuration → Redirect URLs**: add `http://localhost:3000/confirm`.
-4. **SQL Editor**: run [`supabase/schema.sql`](supabase/schema.sql).
+1. Run [`supabase/schema.sql`](supabase/schema.sql) in the SQL editor.
+2. No RLS — all DB access goes through Nitro with the service role key.
 
-## Privy config
+## Privy setup
 
 1. Create an app at [dashboard.privy.io](https://dashboard.privy.io).
-2. Copy **App ID** and **App Secret** into `.env`.
-3. No client-side Privy config needed — this app uses the Node SDK exclusively.
+2. Enable login methods: **Email**, **Google**, **Solana wallets** (for SIWS).
+3. Under **Embedded Wallets**, enable Solana wallet creation.
+4. Copy App ID, App Secret, Client ID, and authorization keys into `.env`.
 
-## Flow: signup + wallet creation
-
-1. `/login` → Supabase sends OTP code → `signInWithOtp` + `verifyOtp`.
-2. On first login, `GET /api/users/me` returns `null` → router pushes `/onboarding`.
-3. User picks a username → `POST /api/users/register`:
-   - Verifies Supabase JWT from cookie (`serverSupabaseUser`).
-   - Calls `privy.wallets().create({ chain_type: 'solana' })`.
-   - Stores `{ supabase_user_id, username, privy_wallet_id, wallet_address }` in `users`.
-
-## Flow: send SOL
-
-1. Client `POST /api/payments/send` with `{ toUsername | toAddress, amount, memo }`.
-2. Server verifies Supabase user, loads sender's `privy_wallet_id`.
-3. Server builds `SystemProgram.transfer` tx with recent blockhash, serializes to base64.
-4. Server calls `privy.wallets().solana().signAndSendTransaction(walletId, { caip2, transaction })`.
-5. Stores row in `payments` with signature, returns to client.
-
-No private keys ever touch the browser or the backend code — Privy holds the keys in their TEE.
-
-## Project layout (Nuxt 4)
-
-Nuxt 4 uses `app/` as the default srcDir. Client code lives under `app/`, Nitro under `server/`, config at root.
+## Project layout
 
 ```
-app/                          # srcDir
-  app.vue                     # root shell + BottomNav
-  assets/css/main.css         # Tailwind + shadcn tokens
+app/                          # srcDir (~/  resolves here)
+  app.vue                     # layout root: SideNav + NuxtPage
+  assets/css/main.css         # Tailwind v4 CSS vars, dark mode under .dark
   components/
-    ui/Button.vue             # shadcn-vue primitives
-    ui/Card.vue
-    ui/Input.vue
-    ui/Dialog.vue
-    BottomNav.vue
-  composables/useAuth.ts      # Supabase-backed auth composable
-  middleware/auth.global.ts   # route guard
+    ui/                       # shadcn-vue primitives
+    SideNav.vue               # desktop sidebar + mobile bottom bar
+    SendModal.vue
+    RequestModal.vue
+    SplitModal.vue
+    GiftModal.vue
+    TokenPicker.vue
+  composables/
+    useAuth.ts                # auth state — Privy js-sdk-core + apiFetch
+    useFriends.ts             # cached friend list
+    useTheme.ts               # dark mode toggle
+  middleware/auth.global.ts
   pages/
-    index.vue                 # dashboard
-    login.vue                 # email OTP
-    confirm.vue               # OAuth callback
-    onboarding.vue            # username + wallet creation
-    send.vue
-    pay/[id].vue
-    split/index.vue
-    split/[id].vue
-    profile.vue
-  utils/index.ts              # cn(), shortAddr(), formatUsd() — auto-imported
-
-server/                       # Nitro (stays at root)
+    index.vue                 # landing page
+    login.vue
+    onboarding.vue
+    app/index.vue             # dashboard
+    app/activity/index.vue
+    app/earn.vue
+    app/friends.vue
+    app/profile.vue
+    app/split/
+    pay/[id].vue              # public payment link
+    gift/[id].vue             # public gift claim
   utils/
-    supabase.ts               # requireUser, adminDb
-    privy.ts                  # PrivyClient, createSolanaWallet, signAndSendSolana
-    solana.ts                 # buildTransferSolTx, getSolBalance
-    jupiter.ts                # quote + swap (phase 2)
+    tokens.ts                 # JupToken, SOL_TOKEN, POPULAR_TOKENS
+    index.ts                  # cn(), shortAddr(), formatUsd(), formatAmount()
+
+server/
+  utils/
+    supabase.ts               # requireUser(), adminDb()
+    privy.ts                  # getPrivy(), requireUser(), signAndBroadcast()
+    solana.ts                 # buildTransferSolTx(), buildTransferSplTx()
+    jupiter.ts                # getJupiterQuote(), buildJupiterSwapTx()
   api/
-    users/{me,register,resolve,search}
-    payments/{send,create-link,[id]}
-    split/{create,[id]}
+    users/                    # register, me, search
+    payments/                 # send, create-link, [id], private-send
+    split/                    # create, index, [id]
+    gifts/                    # create, claim, [id]
+    friends/                  # index, add, remove
+    earn/                     # positions, markets, deposit, withdraw
+    tokens/search.get.ts
+    activity.get.ts
+    history.get.ts
+    stats.get.ts
     balance.get.ts
+    wallet/export.get.ts
 
 supabase/schema.sql
 nuxt.config.ts
-package.json
-tsconfig.json
-tailwind.config.ts
-.env.example
 ```
 
-### Auto-imports
+## Auth flow
 
-- `app/utils/**` → auto-imported into Vue components. Call `cn()`, `formatUsd()`, `shortAddr()` with no import.
-- `server/utils/**` → auto-imported into Nitro handlers. `requireUser()`, `adminDb()`, `createSolanaWallet()`, `signAndSendSolana()`, `buildTransferSolTx()`, `getSolBalance()` are globals inside `server/api/**`.
-- `~/` resolves to `app/` (srcDir). Use `~~/` for the rootDir.
+1. User opens `/login`, clicks "Get Started".
+2. `ConnectModal` shows email, Google, and wallet options.
+3. After login, Privy issues an access token stored in `useAuth` state.
+4. `GET /api/users/me` checks if a `users` row exists for this Privy user ID.
+5. If not, router pushes to `/onboarding` to pick a username.
+6. `POST /api/users/register` creates a Privy Solana wallet and inserts the `users` row.
 
-## Notes / gotchas
+## Send flow
 
-- **Devnet by default.** Flip `SOLANA_CAIP2` and `SOLANA_RPC_URL` for mainnet.
-- **Auto-import TS errors** in your IDE before `npm install` are expected — Nuxt generates `.nuxt/tsconfig.json` and the `#supabase/server` virtual module during `nuxt prepare` (runs automatically via `postinstall`).
-- **SPL tokens:** extend [`server/utils/solana.ts`](server/utils/solana.ts) with `buildTransferSplTx` using `@solana/spl-token`'s `getOrCreateAssociatedTokenAccount` + `createTransferInstruction`. Then extend `/api/payments/send` to accept a `mint` field.
-- **Jupiter auto-convert (phase 2):** the helper is in [`server/utils/jupiter.ts`](server/utils/jupiter.ts). Wire it into `/api/payments/send` by quoting sender's token → receiver's token, building the swap tx, then using `signAndSendSolana`.
-- **Token verification performance:** `@privy-io/node` calls Privy's API on each op. For production, consider local JWT verification against Privy's public key.
+1. `SendModal` → `POST /api/payments/send` with `{ toUsername | toAddress, amount, inputToken }`.
+2. Server resolves recipient address, fetches decimals, builds transaction.
+3. If `inputToken` differs from the output token, Jupiter swap is used instead of a direct transfer.
+4. Server signs via Privy (`signTransaction`) and broadcasts via the configured RPC.
+5. Payment row inserted in Supabase, signature returned to client.
 
 ## Scripts
 
-- `npm run dev` — dev server
-- `npm run build` — production build
-- `npm run typecheck` — tsc check
+```bash
+npm run dev        # dev server
+npm run build      # production build
+npm run typecheck  # tsc
+```
