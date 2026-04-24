@@ -34,6 +34,10 @@ async function main() {
         fromBalance: 'base',
         toBalance: 'base',
         initIfMissing: true,
+        initAtasIfMissing: true,
+        ...(opts.split != null && { split: opts.split }),
+        ...(opts.minDelayMs != null && { minDelayMs: String(opts.minDelayMs) }),
+        ...(opts.maxDelayMs != null && { maxDelayMs: String(opts.maxDelayMs) }),
       }),
     })
 
@@ -46,9 +50,7 @@ async function main() {
     const txBase64 = data.transactionBase64 ?? data.transaction
     if (!txBase64) throw new Error(`Unexpected MagicBlock response: ${JSON.stringify(data)}`)
 
-    // MagicBlock may specify a different RPC to broadcast to (ephemeral rollup endpoint)
-    const broadcastRpc = data.sendTo ?? opts.rpcUrl
-    const broadcastConnection = new Connection(broadcastRpc, 'confirmed')
+    const broadcastConnection = new Connection(opts.rpcUrl, 'confirmed')
 
     // Deserialize, sign, broadcast
     const txBytes = Buffer.from(txBase64, 'base64')
@@ -69,7 +71,8 @@ async function main() {
       signature = await broadcastConnection.sendRawTransaction(tx.serialize(), { skipPreflight: false })
     }
 
-    await connection.confirmTransaction(signature, 'confirmed')
+    const { blockhash: confirmBlockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+    await connection.confirmTransaction({ signature, blockhash: confirmBlockhash, lastValidBlockHeight }, 'confirmed')
 
     process.stdout.write(JSON.stringify({ signature }))
     process.exit(0)

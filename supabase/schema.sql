@@ -70,6 +70,22 @@ create table if not exists gifts (
   created_at timestamptz default now()
 );
 
+create table if not exists private_transfers (
+  id uuid primary key default gen_random_uuid(),
+  sender_id uuid references users(id),
+  recipient_address text not null,
+  recipient_id uuid references users(id),
+  amount numeric not null,
+  mint text not null,
+  deposit_signature text,
+  withdraw_signature text,
+  status text not null default 'mixing', -- mixing | claiming | completed | failed
+  memo text,
+  created_at timestamptz default now()
+);
+create index if not exists private_transfers_sender_idx on private_transfers (sender_id);
+create index if not exists private_transfers_status_idx on private_transfers (status);
+
 create table if not exists gift_claims (
   id uuid primary key default gen_random_uuid(),
   gift_id uuid references gifts(id) on delete cascade,

@@ -1,5 +1,6 @@
 import bs58 from 'bs58'
-import { umbraPrivateSend, toUmbraRawAmount, UMBRA_SUPPORTED_MINTS, isUmbraSupported } from '../../utils/umbra'
+import { umbraDeposit } from '../../utils/umbra'
+import { PRIVATE_SEND_SUPPORTED_MINTS, isPrivateSendSupported, toRawAmount } from '../../utils/private-send'
 
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
@@ -17,12 +18,14 @@ export default defineEventHandler(async (event) => {
   if (!body.toUsername && !body.toAddress)
     throw createError({ statusCode: 400, statusMessage: 'toUsername or toAddress required' })
 
-  const mintAddress = body.mint ?? UMBRA_SUPPORTED_MINTS.USDC
-  if (!isUmbraSupported(mintAddress))
+  const mintAddress = body.mint ?? PRIVATE_SEND_SUPPORTED_MINTS.USDC
+  if (!isPrivateSendSupported(mintAddress))
     throw createError({ statusCode: 400, statusMessage: 'Token not supported for private transfer. Use USDC or USDT.' })
 
   const decimals = body.decimals ?? 6
   const db = adminDb()
+
+  console.log(`[private-send] start — amount=${body.amount} mint=${mintAddress} to=${body.toUsername ?? body.toAddress}`)
 
   const { data: sender } = await db
     .from('users')
@@ -31,6 +34,8 @@ export default defineEventHandler(async (event) => {
     .single()
   if (!sender?.privy_wallet_id)
     throw createError({ statusCode: 400, statusMessage: 'Wallet not found' })
+
+  console.log(`[private-send] sender wallet=${sender.wallet_address}`)
 
   let recipientAddress = body.toAddress ?? ''
   let recipientId: string | null = null
@@ -46,11 +51,13 @@ export default defineEventHandler(async (event) => {
     recipientId = rec.id
   }
 
+  console.log(`[private-send] recipient wallet=${recipientAddress}`)
+
   const config = useRuntimeConfig()
   if (!(config as any).privyAuthorizationKey)
     throw createError({ statusCode: 500, statusMessage: 'Authorization key not configured' })
 
-  // Pre-flight: check sender has enough token balance
+  console.log(`[private-send] checking sender balance...`)
   const { getAssociatedTokenAddressSync } = await import('@solana/spl-token')
   const { PublicKey, Connection } = await import('@solana/web3.js')
   const rpcUrl = (config as any).solanaRpcUrl || 'https://api.mainnet-beta.solana.com'
@@ -59,6 +66,7 @@ export default defineEventHandler(async (event) => {
     const ata = getAssociatedTokenAddressSync(new PublicKey(mintAddress), new PublicKey(sender.wallet_address))
     const acct = await connection.getTokenAccountBalance(ata)
     const senderBalance = acct.value.uiAmount ?? 0
+    console.log(`[private-send] sender balance=${senderBalance}`)
     if (senderBalance < body.amount)
       throw createError({ statusCode: 400, statusMessage: `Insufficient balance. You have ${senderBalance} but tried to send ${body.amount}.` })
   } catch (e: any) {
@@ -66,31 +74,42 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: `Token account not found. You need USDC or USDT in your wallet to send privately.` })
   }
 
+  console.log(`[private-send] exporting private key...`)
   const privy = getPrivy()
   const { private_key } = await (privy.wallets() as any).exportPrivateKey(sender.privy_wallet_id, {
     authorization_context: { authorization_private_keys: [(config as any).privyAuthorizationKey] },
   })
 
-  const rawAmount = toUmbraRawAmount(body.amount, decimals)
+  const rawAmount = toRawAmount(body.amount, decimals)
+  const cluster = (config.public as any).solanaCluster || 'mainnet-beta'
+  const network = cluster === 'devnet' ? 'devnet' : 'mainnet'
 
-  const { signature } = await umbraPrivateSend({
-    senderPrivyWalletSecret: bs58.decode(private_key),
+  console.log(`[private-send] depositing to Umbra mixer...`)
+  const depositSignature = await umbraDeposit({
+    senderSecretKey: Array.from(bs58.decode(private_key)),
     recipientAddress,
-    rawAmount,
+    rawAmount: rawAmount.toString(),
     mint: mintAddress,
     rpcUrl,
+    network,
   })
 
-  await db.from('payments').insert({
+  console.log(`[private-send] deposit done — signature=${depositSignature}`)
+
+  const { data: transfer } = await db.from('private_transfers').insert({
     sender_id: sender.id,
-    receiver_id: recipientId,
-    receiver_address: recipientAddress,
+    recipient_address: recipientAddress,
+    recipient_id: recipientId,
     amount: body.amount,
-    token: 'PRIVATE',
-    tx_signature: signature,
-    status: 'confirmed',
+    mint: mintAddress,
+    deposit_signature: depositSignature,
+    status: 'mixing',
     memo: body.memo ?? null,
-  })
+  }).select('id').single()
 
-  return { signature }
+  return {
+    id: transfer?.id,
+    depositSignature,
+    status: 'mixing',
+  }
 })

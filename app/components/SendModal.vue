@@ -334,7 +334,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             <!-- Private mode banner -->
             <div v-if="isPrivate" class="flex items-start gap-2.5 rounded-xl border border-violet-500/20 bg-violet-500/5 px-3.5 py-2.5 text-xs text-violet-400">
               <ShieldCheck class="h-4 w-4 shrink-0 mt-0.5" />
-              <span>Amount hidden on-chain via Umbra. Recipient receives tokens directly — no action needed.</span>
+              <span>Amount hidden on-chain. Recipient receives tokens directly.</span>
             </div>
 
             <!-- Amount -->

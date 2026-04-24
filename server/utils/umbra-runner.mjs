@@ -39,16 +39,17 @@ async function main() {
       deferMasterSeedSignature: false,
     })
 
-    // Register sender (idempotent — safe to call every time)
+    // Register sender (idempotent)
     const register = getUserRegistrationFunction({ client })
     await register({ confidential: true, anonymous: false })
 
-    // Deposit into sender's encrypted balance
-    const deposit = getPublicBalanceToEncryptedBalanceDirectDepositorFunction({ client })
     const rawAmount = BigInt(opts.rawAmount)
+
+    // Deposit from sender's public balance into sender's encrypted balance
+    const deposit = getPublicBalanceToEncryptedBalanceDirectDepositorFunction({ client })
     const depositResult = await deposit(signer.address, opts.mint, rawAmount)
 
-    // Withdraw from sender's encrypted balance directly to recipient's public ATA
+    // Withdraw from sender's encrypted balance to recipient's public ATA
     const withdraw = getEncryptedBalanceToPublicBalanceDirectWithdrawerFunction({ client })
     const withdrawResult = await withdraw(opts.recipientAddress, opts.mint, rawAmount)
 

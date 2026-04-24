@@ -18,7 +18,8 @@ export default defineNuxtConfig({
       global: 'globalThis'
     },
     optimizeDeps: {
-      include: ['@privy-io/js-sdk-core', 'buffer']
+      include: ['@privy-io/js-sdk-core', 'buffer'],
+      exclude: ['viem', '@privy-io/ethereum'],
     },
     resolve: {
       alias: {
@@ -37,7 +38,7 @@ export default defineNuxtConfig({
     },
     externals: {
       inline: ['@solana/spl-token', '@solana/web3.js', 'jayson'],
-      external: ['@umbra-privacy/sdk', '@umbra-privacy/web-zk-prover']
+      external: ['@umbra-privacy/sdk', '@umbra-privacy/web-zk-prover', 'viem', '@privy-io/ethereum']
     }
   },
 
