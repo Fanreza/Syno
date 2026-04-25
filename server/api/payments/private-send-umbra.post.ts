@@ -1,6 +1,5 @@
 import bs58 from 'bs58'
-import { umbraDeposit } from '../../utils/umbra'
-import { PRIVATE_SEND_SUPPORTED_MINTS, isPrivateSendSupported, toRawAmount } from '../../utils/private-send'
+import { privateSend, PRIVATE_SEND_SUPPORTED_MINTS, isPrivateSendSupported, toRawAmount } from '../../utils/private-send'
 
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
@@ -81,35 +80,33 @@ export default defineEventHandler(async (event) => {
   })
 
   const rawAmount = toRawAmount(body.amount, decimals)
-  const cluster = (config.public as any).solanaCluster || 'mainnet-beta'
-  const network = cluster === 'devnet' ? 'devnet' : 'mainnet'
+  const split = Math.floor(Math.random() * 5) + 1
+  const maxDelayMs = Math.floor(Math.random() * 300_000)
 
-  console.log(`[private-send] depositing to Umbra mixer...`)
-  const depositSignature = await umbraDeposit({
-    senderSecretKey: Array.from(bs58.decode(private_key)),
+  console.log(`[private-send] sending privately...`)
+  const result = await privateSend({
+    senderPrivyWalletSecret: bs58.decode(private_key),
     recipientAddress,
-    rawAmount: rawAmount.toString(),
+    rawAmount,
     mint: mintAddress,
     rpcUrl,
-    network,
+    split,
+    minDelayMs: 0,
+    maxDelayMs,
   })
 
-  console.log(`[private-send] deposit done — signature=${depositSignature}`)
+  console.log(`[private-send] done — signature=${result.signature} provider=${result.provider}`)
 
-  const { data: transfer } = await db.from('private_transfers').insert({
+  await db.from('payments').insert({
     sender_id: sender.id,
-    recipient_address: recipientAddress,
-    recipient_id: recipientId,
+    receiver_id: recipientId,
+    receiver_address: recipientAddress,
     amount: body.amount,
-    mint: mintAddress,
-    deposit_signature: depositSignature,
-    status: 'mixing',
+    token: 'PRIVATE',
+    tx_signature: result.signature,
+    status: 'confirmed',
     memo: body.memo ?? null,
-  }).select('id').single()
+  })
 
-  return {
-    id: transfer?.id,
-    depositSignature,
-    status: 'mixing',
-  }
+  return { signature: result.signature, provider: result.provider }
 })

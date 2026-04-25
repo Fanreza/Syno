@@ -16,19 +16,7 @@ export function toRawAmount(amount: number, decimals: number): bigint {
   return BigInt(Math.round(amount * Math.pow(10, decimals)))
 }
 
-type Provider = 'umbra' | 'magicblock' | 'cloak'
-
-function getProvider(): Provider {
-  const p = (process.env.PRIVATE_SEND_PROVIDER ?? 'magicblock').toLowerCase()
-  if (p === 'umbra' || p === 'magicblock' || p === 'cloak') return p
-  return 'magicblock'
-}
-
-const RUNNER: Record<Provider, string> = {
-  umbra: join(process.cwd(), 'server/utils/runners/umbra-runner.mjs'),
-  magicblock: join(process.cwd(), 'server/utils/runners/magicblock-runner.mjs'),
-  cloak: join(process.cwd(), 'server/utils/runners/cloak-runner.mjs'),
-}
+const RUNNER_PATH = join(process.cwd(), 'server/utils/runners/magicblock-runner.mjs')
 
 export interface PrivateSendOpts {
   senderPrivyWalletSecret: Uint8Array
@@ -36,7 +24,6 @@ export interface PrivateSendOpts {
   rawAmount: bigint
   mint: string
   rpcUrl: string
-  network?: string
   split?: number
   minDelayMs?: number
   maxDelayMs?: number
@@ -44,33 +31,23 @@ export interface PrivateSendOpts {
 
 export interface PrivateSendResult {
   signature: string
-  provider: Provider
-  extra?: Record<string, string>
+  provider: 'magicblock'
 }
 
 export async function privateSend(opts: PrivateSendOpts): Promise<PrivateSendResult> {
-  const provider = getProvider()
-  const runnerPath = RUNNER[provider]
-
   const input = JSON.stringify({
     senderSecretKey: Array.from(opts.senderPrivyWalletSecret),
     recipientAddress: opts.recipientAddress,
     rawAmount: opts.rawAmount.toString(),
     mint: opts.mint,
     rpcUrl: opts.rpcUrl,
-    network: opts.network ?? 'mainnet',
     split: opts.split,
     minDelayMs: opts.minDelayMs,
     maxDelayMs: opts.maxDelayMs,
   })
 
-  const result = await runChild(runnerPath, input, provider)
-  return { ...result, provider }
-}
-
-function runChild(runnerPath: string, input: string, provider: string): Promise<PrivateSendResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [runnerPath], {
+    const child = spawn(process.execPath, [RUNNER_PATH], {
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 
@@ -82,15 +59,11 @@ function runChild(runnerPath: string, input: string, provider: string): Promise<
     child.on('close', (code) => {
       try {
         const r = JSON.parse(stdout)
-        if (r.error) return reject(new Error(`[${provider}] ${r.error}`))
-        // Normalise: every runner must return at least { signature }
-        // Umbra returns { depositSignature, withdrawSignature } — use withdrawSignature as canonical
-        const signature = r.signature ?? r.withdrawSignature ?? r.depositSignature
-        if (!signature) return reject(new Error(`[${provider}] no signature in response: ${stdout}`))
-        const { signature: _s, ...extra } = r
-        resolve({ signature, provider: provider as Provider, extra })
+        if (r.error) return reject(new Error(`[magicblock] ${r.error}`))
+        if (!r.signature) return reject(new Error(`[magicblock] no signature in response: ${stdout}`))
+        resolve({ signature: r.signature, provider: 'magicblock' })
       } catch {
-        reject(new Error(`[${provider}] runner failed (exit ${code}): ${stderr || stdout}`))
+        reject(new Error(`[magicblock] runner failed (exit ${code}): ${stderr || stdout}`))
       }
     })
 

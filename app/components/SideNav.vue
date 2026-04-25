@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, User, LogOut, Scissors, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, ShieldCheck } from 'lucide-vue-next'
+import { Home, User, LogOut, Scissors, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X } from 'lucide-vue-next'
 import { createAvatar } from '@dicebear/core'
 import { bottts } from '@dicebear/collection'
 
@@ -19,7 +19,6 @@ const items = [
   { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
   { to: '/app/friends', icon: Users, label: 'Friends' },
   { to: '/app/activity', icon: Activity, label: 'Activity' },
-  { to: '/app/private', icon: ShieldCheck, label: 'Private' },
   { to: '/app/profile', icon: User, label: 'Profile' },
 ]
 
@@ -35,7 +34,6 @@ const showMore = ref(false)
 const moreItems = [
   { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
   { to: '/app/friends', icon: Users, label: 'Friends' },
-  { to: '/app/private', icon: ShieldCheck, label: 'Private' },
 ]
 
 function isActive(to: string) {
