@@ -63,7 +63,7 @@ const tokenSymbol = computed(() => {
 
     <!-- Header -->
     <div class="mb-8 flex items-center gap-3">
-      <NuxtLink to="/app/split" class="rounded-xl border border-border p-2 transition hover:bg-accent">
+      <NuxtLink to="/app/requests" class="rounded-xl border border-border p-2 transition hover:bg-accent">
         <ArrowLeft class="h-4 w-4" />
       </NuxtLink>
       <div class="flex-1 min-w-0">

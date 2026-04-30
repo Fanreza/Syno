@@ -6,10 +6,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (to.path.startsWith('/pay/')) return
   if (to.path.startsWith('/gift/')) return
 
-  const { isReady, isAuthenticated, user } = useAuth()
+  const { isReady, isAuthenticated, user, refreshAppUser } = useAuth()
 
-  // Skip wait if already authenticated — avoids blocking every navigation
-  if (!isAuthenticated.value && !isReady.value) {
+  // Wait for auth to be ready
+  if (!isReady.value) {
     await new Promise<void>((resolve) => {
       const stop = watch(isReady, (v) => {
         if (v) { stop(); resolve() }
@@ -18,6 +18,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   if (!isAuthenticated.value) return navigateTo('/login')
+
+  // If authenticated but appUser not loaded yet, fetch it now
+  if (isAuthenticated.value && !user.value) {
+    await refreshAppUser()
+  }
+
   if (!user.value && to.path !== '/onboarding') return navigateTo('/onboarding')
   if (user.value && to.path === '/onboarding') return navigateTo('/app')
 })

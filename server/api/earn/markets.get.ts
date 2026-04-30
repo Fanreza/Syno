@@ -1,20 +1,14 @@
-const CACHE_TTL_MS = 5 * 60 * 1000
+import { getCachedEarnTokens } from '../../utils/earn-tokens'
+
 let cachedMarkets: any[] | null = null
 let cacheAt = 0
 
 export default defineEventHandler(async () => {
   const now = Date.now()
-  if (cachedMarkets && now - cacheAt < CACHE_TTL_MS) return cachedMarkets
-
-  const config = useRuntimeConfig()
-  const apiKey = (config as any).jupiterApiKey || process.env.JUPITER_API_KEY || ''
+  if (cachedMarkets && now - cacheAt < 5 * 60 * 1000) return cachedMarkets
 
   try {
-    const data = await $fetch<any[]>('https://api.jup.ag/lend/v1/earn/tokens', {
-      headers: apiKey ? { 'x-api-key': apiKey } : {},
-    })
-
-    const tokens: any[] = Array.isArray(data) ? data : []
+    const tokens = await getCachedEarnTokens()
     cachedMarkets = tokens.map((d: any) => ({
       mint: d.assetAddress ?? '',
       jlMint: d.address ?? '',

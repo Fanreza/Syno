@@ -35,6 +35,7 @@ export async function getJupiterQuote(params: {
   })
   return await $fetch<JupQuote>(`${JUP}/quote?${qs.toString()}`, {
     headers: jupHeaders(),
+    retry: 0,
   })
 }
 
@@ -54,19 +55,30 @@ export function getAta(walletAddress: string, mintAddress: string): string | nul
 export async function buildJupiterSwapTx(params: {
   quote: JupQuote
   userPublicKey: string
-  destinationWallet?: string  // wallet address of recipient; ATA derived automatically
+  destinationWallet?: string
 }): Promise<string> {
-  // For SPL output tokens, Jupiter needs the recipient's ATA, not their wallet address.
-  // For SOL output, destinationTokenAccount must be omitted (wrapAndUnwrapSol handles it).
+  const SOL_MINT = 'So11111111111111111111111111111111111111112'
+  const outputMint = params.quote.outputMint
+
+  // Only pass destinationTokenAccount when output is an SPL token AND the ATA already exists.
+  // If we pass a non-existent ATA, Jupiter's simulation will fail with InvalidAccountData.
+  // When omitted, Jupiter delivers to the signer's own wallet — which is fine for direct sends.
+  // For payment links the receiver gets credited via our DB record; the swap settles to sender
+  // who then does a separate SPL transfer. But simplest correct approach: omit and let Jupiter
+  // deliver to sender, then we transfer to receiver separately.
+  // Exception: if destinationWallet === userPublicKey (self-swap), always omit.
   let destinationTokenAccount: string | undefined
-  if (params.destinationWallet) {
-    const ata = getAta(params.destinationWallet, params.quote.outputMint)
-    destinationTokenAccount = ata ?? undefined
+  if (params.destinationWallet && params.destinationWallet !== params.userPublicKey && outputMint !== SOL_MINT) {
+    // Derive receiver ATA — pass only if we're confident it exists (Jupiter will create it if not,
+    // but only when it's the signer's own ATA). For external receivers, omit to avoid InvalidAccountData.
+    // Jupiter will route output to userPublicKey's ATA by default.
+    destinationTokenAccount = undefined
   }
 
   const res = await $fetch<{ swapTransaction: string }>(`${JUP}/swap`, {
     method: 'POST',
     headers: jupHeaders(),
+    retry: 0,
     body: {
       quoteResponse: params.quote,
       userPublicKey: params.userPublicKey,

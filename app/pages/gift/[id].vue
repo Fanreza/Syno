@@ -73,8 +73,8 @@ if (import.meta.client) {
 
       <!-- Logo -->
       <div class="mb-8 flex items-center justify-center gap-2">
-        <img src="/icon.jpeg" alt="Payra" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
-        <span class="text-lg font-bold tracking-tight">Payra</span>
+        <img src="/syno-logo.jpeg" alt="Syno" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
+        <span class="text-lg font-bold tracking-tight">Syno</span>
       </div>
 
       <!-- Not found -->
@@ -83,7 +83,7 @@ if (import.meta.client) {
         <h2 class="mt-3 text-lg font-bold">Gift not found</h2>
         <p class="mt-2 text-sm text-muted-foreground">This link may be invalid or expired.</p>
         <NuxtLink to="/" class="mt-5 inline-block rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90">
-          Go to Payra
+          Go to Syno
         </NuxtLink>
       </div>
 
@@ -172,7 +172,7 @@ if (import.meta.client) {
           </template>
 
           <p class="text-center text-xs text-muted-foreground">
-            Powered by <span class="font-semibold text-foreground">Payra</span> on Solana
+            Powered by <span class="font-semibold text-foreground">Syno</span> on Solana
           </p>
         </div>
       </div>

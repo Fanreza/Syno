@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, User, LogOut, Scissors, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X } from 'lucide-vue-next'
+import { Home, User, LogOut, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, Link } from 'lucide-vue-next'
 import { createAvatar } from '@dicebear/core'
 import { bottts } from '@dicebear/collection'
 
@@ -15,7 +15,7 @@ const avatarDataUrl = computed(() => {
 
 const items = [
   { to: '/app', icon: Home, label: 'Home' },
-  { to: '/app/split', icon: Scissors, label: 'Splits' },
+  { to: '/app/requests', icon: Link, label: 'Requests' },
   { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
   { to: '/app/friends', icon: Users, label: 'Friends' },
   { to: '/app/activity', icon: Activity, label: 'Activity' },
@@ -25,8 +25,8 @@ const items = [
 // Bottom bar: 4 core items + More button
 const bottomItems = [
   { to: '/app', icon: Home, label: 'Home' },
+  { to: '/app/requests', icon: Link, label: 'Requests' },
   { to: '/app/activity', icon: Activity, label: 'Activity' },
-  { to: '/app/split', icon: Scissors, label: 'Splits' },
   { to: '/app/profile', icon: User, label: 'Profile' },
 ]
 
@@ -47,8 +47,8 @@ function isActive(to: string) {
   <aside class="hidden md:flex h-screen w-60 shrink-0 flex-col border-r border-border bg-card sticky top-0">
     <!-- Logo -->
     <div class="flex items-center gap-2.5 px-6 py-5 border-b border-border">
-      <img src="/icon.jpeg" alt="Payra" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
-      <span class="text-lg font-bold tracking-tight">Payra</span>
+      <img src="/syno-logo.jpeg" alt="Syno" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
+      <span class="text-lg font-bold tracking-tight">Syno</span>
     </div>
 
     <!-- User pill -->

@@ -14,12 +14,12 @@ const tickerItems = [
 
 const faqItems = [
   {
-    q: 'Is Payra free?',
+    q: 'Is Syno free?',
     a: 'Sending and receiving costs nothing. Solana network fees are usually under $0.001. If you use auto-convert, Jupiter charges a small routing fee that you see before confirming.',
   },
   {
     q: 'Do I need a crypto wallet to sign up?',
-    a: 'No. Sign up with email or Google and Payra creates a Solana wallet for you. You can also connect Phantom or Solflare if you already have one.',
+    a: 'No. Sign up with email or Google and Syno creates a Solana wallet for you. You can also connect Phantom or Solflare if you already have one.',
   },
   {
     q: 'How do private transactions work?',
@@ -39,7 +39,7 @@ const faqItems = [
   },
   {
     q: 'Who controls the wallet keys?',
-    a: "Privy manages the embedded wallet. The private key never touches Payra's servers or your browser. You can also export it anytime from your profile.",
+    a: "Privy manages the embedded wallet. The private key never touches Syno's servers or your browser. You can also export it anytime from your profile.",
   },
   {
     q: 'Which network is this on?',
@@ -84,8 +84,8 @@ onMounted(() => {
     <header class="fixed top-0 z-50 w-full border-b border-border/40 bg-white/80 backdrop-blur-xl">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-5 md:px-10 py-4">
         <div class="flex items-center gap-2.5">
-          <img src="/icon.jpeg" alt="Payra" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
-          <span class="text-lg font-bold tracking-tight">Payra</span>
+          <img src="/syno-logo.jpeg" alt="Syno" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
+          <span class="text-lg font-bold tracking-tight">Syno</span>
         </div>
         <div class="flex items-center gap-3 md:gap-6">
           <a href="#features" class="hidden md:block text-sm text-muted-foreground transition hover:text-foreground">Features</a>
@@ -229,7 +229,7 @@ onMounted(() => {
     <section id="features" class="py-20 md:py-32">
       <div class="mx-auto max-w-6xl px-5 md:px-10">
         <div class="mb-12 md:mb-20 text-center">
-          <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-primary/70">Why Payra</p>
+          <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-primary/70">Why Syno</p>
           <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight">What makes it<br />different.</h2>
         </div>
 
@@ -275,7 +275,7 @@ onMounted(() => {
             </div>
             <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">Your money,<br />your business.</h3>
             <p class="mb-6 text-base md:text-lg leading-relaxed text-muted-foreground">
-              On-chain transactions are public by default. Anyone can look up your wallet and see exactly what you sent, to whom, and when. Payra routes payments through a privacy layer so that doesn't happen.
+              On-chain transactions are public by default. Anyone can look up your wallet and see exactly what you sent, to whom, and when. Syno routes payments through a privacy layer so that doesn't happen.
             </p>
             <ul class="space-y-3 text-left">
               <li v-for="t in ['Amount hidden from public explorers', 'Recipient address not exposed on-chain', 'Only the two parties can see the details']" :key="t"
@@ -418,7 +418,7 @@ onMounted(() => {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
           <div v-for="(s, i) in [
-            { num: '01', title: 'Sign up', desc: 'Email or Google. No seed phrase, no browser extension. Payra creates a Solana wallet for you.' },
+            { num: '01', title: 'Sign up', desc: 'Email or Google. No seed phrase, no browser extension. Syno creates a Solana wallet for you.' },
             { num: '02', title: 'Grab your @handle', desc: 'Pick a username once. That\'s your payment address. Share it like you\'d share a phone number.' },
             { num: '03', title: 'Start sending', desc: 'Pay by username, split a bill, or send a gift envelope. Everything is in one place.' },
           ]" :key="i" class="relative">
@@ -492,8 +492,8 @@ onMounted(() => {
       <div class="mx-auto max-w-6xl px-5 md:px-10">
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-2">
-            <img src="/icon.jpeg" alt="Payra" class="h-6 w-6 rounded-lg object-cover" />
-            <span class="text-sm font-semibold">Payra</span>
+            <img src="/syno-logo.jpeg" alt="Syno" class="h-6 w-6 rounded-lg object-cover" />
+            <span class="text-sm font-semibold">Syno</span>
           </div>
           <div class="flex items-center gap-4 md:gap-6 text-sm text-muted-foreground">
             <a href="#features" class="transition hover:text-foreground">Features</a>
@@ -503,7 +503,7 @@ onMounted(() => {
           </div>
         </div>
         <div class="mt-6 border-t border-border pt-6 text-center text-xs text-muted-foreground">
-          Built on Solana · {{ new Date().getFullYear() }} Payra. Not financial advice.
+          Built on Solana · {{ new Date().getFullYear() }} Syno. Not financial advice.
         </div>
       </div>
     </footer>

@@ -65,8 +65,8 @@ export default defineNuxtConfig({
   pwa: {
     registerType: 'autoUpdate',
     manifest: {
-      name: 'Payra',
-      short_name: 'Payra',
+      name: 'Syno',
+      short_name: 'Syno',
       description: 'Send crypto on Solana like sending a DM.',
       theme_color: '#182440',
       background_color: '#0f0f14',
@@ -113,15 +113,15 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Payra',
+      title: 'Syno',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover' },
         { name: 'theme-color', content: '#182440' },
-        { name: 'description', content: 'Payra — send crypto on Solana like sending a DM.' }
+        { name: 'description', content: 'Syno — send crypto on Solana like sending a DM.' }
       ],
       link: [
         { rel: 'manifest', href: '/manifest.webmanifest' },
-        { rel: 'icon', type: 'image/jpeg', href: '/icon.jpeg' },
+        { rel: 'icon', type: 'image/jpeg', href: '/syno-logo.jpeg' },
         { rel: 'apple-touch-icon', href: '/icon-192.png' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },

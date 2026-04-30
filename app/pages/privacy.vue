@@ -9,8 +9,8 @@ definePageMeta({ layout: false })
     <header class="sticky top-0 z-50 w-full border-b border-border/40 bg-white/80 backdrop-blur-xl">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-10 py-4">
         <NuxtLink to="/" class="flex items-center gap-2.5">
-          <img src="/icon.jpeg" alt="Payra" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
-          <span class="text-lg font-bold tracking-tight">Payra</span>
+          <img src="/syno-logo.jpeg" alt="Syno" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
+          <span class="text-lg font-bold tracking-tight">Syno</span>
         </NuxtLink>
         <NuxtLink to="/login" class="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow transition hover:opacity-90">
           Get Started
@@ -30,7 +30,7 @@ definePageMeta({ layout: false })
 
         <section>
           <h2 class="mb-3 text-xl font-bold">1. What we collect</h2>
-          <p class="mb-3 text-muted-foreground">When you use Payra, we collect:</p>
+          <p class="mb-3 text-muted-foreground">When you use Syno, we collect:</p>
           <ul class="space-y-2 text-muted-foreground">
             <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" /><span><strong class="text-foreground">Account info</strong> — email address, username, and Solana wallet address</span></li>
             <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" /><span><strong class="text-foreground">Transaction data</strong> — amounts, recipients, timestamps, and optional memos you add</span></li>
@@ -44,7 +44,7 @@ definePageMeta({ layout: false })
         <section>
           <h2 class="mb-3 text-xl font-bold">2. How we use it</h2>
           <ul class="space-y-2 text-muted-foreground">
-            <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />to operate and improve the Payra service</li>
+            <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />to operate and improve the Syno service</li>
             <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />to send you transactional emails (payment confirmations, split reminders)</li>
             <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />to detect and prevent fraud or abuse</li>
             <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />to comply with applicable law</li>
@@ -68,7 +68,7 @@ definePageMeta({ layout: false })
 
         <section>
           <h2 class="mb-3 text-xl font-bold">4. Blockchain data</h2>
-          <p class="text-muted-foreground">Transactions on Solana are recorded on a public blockchain. While Payra's private transaction feature obscures details within the app, the underlying on-chain records may still be visible to anyone with technical knowledge. We cannot remove or alter blockchain data.</p>
+          <p class="text-muted-foreground">Transactions on Solana are recorded on a public blockchain. While Syno's private transaction feature obscures details within the app, the underlying on-chain records may still be visible to anyone with technical knowledge. We cannot remove or alter blockchain data.</p>
         </section>
 
         <div class="h-px bg-border" />
@@ -88,7 +88,7 @@ definePageMeta({ layout: false })
             <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />ask us to correct inaccurate data</li>
             <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/40" />delete your account and associated data</li>
           </ul>
-          <p class="mt-3 text-muted-foreground">Email <a href="mailto:privacy@payra.app" class="font-medium text-primary hover:underline">privacy@payra.app</a> to make any of these requests.</p>
+          <p class="mt-3 text-muted-foreground">Email <a href="mailto:privacy@syno.app" class="font-medium text-primary hover:underline">privacy@syno.app</a> to make any of these requests.</p>
         </section>
 
         <div class="h-px bg-border" />
@@ -102,7 +102,7 @@ definePageMeta({ layout: false })
 
         <section>
           <h2 class="mb-3 text-xl font-bold">8. Contact</h2>
-          <p class="text-muted-foreground">Questions about privacy? Email us at <a href="mailto:privacy@payra.app" class="font-medium text-primary hover:underline">privacy@payra.app</a>.</p>
+          <p class="text-muted-foreground">Questions about privacy? Email us at <a href="mailto:privacy@syno.app" class="font-medium text-primary hover:underline">privacy@syno.app</a>.</p>
         </section>
 
       </div>
@@ -112,8 +112,8 @@ definePageMeta({ layout: false })
     <footer class="border-t border-border py-8">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-10">
         <div class="flex items-center gap-2">
-          <img src="/icon.jpeg" alt="Payra" class="h-6 w-6 rounded-lg object-cover" />
-          <span class="text-sm font-semibold">Payra</span>
+          <img src="/syno-logo.jpeg" alt="Syno" class="h-6 w-6 rounded-lg object-cover" />
+          <span class="text-sm font-semibold">Syno</span>
         </div>
         <div class="flex items-center gap-6 text-xs text-muted-foreground">
           <NuxtLink to="/terms" class="hover:text-foreground transition">Terms</NuxtLink>

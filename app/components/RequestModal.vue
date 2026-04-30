@@ -29,27 +29,14 @@ const loadingPrice = ref(false)
 // Fetch token price when token changes
 watch(outputToken, async (t) => {
   tokenPrice.value = null
-  if (t.address === SOL_TOKEN.address) {
-    loadingPrice.value = true
-    try {
-      const r = await $fetch<any>('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
-      tokenPrice.value = r.solana.usd
-    } catch {} finally { loadingPrice.value = false }
-    return
-  }
   loadingPrice.value = true
   try {
-    const r = await $fetch<any>(`https://api.jup.ag/price/v2?ids=${t.address}`)
-    tokenPrice.value = r?.data?.[t.address]?.price ?? null
+    const r = await $fetch<any>(`/api/tokens/price?ids=${t.address}`)
+    tokenPrice.value = parseFloat(r?.data?.[t.address]?.price ?? '0') || null
   } catch {} finally { loadingPrice.value = false }
 }, { immediate: true })
 
-onMounted(async () => {
-  try {
-    const r = await $fetch<any>('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
-    tokenPrice.value = r.solana.usd
-  } catch {}
-})
+// price is loaded by the watch above on mount (immediate: true), no need for separate onMounted fetch
 
 function onAmountInput(e: Event) {
   let s = (e.target as HTMLInputElement).value.replace(/[^0-9.]/g, '')

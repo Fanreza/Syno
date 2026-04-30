@@ -9,8 +9,8 @@ definePageMeta({ layout: false })
     <header class="sticky top-0 z-50 w-full border-b border-border/40 bg-white/80 backdrop-blur-xl">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-10 py-4">
         <NuxtLink to="/" class="flex items-center gap-2.5">
-          <img src="/icon.jpeg" alt="Payra" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
-          <span class="text-lg font-bold tracking-tight">Payra</span>
+          <img src="/syno-logo.jpeg" alt="Syno" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
+          <span class="text-lg font-bold tracking-tight">Syno</span>
         </NuxtLink>
         <NuxtLink to="/login" class="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow transition hover:opacity-90">
           Get Started
@@ -30,14 +30,14 @@ definePageMeta({ layout: false })
 
         <section>
           <h2 class="mb-3 text-xl font-bold">1. Acceptance of terms</h2>
-          <p class="text-muted-foreground">By creating an account or using Payra, you agree to these terms. If you do not agree, do not use the service. These terms apply to all users, regardless of how you sign up.</p>
+          <p class="text-muted-foreground">By creating an account or using Syno, you agree to these terms. If you do not agree, do not use the service. These terms apply to all users, regardless of how you sign up.</p>
         </section>
 
         <div class="h-px bg-border" />
 
         <section>
-          <h2 class="mb-3 text-xl font-bold">2. What Payra is</h2>
-          <p class="text-muted-foreground">Payra is a non-custodial payment tool built on the Solana blockchain. We help you send, receive, and split crypto payments using a simple username system. Payra does not hold your funds. All transactions are executed directly on-chain.</p>
+          <h2 class="mb-3 text-xl font-bold">2. What Syno is</h2>
+          <p class="text-muted-foreground">Syno is a non-custodial payment tool built on the Solana blockchain. We help you send, receive, and split crypto payments using a simple username system. Syno does not hold your funds. All transactions are executed directly on-chain.</p>
         </section>
 
         <div class="h-px bg-border" />
@@ -57,7 +57,7 @@ definePageMeta({ layout: false })
 
         <section>
           <h2 class="mb-3 text-xl font-bold">4. Prohibited use</h2>
-          <p class="mb-3 text-muted-foreground">You may not use Payra to:</p>
+          <p class="mb-3 text-muted-foreground">You may not use Syno to:</p>
           <ul class="space-y-2 text-muted-foreground">
             <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive/40" />launder money or finance illegal activity</li>
             <li class="flex items-start gap-2"><span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive/40" />impersonate another person or entity</li>
@@ -70,21 +70,21 @@ definePageMeta({ layout: false })
 
         <section>
           <h2 class="mb-3 text-xl font-bold">5. Blockchain transactions</h2>
-          <p class="text-muted-foreground">All transactions on Payra are executed on the Solana blockchain. Blockchain transactions are irreversible once confirmed. Payra cannot reverse, cancel, or recover funds from completed transactions. You are solely responsible for verifying recipient details before sending.</p>
+          <p class="text-muted-foreground">All transactions on Syno are executed on the Solana blockchain. Blockchain transactions are irreversible once confirmed. Syno cannot reverse, cancel, or recover funds from completed transactions. You are solely responsible for verifying recipient details before sending.</p>
         </section>
 
         <div class="h-px bg-border" />
 
         <section>
           <h2 class="mb-3 text-xl font-bold">6. Fees</h2>
-          <p class="text-muted-foreground">Payra does not charge fees for basic transfers. Solana network fees (gas) are minimal and paid automatically. Auto-convert transactions via Jupiter may include a small routing fee. We will always show you the estimated cost before you confirm.</p>
+          <p class="text-muted-foreground">Syno does not charge fees for basic transfers. Solana network fees (gas) are minimal and paid automatically. Auto-convert transactions via Jupiter may include a small routing fee. We will always show you the estimated cost before you confirm.</p>
         </section>
 
         <div class="h-px bg-border" />
 
         <section>
           <h2 class="mb-3 text-xl font-bold">7. Limitation of liability</h2>
-          <p class="text-muted-foreground">Payra is provided as-is. We are not liable for losses resulting from blockchain congestion, bugs in third-party protocols, your own error in sending to a wrong address, or any force majeure event. Our total liability to you will not exceed the fees you have paid us in the 30 days prior to the claim.</p>
+          <p class="text-muted-foreground">Syno is provided as-is. We are not liable for losses resulting from blockchain congestion, bugs in third-party protocols, your own error in sending to a wrong address, or any force majeure event. Our total liability to you will not exceed the fees you have paid us in the 30 days prior to the claim.</p>
         </section>
 
         <div class="h-px bg-border" />
@@ -98,7 +98,7 @@ definePageMeta({ layout: false })
 
         <section>
           <h2 class="mb-3 text-xl font-bold">9. Contact</h2>
-          <p class="text-muted-foreground">Questions? Email us at <a href="mailto:legal@payra.app" class="font-medium text-primary hover:underline">legal@payra.app</a>.</p>
+          <p class="text-muted-foreground">Questions? Email us at <a href="mailto:legal@syno.app" class="font-medium text-primary hover:underline">legal@syno.app</a>.</p>
         </section>
 
       </div>
@@ -108,8 +108,8 @@ definePageMeta({ layout: false })
     <footer class="border-t border-border py-8">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-10">
         <div class="flex items-center gap-2">
-          <img src="/icon.jpeg" alt="Payra" class="h-6 w-6 rounded-lg object-cover" />
-          <span class="text-sm font-semibold">Payra</span>
+          <img src="/syno-logo.jpeg" alt="Syno" class="h-6 w-6 rounded-lg object-cover" />
+          <span class="text-sm font-semibold">Syno</span>
         </div>
         <div class="flex items-center gap-6 text-xs text-muted-foreground">
           <NuxtLink to="/terms" class="hover:text-foreground transition">Terms</NuxtLink>

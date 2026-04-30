@@ -119,7 +119,8 @@ export default defineEventHandler(async (event) => {
   const needsSwap = inputMint !== outputMint
 
   if (needsSwap) {
-    // ── Jupiter swap: payer pays with inputMint, receiver gets outputMint ──
+    // ── Jupiter swap: payer pays with inputMint, gets outputMint in their wallet ──
+    // Then we do a second SPL/SOL transfer from sender to receiver.
     const outDecimals = body.decimals ?? await getTokenDecimals(outputMint)
     const outUnits = Math.round(body.amount * Math.pow(10, outDecimals))
 
@@ -138,18 +139,31 @@ export default defineEventHandler(async (event) => {
 
     let swapTxBase64: string
     try {
-      swapTxBase64 = await buildJupiterSwapTx({ quote, userPublicKey: sender.wallet_address, destinationWallet: toAddress })
+      // destinationWallet omitted — swap settles to sender's own wallet
+      swapTxBase64 = await buildJupiterSwapTx({ quote, userPublicKey: sender.wallet_address })
     } catch (e: any) {
       throw createError({ statusCode: 502, statusMessage: `Jupiter swap build failed: ${e.message}` })
     }
 
-    // Jupiter returns a transaction with fresh blockhash — use signAndSendTransaction directly
-    const result = await (privy.wallets() as any).solana().signAndSendTransaction(
+    // Step 1: execute swap (output lands in sender's wallet)
+    const swapResult = await (privy.wallets() as any).solana().signAndSendTransaction(
       sender.privy_wallet_id,
       { caip2: config.solanaCaip2, transaction: swapTxBase64, ...authCtx }
     )
-    signature = result.signature ?? result.hash ?? result
+    const swapSig = swapResult.signature ?? swapResult.hash ?? swapResult
     actualAmount = Number(quote.outAmount) / Math.pow(10, outDecimals)
+
+    // Step 2: transfer swapped tokens from sender to receiver
+    const connection = new Connection(config.solanaRpcUrl as string, 'confirmed')
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+    let transferTxBase64: string
+    if (outputMint === SOL_MINT) {
+      transferTxBase64 = await buildTransferSolTx(sender.wallet_address, toAddress!, actualAmount, blockhash)
+    } else {
+      transferTxBase64 = await buildTransferSplTx(sender.wallet_address, toAddress!, outputMint, actualAmount, outDecimals, blockhash)
+    }
+    signature = await signAndBroadcast(privy, sender.privy_wallet_id, transferTxBase64, connection, blockhash, lastValidBlockHeight, authCtx)
+    void swapSig // swap signature logged but transfer signature is the canonical one
 
   } else if (inputMint === SOL_MINT) {
     // ── Direct SOL transfer ────────────────────────────────────────────────

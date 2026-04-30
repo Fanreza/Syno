@@ -86,7 +86,7 @@ export function useAuth() {
   async function loginWithGoogle() {
     const redirectURI = `${window.location.origin}/auth/callback`
     const result = await privy().auth.oauth.generateURL('google', redirectURI)
-    localStorage.setItem('payra:oauth-provider', 'google')
+    localStorage.setItem('syno:oauth-provider', 'google')
     window.location.assign(result.url)
   }
 

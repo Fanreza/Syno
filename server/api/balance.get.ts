@@ -5,9 +5,16 @@ let _solPriceFetchedAt = 0
 async function getCachedSolPrice(): Promise<number> {
   const now = Date.now()
   if (_solPriceCache > 0 && now - _solPriceFetchedAt < 60_000) return _solPriceCache
+  const SOL_MINT = 'So11111111111111111111111111111111111111112'
   try {
-    const res = await $fetch<any>('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
-    const price = res?.solana?.usd
+    const config = useRuntimeConfig()
+    const headers: Record<string, string> = {}
+    if (config.jupiterApiKey) headers['x-api-key'] = config.jupiterApiKey as string
+    const res = await $fetch<Record<string, { usdPrice: number }>>(`https://api.jup.ag/price/v3?ids=${SOL_MINT}`, {
+      headers,
+      retry: 0,
+    })
+    const price = res?.[SOL_MINT]?.usdPrice
     if (price) { _solPriceCache = price; _solPriceFetchedAt = now }
   } catch { /* keep stale value */ }
   return _solPriceCache
@@ -23,10 +30,12 @@ export default defineEventHandler(async (event) => {
   const [lamportsRes, assetsRes, solPrice]: [any, any, number] = await Promise.all([
     $fetch<any>(rpcUrl, {
       method: 'POST',
+      retry: 0,
       body: { jsonrpc: '2.0', id: 1, method: 'getBalance', params: [address] },
     }).catch(() => null),
     $fetch<any>(rpcUrl, {
       method: 'POST',
+      retry: 0,
       body: {
         jsonrpc: '2.0', id: 2, method: 'getAssetsByOwner',
         params: { ownerAddress: address, page: 1, limit: 100, displayOptions: { showFungible: true, showNativeBalance: true } },

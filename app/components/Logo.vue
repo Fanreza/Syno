@@ -28,8 +28,8 @@ const roundedClass = computed(() => {
 
 <template>
   <img
-    src="/icon.jpeg"
-    alt="Payra"
+    src="/syno-logo.jpeg"
+    alt="Syno"
     :class="cn(sizeClass, roundedClass, 'object-cover ring-1 ring-border shadow-sm', props.class)"
   />
 </template>

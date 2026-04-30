@@ -1,12 +1,13 @@
-import { authorizationContext } from '../../utils/privy'
-import { getTokenBalance, getConnection } from '../../utils/solana'
+import BN from 'bn.js'
 import { VersionedTransaction } from '@solana/web3.js'
+import { authorizationContext } from '../../utils/privy'
+import { buildEarnDepositTx } from '../../utils/jupiter-lend'
+import { getConnection, getTokenBalance } from '../../utils/solana'
 
 async function signAndBroadcastLendTx(privy: any, walletId: string, base64Tx: string): Promise<string> {
   const connection = getConnection()
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
 
-  // Rebuild tx with fresh blockhash using decompile — Jupiter Lend tx is legacy, not versioned
   const buf = Buffer.from(base64Tx, 'base64')
   let serializedTx: string
   try {
@@ -20,7 +21,6 @@ async function signAndBroadcastLendTx(privy: any, walletId: string, base64Tx: st
     serializedTx = Buffer.from(tx.serialize({ requireAllSignatures: false, verifySignatures: false })).toString('base64')
   }
 
-  // Sign only — we broadcast ourselves so we control timing
   const signResponse = await (privy.wallets() as any).solana().signTransaction(walletId, {
     transaction: serializedTx,
     ...authorizationContext(),
@@ -48,16 +48,11 @@ export default defineEventHandler(async (event) => {
     .single()
   if (!me?.privy_wallet_id) throw createError({ statusCode: 400, statusMessage: 'Wallet not found' })
 
-  const config = useRuntimeConfig()
   const privy = getPrivy()
-  const apiKey = (config as any).jupiterApiKey || process.env.JUPITER_API_KEY || ''
-  const headers: Record<string, string> = apiKey ? { 'x-api-key': apiKey } : {}
-
   const inputMint = body.inputMint ?? body.mint
   const vaultMint = body.mint
   const rawAmount = Math.round(body.amount * Math.pow(10, body.decimals))
 
-  // Step 1: swap first if paying with different token
   if (inputMint !== vaultMint) {
     const quote = await getJupiterQuote({
       inputMint,
@@ -67,7 +62,6 @@ export default defineEventHandler(async (event) => {
     })
     const swapTx = await buildJupiterSwapTx({ quote, userPublicKey: me.wallet_address })
 
-    // Sign + broadcast swap ourselves so we can await confirmation before querying balance
     const swapConnection = getConnection()
     const { blockhash: swapBlockhash, lastValidBlockHeight: swapLastValid } = await swapConnection.getLatestBlockhash()
     const swapSignResponse = await (privy.wallets() as any).solana().signTransaction(
@@ -78,23 +72,13 @@ export default defineEventHandler(async (event) => {
     const swapSig = await swapConnection.sendRawTransaction(swapSigned, { skipPreflight: false })
     await swapConnection.confirmTransaction({ signature: swapSig, blockhash: swapBlockhash, lastValidBlockHeight: swapLastValid }, 'confirmed')
 
-    const depositRaw = String(await getTokenBalance(me.wallet_address, vaultMint))
-    const res = await $fetch<{ transaction: string }>('https://api.jup.ag/lend/v1/earn/deposit', {
-      method: 'POST',
-      headers,
-      body: { asset: vaultMint, signer: me.wallet_address, amount: depositRaw },
-    })
-    const signature = await signAndBroadcastLendTx(privy, me.privy_wallet_id, res.transaction)
+    const depositRaw = await getTokenBalance(me.wallet_address, vaultMint)
+    const depositTx = await buildEarnDepositTx(me.wallet_address, vaultMint, new BN(depositRaw.toString()))
+    const signature = await signAndBroadcastLendTx(privy, me.privy_wallet_id, depositTx)
     return { signature }
   }
 
-  // Step 2: direct deposit — same token
-  const res = await $fetch<{ transaction: string }>('https://api.jup.ag/lend/v1/earn/deposit', {
-    method: 'POST',
-    headers,
-    body: { asset: vaultMint, signer: me.wallet_address, amount: String(rawAmount) },
-  })
-
-  const signature = await signAndBroadcastLendTx(privy, me.privy_wallet_id, res.transaction)
+  const depositTx = await buildEarnDepositTx(me.wallet_address, vaultMint, new BN(String(rawAmount)))
+  const signature = await signAndBroadcastLendTx(privy, me.privy_wallet_id, depositTx)
   return { signature }
 })

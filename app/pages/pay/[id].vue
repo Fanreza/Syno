@@ -48,7 +48,15 @@ onMounted(async () => {
 })
 
 // ---- Input token picker (what payer pays with) ----
-const popularInputTokens: JupToken[] = [SOL_TOKEN, USDC_TOKEN]
+const popularInputTokens = computed<JupToken[]>(() => {
+  if (!balance.value) return [SOL_TOKEN, USDC_TOKEN]
+  const result: JupToken[] = []
+  if (balance.value.sol > 0) result.push(SOL_TOKEN)
+  for (const t of balance.value.tokens ?? []) {
+    if (t.balance > 0) result.push({ address: t.mint, symbol: t.symbol, name: t.name, decimals: 0, logoURI: t.logoURI })
+  }
+  return result.length > 0 ? result : [SOL_TOKEN, USDC_TOKEN]
+})
 const inputToken = ref<JupToken>(SOL_TOKEN)
 const showInputPicker = ref(false)
 const inputSearchQuery = ref('')
@@ -69,7 +77,7 @@ watch(inputSearchQuery, (q) => {
   }, 300)
 })
 
-const displayInputTokens = computed(() => inputSearchQuery.value ? inputSearchResults.value : popularInputTokens)
+const displayInputTokens = computed(() => inputSearchQuery.value ? inputSearchResults.value : popularInputTokens.value)
 
 function selectInputToken(token: JupToken) {
   inputToken.value = token
@@ -115,16 +123,26 @@ async function onPay() {
 const isSelf = computed(() =>
   isAuthenticated.value && user.value?.wallet_address === payment.value?.receiver_address
 )
+
+const selectedInputBalance = computed(() => {
+  if (!balance.value) return null
+  if (inputToken.value.address === SOL_MINT) {
+    return { amount: balance.value.sol, usd: balance.value.usd, symbol: 'SOL' }
+  }
+  const t = balance.value.tokens?.find((t: any) => t.mint === inputToken.value.address)
+  if (!t) return { amount: 0, usd: 0, symbol: inputToken.value.symbol }
+  return { amount: t.balance, usd: t.usd, symbol: t.symbol }
+})
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-background">
+  <div class="flex min-h-screen flex-col bg-background overflow-x-hidden">
 
     <!-- Top bar -->
     <header class="flex items-center justify-between border-b border-border px-6 py-4">
       <NuxtLink to="/" class="flex items-center gap-2">
-        <img src="/icon.jpeg" alt="Payra" class="h-7 w-7 rounded-lg object-cover" />
-        <span class="text-base font-bold tracking-tight">Payra</span>
+        <img src="/syno-logo.jpeg" alt="Syno" class="h-7 w-7 rounded-lg object-cover" />
+        <span class="text-base font-bold tracking-tight">Syno</span>
       </NuxtLink>
       <NuxtLink
         v-if="!isAuthenticated"
@@ -143,7 +161,7 @@ const isSelf = computed(() =>
     </header>
 
     <!-- Body -->
-    <main class="flex flex-1 items-start justify-center px-4 py-12">
+    <main class="flex flex-1 justify-center px-4 py-6">
       <div class="w-full max-w-sm space-y-4">
 
         <!-- Not found -->
@@ -207,20 +225,22 @@ const isSelf = computed(() =>
           </div>
 
           <!-- QR code -->
-          <div class="rounded-2xl border border-border bg-card p-5">
-            <p class="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Scan to pay</p>
-            <RequestQr :url="pageUrl" />
-            <div class="mt-4 flex items-center gap-2">
-              <div class="flex-1 rounded-xl bg-secondary px-3 py-2">
-                <p class="truncate font-mono text-xs text-muted-foreground">{{ pageUrl }}</p>
-              </div>
+          <div class="rounded-2xl border border-border bg-card p-4">
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Scan to pay</p>
               <button
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-background transition hover:bg-accent"
+                class="flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent"
                 @click="() => { navigator.clipboard.writeText(pageUrl); copiedAddr = true; setTimeout(() => copiedAddr = false, 1500) }"
               >
-                <Check v-if="copiedAddr" class="h-4 w-4 text-green-500" />
-                <Copy v-else class="h-4 w-4 text-muted-foreground" />
+                <Check v-if="copiedAddr" class="h-3.5 w-3.5 text-green-500" />
+                <Copy v-else class="h-3.5 w-3.5" />
+                {{ copiedAddr ? 'Copied!' : 'Copy link' }}
               </button>
+            </div>
+            <div class="flex justify-center">
+              <div class="w-48">
+                <RequestQr :url="pageUrl" />
+              </div>
             </div>
           </div>
 
@@ -271,7 +291,18 @@ const isSelf = computed(() =>
                       <p class="text-sm font-semibold">{{ token.symbol }}</p>
                       <p class="truncate text-xs text-muted-foreground">{{ token.name }}</p>
                     </div>
-                    <Check v-if="inputToken.address === token.address" class="h-4 w-4 shrink-0 text-primary" />
+                    <div class="text-right shrink-0">
+                      <p class="text-xs font-semibold">
+                        {{ token.address === SOL_MINT
+                          ? balance?.sol.toFixed(4)
+                          : (balance?.tokens?.find((t: any) => t.mint === token.address)?.balance ?? 0).toFixed(4) }}
+                      </p>
+                      <p class="text-xs text-muted-foreground">
+                        {{ formatUsd(token.address === SOL_MINT
+                          ? (balance?.sol ?? 0) * (balance?.solPrice ?? 0)
+                          : (balance?.tokens?.find((t: any) => t.mint === token.address)?.usd ?? 0)) }}
+                      </p>
+                    </div>
                   </button>
                 </div>
               </div>
@@ -281,9 +312,12 @@ const isSelf = computed(() =>
               </p>
 
               <!-- Balance -->
-              <div v-if="isAuthenticated && balance" class="mt-3 flex items-center justify-between rounded-xl bg-secondary px-4 py-2.5 text-xs">
+              <div v-if="isAuthenticated && balance && selectedInputBalance" class="mt-3 flex items-center justify-between rounded-xl bg-secondary px-4 py-2.5 text-xs">
                 <span class="text-muted-foreground">Your balance</span>
-                <span class="font-semibold">{{ balance.sol.toFixed(4) }} SOL <span class="font-normal text-muted-foreground">· {{ formatUsd(balance.usd) }}</span></span>
+                <span class="font-semibold">
+                  {{ selectedInputBalance.amount.toFixed(4) }} {{ selectedInputBalance.symbol }}
+                  <span v-if="selectedInputBalance.usd" class="font-normal text-muted-foreground">· {{ formatUsd(selectedInputBalance.usd) }}</span>
+                </span>
               </div>
             </div>
 
@@ -306,7 +340,7 @@ const isSelf = computed(() =>
             </button>
 
             <p class="text-center text-xs text-muted-foreground">
-              Powered by <span class="font-semibold text-foreground">Payra</span> on Solana
+              Powered by <span class="font-semibold text-foreground">Syno</span> on Solana
             </p>
           </div>
 

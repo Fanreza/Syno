@@ -92,6 +92,7 @@ watch(user, (u) => {
   }
 }, { immediate: true })
 
+
 const showSend = ref(false)
 const showSplit = ref(false)
 const showGift = ref(false)

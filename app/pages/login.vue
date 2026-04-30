@@ -18,7 +18,7 @@ watchEffect(() => {
   <div class="flex min-h-screen flex-col items-center justify-center bg-background">
     <div class="mb-8 text-center">
       <Logo size="lg" class="mx-auto mb-4" />
-      <h1 class="text-2xl font-bold tracking-tight">Payra</h1>
+      <h1 class="text-2xl font-bold tracking-tight">Syno</h1>
       <p class="mt-2 text-sm text-muted-foreground">Send crypto like sending a DM</p>
     </div>
     <button

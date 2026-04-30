@@ -37,7 +37,7 @@ watchDebounced(recipientRaw, async (v) => {
 
   if (looksLikeAddress(val)) {
     if (!isRawAddress(val)) { recipientStatus.value = 'invalid-address'; recipientUser.value = null; return }
-    // Valid Solana address — lookup if registered on Payra
+    // Valid Solana address — lookup if registered on Syno
     recipientStatus.value = 'searching'; recipientUser.value = null
     try {
       const results = await $fetch<{ username: string; wallet_address: string }[]>('/api/users/search', { query: { q: val } })
@@ -70,16 +70,9 @@ watch(inputToken, async (t) => {
   tokenPrice.value = null
   currency.value = 'TOKEN'
   amountRaw.value = ''
-  if (t.address === SOL_TOKEN.address) {
-    try {
-      const r = await $fetch<{ solana: { usd: number } }>('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
-      tokenPrice.value = r.solana.usd
-    } catch {}
-    return
-  }
   try {
-    const r = await $fetch<any>(`https://api.jup.ag/price/v2?ids=${t.address}`)
-    tokenPrice.value = r?.data?.[t.address]?.price ?? null
+    const r = await $fetch<any>(`/api/tokens/price?ids=${t.address}`)
+    tokenPrice.value = parseFloat(r?.data?.[t.address]?.price ?? '0') || null
   } catch {}
 }, { immediate: true })
 

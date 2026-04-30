@@ -29,10 +29,10 @@ type OnChainTx = {
 }
 
 // Tabs
-const tab = ref<'payra' | 'onchain'>('payra')
+const tab = ref<'syno' | 'onchain'>('syno')
 const filter = ref<'all' | 'sent' | 'received' | 'split' | 'gift_claim'>('all')
 
-// Payra activity
+// Syno activity
 const { data: activity, refresh: refreshActivity, pending: loadingActivity } = useAsyncData(
   'activity-page',
   () => apiFetch<ActivityItem[]>('/api/activity'),
@@ -80,7 +80,7 @@ function activityLabel(item: ActivityItem) {
 }
 
 function refresh() {
-  if (tab.value === 'payra') refreshActivity()
+  if (tab.value === 'syno') refreshActivity()
   else refreshHistory()
 }
 </script>
@@ -105,7 +105,7 @@ function refresh() {
     <!-- Tabs -->
     <div class="mb-5 flex gap-1 rounded-xl border border-border bg-secondary p-1 w-fit">
       <button
-        v-for="t in [{ key: 'payra', label: 'Payra' }, { key: 'onchain', label: 'On-chain' }]"
+        v-for="t in [{ key: 'syno', label: 'Syno' }, { key: 'onchain', label: 'On-chain' }]"
         :key="t.key"
         class="rounded-lg px-4 py-1.5 text-sm font-medium transition"
         :class="tab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
@@ -116,7 +116,7 @@ function refresh() {
     </div>
 
     <!-- ── PAYRA TAB ── -->
-    <div v-if="tab === 'payra'">
+    <div v-if="tab === 'syno'">
 
       <!-- Filter pills -->
       <div class="mb-4 flex items-center gap-2">
