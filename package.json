@@ -11,7 +11,6 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
-    "@cloak.dev/sdk": "^0.1.4",
     "@dicebear/collection": "^9.4.2",
     "@dicebear/core": "^9.4.2",
     "@jup-ag/lend": "^0.1.9",
@@ -23,8 +22,6 @@
     "@solana/web3.js": "^1.95.4",
     "@supabase/supabase-js": "^2.104.1",
     "@tailwindcss/vite": "^4.1.0",
-    "@umbra-privacy/sdk": "^4.0.0",
-    "@umbra-privacy/web-zk-prover": "^2.0.1",
     "@vueuse/core": "^14.2.1",
     "@wallet-standard/app": "^1.1.0",
     "@wallet-standard/wallet": "^1.1.0",
