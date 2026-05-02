@@ -5,7 +5,7 @@ import { POPULAR_TOKENS } from '~/utils/tokens'
 import { formatUsd } from '~/utils'
 import { useBalance } from '~/composables/useBalance'
 
-const props = defineProps<{ label?: string; filter?: string[] }>()
+const props = defineProps<{ label?: string; filter?: string[]; exclude?: string[]; tokenLogos?: Record<string, string> }>()
 const modelValue = defineModel<JupToken>({ required: true })
 
 const { balance } = useBalance()
@@ -42,6 +42,10 @@ function tokenUsd(address: string): number {
   return balance.value.tokens.find((t: any) => t.mint === address)?.usd ?? 0
 }
 
+function resolveLogoURI(mint: string, logoURI?: string | null): string | undefined {
+  return props.tokenLogos?.[mint] ?? logoURI ?? undefined
+}
+
 const popularSorted = computed(() => {
   const extra: JupToken[] = (balance.value?.tokens ?? [])
     .filter((t: any) => !POPULAR_TOKENS.some(p => p.address === t.mint) && t.balance > 0)
@@ -50,14 +54,19 @@ const popularSorted = computed(() => {
       symbol: t.symbol,
       name: t.name ?? t.symbol,
       decimals: 6,
-      logoURI: t.logoURI ?? undefined,
+      logoURI: resolveLogoURI(t.mint, t.logoURI),
     }))
-  return [...POPULAR_TOKENS, ...extra].sort((a, b) => tokenUsd(b.address) - tokenUsd(a.address))
+  const popular = POPULAR_TOKENS.map(t => ({
+    ...t,
+    logoURI: resolveLogoURI(t.address, t.logoURI),
+  }))
+  return [...popular, ...extra].sort((a, b) => tokenUsd(b.address) - tokenUsd(a.address))
 })
 
 const displayed = computed(() => {
-  const list = query.value ? results.value : popularSorted.value
-  if (props.filter) return list.filter(t => props.filter!.includes(t.address))
+  let list = query.value ? results.value : popularSorted.value
+  if (props.filter) list = list.filter(t => props.filter!.includes(t.address))
+  if (props.exclude) list = list.filter(t => !props.exclude!.includes(t.address))
   return list
 })
 
@@ -88,28 +97,28 @@ onMounted(() => {
     <!-- Trigger -->
     <button
       type="button"
-      class="flex w-full items-center gap-3 rounded-xl border border-border bg-secondary px-4 py-3 transition hover:bg-accent"
+      class="flex shrink-0 items-center gap-2 rounded-xl border border-border bg-secondary px-3 py-2 transition hover:bg-accent"
       @click="open = !open"
     >
-      <img v-if="modelValue.logoURI" :src="modelValue.logoURI" :alt="modelValue.symbol" class="h-7 w-7 rounded-full object-cover" />
-      <div v-else class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
+      <img v-if="modelValue.logoURI" :src="modelValue.logoURI" :alt="modelValue.symbol" class="h-6 w-6 rounded-full object-cover" />
+      <div v-else class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
         {{ modelValue.symbol[0] }}
       </div>
-      <div class="flex-1 text-left">
+      <div class="text-left">
         <p class="text-sm font-semibold">{{ modelValue.symbol }}</p>
-        <p class="text-xs text-muted-foreground">{{ modelValue.name }}</p>
+        <p class="hidden text-xs text-muted-foreground sm:block">{{ modelValue.name }}</p>
       </div>
       <ChevronDown class="h-4 w-4 shrink-0 text-muted-foreground transition-transform" :class="open ? 'rotate-180' : ''" />
     </button>
 
     <!-- Dropdown -->
-    <div v-if="open" class="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+    <div v-if="open" class="absolute right-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
       <!-- Search input -->
       <div class="flex items-center gap-2 border-b border-border px-3 py-2.5">
         <Search class="h-4 w-4 shrink-0 text-muted-foreground" />
         <input
           v-model="query"
-          placeholder="Search by name, symbol, or paste CA..."
+          placeholder="Search by name, symbol, or paste address..."
           autofocus
           class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />

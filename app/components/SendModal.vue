@@ -3,61 +3,36 @@ import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } f
 import Input from '~/components/ui/input/Input.vue'
 import { Button } from '~/components/ui/button'
 import {
-  X, Search, Loader2, CheckCircle2, AlertCircle, User,
-  Coins, DollarSign, Send, ExternalLink, Users, ShieldCheck
+  X, CheckCircle2, AlertCircle, User,
+  Coins, DollarSign, Send, ExternalLink, ChevronDown, ShieldCheck
 } from 'lucide-vue-next'
-import { watchDebounced } from '@vueuse/core'
 import { shortAddr, formatUsd } from '~/utils'
+import type { Contact } from '~/components/ContactPicker.vue'
 
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
 const { balance, refresh: refreshBalance } = useBalance()
 
-// ── Friends ────────────────────────────────────────────────────────────────
-const { friends, load: loadFriends } = useFriends()
-const showFriends = ref(false)
-watch(open, (v) => { if (v) loadFriends() })
+// ── Contact picker ─────────────────────────────────────────────────────────
+const showContactPicker = ref(false)
 
 // ── Recipient ──────────────────────────────────────────────────────────────
 const recipientRaw = ref('')
-const recipientUser = ref<{ username: string; wallet_address: string } | null>(null)
-const recipientStatus = ref<'idle' | 'searching' | 'found' | 'not-found' | 'address' | 'invalid-address'>('idle')
-const isRawAddress = (v: string) => !v.startsWith('@') && isValidSolanaAddress(v)
-const looksLikeAddress = (v: string) => !v.startsWith('@') && v.length >= 32
+const recipientUser = ref<{ username: string | null; wallet_address: string } | null>(null)
+const recipientStatus = ref<'idle' | 'found' | 'address'>('idle')
+const isValidSolanaAddress = (v: string) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v)
 
-function selectRecipient(u: { username: string; wallet_address: string }) {
-  recipientRaw.value = '@' + u.username
-  recipientUser.value = u
-  recipientStatus.value = 'found'
+function selectContact(c: Contact) {
+  recipientUser.value = c
+  recipientRaw.value = c.username ? '@' + c.username : c.wallet_address
+  recipientStatus.value = c.username ? 'found' : 'address'
 }
 
-watchDebounced(recipientRaw, async (v) => {
-  const val = v.trim()
-  if (!val) { recipientStatus.value = 'idle'; recipientUser.value = null; return }
+function clearRecipient() {
+  recipientRaw.value = ''; recipientUser.value = null; recipientStatus.value = 'idle'
+}
 
-  if (looksLikeAddress(val)) {
-    if (!isRawAddress(val)) { recipientStatus.value = 'invalid-address'; recipientUser.value = null; return }
-    // Valid Solana address — lookup if registered on Syno
-    recipientStatus.value = 'searching'; recipientUser.value = null
-    try {
-      const results = await $fetch<{ username: string; wallet_address: string }[]>('/api/users/search', { query: { q: val } })
-      if (results[0]) { recipientUser.value = results[0]; recipientStatus.value = 'found' }
-      else recipientStatus.value = 'address'
-    } catch { recipientStatus.value = 'address' }
-    return
-  }
-
-  const q = val.replace(/^@/, '')
-  if (q.length < 2) { recipientStatus.value = 'idle'; recipientUser.value = null; return }
-  recipientStatus.value = 'searching'; recipientUser.value = null
-  try {
-    const results = await $fetch<{ username: string; wallet_address: string }[]>('/api/users/search', { query: { q } })
-    const exact = results.find(u => u.username.toLowerCase() === q.toLowerCase())
-    const match = exact ?? results[0]
-    if (match) { recipientUser.value = match; recipientStatus.value = 'found' }
-    else recipientStatus.value = 'not-found'
-  } catch { recipientStatus.value = 'not-found' }
-}, { debounce: 400 })
+const isRawAddress = (v: string) => isValidSolanaAddress(v.trim())
 
 // ── Amount ─────────────────────────────────────────────────────────────────
 type Currency = 'TOKEN' | 'USD'
@@ -117,11 +92,6 @@ function toggleCurrency() {
 const memo = ref('')
 const isPrivate = ref(false)
 
-// Tokens supported for private transfers (Umbra: USDC + USDT)
-const PRIVATE_TOKENS = [
-  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
-  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
-]
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112'
 
@@ -140,22 +110,26 @@ const loading = ref(false)
 const error = ref('')
 const successSig = ref('')
 
-const privateTooSmall = computed(() => false)
+const exceedsBalance = computed(() => {
+  if (!selectedTokenBalance.value || amountInToken.value <= 0) return false
+  return amountInToken.value > selectedTokenBalance.value.amount
+})
 
 const canSend = computed(() =>
-  (recipientStatus.value === 'found' || recipientStatus.value === 'address') &&
-  amountInToken.value > 0 && !loading.value && !privateTooSmall.value
+  recipientUser.value !== null &&
+  amountInToken.value > 0 && !loading.value && !exceedsBalance.value
 )
 
 async function onSend() {
   error.value = ''
   loading.value = true
   try {
-    const isAddr = isRawAddress(recipientRaw.value.trim())
+    const addr = recipientUser.value?.wallet_address ?? ''
+    const uname = recipientUser.value?.username ?? null
     const endpoint = isPrivate.value ? '/api/payments/private-send-umbra' : '/api/payments/send'
     const body: Record<string, any> = {
-      toUsername: isAddr ? undefined : recipientRaw.value.trim(),
-      toAddress: isAddr ? recipientRaw.value.trim() : undefined,
+      toUsername: uname ? uname : undefined,
+      toAddress: uname ? undefined : addr,
       amount: amountInToken.value,
       memo: memo.value,
     }
@@ -168,7 +142,7 @@ async function onSend() {
     }
     const res = await apiFetch<{ signature?: string; withdrawSignature?: string }>(endpoint, { method: 'POST', body })
     successSig.value = res.withdrawSignature ?? res.signature ?? ''
-    refreshBalance()
+    await refreshBalance()
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Transaction failed'
   } finally { loading.value = false }
@@ -178,6 +152,7 @@ function reset() {
   recipientRaw.value = ''; recipientUser.value = null; recipientStatus.value = 'idle'
   amountRaw.value = ''; memo.value = ''; isPrivate.value = false
   error.value = ''; successSig.value = ''; currency.value = 'TOKEN'; inputToken.value = SOL_TOKEN
+  showContactPicker.value = false
 }
 
 watch(open, (v) => { if (!v) setTimeout(reset, 300) })
@@ -232,8 +207,9 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                 :class="isPrivate ? 'bg-violet-500/10 text-violet-500' : 'text-muted-foreground hover:bg-accent hover:text-foreground'"
                 @click="() => {
                   isPrivate = !isPrivate
-                  if (isPrivate && !PRIVATE_TOKENS.includes(inputToken.address))
-                    inputToken = POPULAR_TOKENS[1] // default to USDC
+                  const PRIVATE_MINTS = ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB']
+                  if (isPrivate && !PRIVATE_MINTS.includes(inputToken.address))
+                    inputToken = POPULAR_TOKENS.find(t => t.address === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') ?? POPULAR_TOKENS[1]
                 }"
               >
                 <ShieldCheck class="h-3.5 w-3.5" />
@@ -250,77 +226,31 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             <!-- Recipient -->
             <div>
               <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">To</label>
-              <div class="relative">
-                <div class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2">
-                  <Loader2 v-if="recipientStatus === 'searching'" class="h-4 w-4 animate-spin text-muted-foreground" />
-                  <Search v-else class="h-4 w-4 text-muted-foreground" />
-                </div>
-                <Input v-model="recipientRaw" placeholder="@username or wallet address" class="pl-10 pr-16" />
-                <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                  <button v-if="recipientRaw" class="p-1 text-muted-foreground transition hover:text-foreground" @click="recipientRaw = ''; recipientStatus = 'idle'">
-                    <X class="h-4 w-4" />
-                  </button>
-                  <button
-                    v-if="friends.length"
-                    class="p-1 transition"
-                    :class="showFriends ? 'text-primary' : 'text-muted-foreground hover:text-foreground'"
-                    @click="showFriends = !showFriends"
-                  >
-                    <Users class="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
 
-              <!-- Friends contact list -->
-              <div v-if="showFriends && friends.length" class="mt-2 overflow-hidden rounded-xl border border-border bg-card">
-                <p class="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Friends</p>
-                <button
-                  v-for="f in friends"
-                  :key="f.id"
-                  class="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-accent"
-                  @click="selectRecipient(f); showFriends = false"
-                >
-                  <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                    {{ f.username[0].toUpperCase() }}
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <p class="text-sm font-semibold">@{{ f.username }}</p>
-                    <p class="font-mono text-[10px] text-muted-foreground">{{ shortAddr(f.wallet_address, 6) }}</p>
-                  </div>
-                </button>
-              </div>
+              <!-- No recipient selected yet -->
+              <button
+                v-if="!recipientUser"
+                class="flex w-full items-center gap-3 rounded-xl border border-dashed border-border bg-secondary px-4 py-3 transition hover:bg-accent"
+                @click="showContactPicker = true"
+              >
+                <User class="h-4 w-4 text-muted-foreground" />
+                <span class="text-sm text-muted-foreground">Select contact or address…</span>
+                <ChevronDown class="ml-auto h-4 w-4 text-muted-foreground" />
+              </button>
 
-              <div v-if="recipientStatus === 'found' && recipientUser"
-                class="mt-2 flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/5 px-3 py-2.5">
+              <!-- Recipient selected -->
+              <div v-else class="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/5 px-3 py-2.5">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                  {{ recipientUser.username[0].toUpperCase() }}
+                  <span v-if="recipientUser.username">{{ recipientUser.username[0].toUpperCase() }}</span>
+                  <User v-else class="h-4 w-4" />
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-semibold">@{{ recipientUser.username }}</p>
-                  <p class="font-mono text-xs text-muted-foreground">{{ shortAddr(recipientUser.wallet_address, 6) }}</p>
+                  <p class="text-sm font-semibold">{{ recipientUser.username ? '@' + recipientUser.username : 'Wallet address' }}</p>
+                  <p class="font-mono text-xs text-muted-foreground">{{ shortAddr(recipientUser.wallet_address, 8) }}</p>
                 </div>
-                <CheckCircle2 class="h-4 w-4 shrink-0 text-green-500" />
-              </div>
-              <div v-else-if="recipientStatus === 'address'"
-                class="mt-2 flex items-center gap-3 rounded-xl border border-blue-500/20 bg-blue-500/5 px-3 py-2.5">
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-500">
-                  <User class="h-4 w-4" />
-                </div>
-                <div class="flex-1">
-                  <p class="text-sm font-semibold">Wallet address</p>
-                  <p class="font-mono text-xs text-muted-foreground">{{ shortAddr(recipientRaw.trim(), 8) }}</p>
-                </div>
-                <CheckCircle2 class="h-4 w-4 shrink-0 text-blue-500" />
-              </div>
-              <div v-else-if="recipientStatus === 'not-found'"
-                class="mt-2 flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-                <AlertCircle class="h-4 w-4 shrink-0" />
-                No user found
-              </div>
-              <div v-else-if="recipientStatus === 'invalid-address'"
-                class="mt-2 flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-                <AlertCircle class="h-4 w-4 shrink-0" />
-                Invalid Solana address
+                <button class="shrink-0 rounded-lg p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground" @click="clearRecipient">
+                  <X class="h-4 w-4" />
+                </button>
               </div>
             </div>
 
@@ -333,7 +263,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             <!-- Amount -->
             <div>
               <div class="mb-1 flex items-center justify-between">
-                <TokenPicker v-model="inputToken" label="Pay with" class="flex-1" :filter="isPrivate ? PRIVATE_TOKENS : undefined" />
+                <TokenPicker v-model="inputToken" label="Pay with" class="flex-1" :filter="isPrivate ? ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'] : undefined" />
               </div>
               <div class="mt-3 mb-2 flex items-center justify-between">
                 <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Amount</label>
@@ -380,8 +310,13 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
               <Input v-model="memo" placeholder="Dinner, rent, coffee…" />
             </div>
 
+            <!-- Insufficient balance -->
+            <div v-if="exceedsBalance" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <AlertCircle class="h-4 w-4 shrink-0" />Insufficient balance. You have {{ selectedTokenBalance?.amount.toFixed(4) }} {{ selectedTokenBalance?.symbol }}.
+            </div>
+
             <!-- Error -->
-            <div v-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+            <div v-else-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
               <AlertCircle class="h-4 w-4 shrink-0" />{{ error }}
             </div>
 
@@ -396,4 +331,6 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
       </DialogContent>
     </DialogPortal>
   </DialogRoot>
+
+  <ContactPicker v-model:open="showContactPicker" @select="selectContact" />
 </template>

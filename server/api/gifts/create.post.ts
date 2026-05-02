@@ -1,11 +1,10 @@
-import { authorizationContext } from '../../utils/privy'
-
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
   const body = await readBody<{
     totalAmount: number
     totalSlots: number
     token?: string
+    decimals?: number
   }>(event)
 
   if (!body?.totalAmount || !body?.totalSlots || body.totalAmount <= 0 || body.totalSlots < 1) {
@@ -13,40 +12,39 @@ export default defineEventHandler(async (event) => {
   }
 
   const db = adminDb()
-  const privy = getPrivy()
 
   const { data: creator } = await db
     .from('users')
-    .select('id, wallet_address, privy_wallet_id')
+    .select('id, wallet_address')
     .eq('privy_user_id', auth.userId)
     .maybeSingle()
-
   if (!creator) throw createError({ statusCode: 404, statusMessage: 'User not found' })
 
-  // Create a dedicated pool wallet for this gift
-  const poolWalletRes = await (privy.wallets() as any).create({ chain_type: 'solana' })
-  const poolWalletId: string = poolWalletRes.id
-  const poolWalletAddress: string = poolWalletRes.address
-
-  // Fund the pool wallet from the creator's wallet
-  const txBase64 = await buildTransferSolTx(creator.wallet_address, poolWalletAddress, body.totalAmount)
-  const config = useRuntimeConfig()
-  await (privy.wallets() as any).solana().signAndSendTransaction(creator.privy_wallet_id, {
-    caip2: config.solanaCaip2,
-    transaction: txBase64,
-    ...authorizationContext()
-  })
+  // Check balance before creating
+  const SOL_MINT = 'So11111111111111111111111111111111111111112'
+  const tokenMint = body.token ?? SOL_MINT
+  if (tokenMint === SOL_MINT) {
+    const solBal = await getSolBalance(creator.wallet_address)
+    if (body.totalAmount > solBal) {
+      throw createError({ statusCode: 400, statusMessage: `Not enough balance. You have ${solBal.toFixed(4)} SOL.` })
+    }
+  } else {
+    const tokenBal = await getTokenBalance(creator.wallet_address, tokenMint)
+    const decimals = body.decimals ?? 6
+    const needed = BigInt(Math.round(body.totalAmount * Math.pow(10, decimals)))
+    if (needed > tokenBal) {
+      throw createError({ statusCode: 400, statusMessage: 'Not enough token balance.' })
+    }
+  }
 
   const { data: gift, error } = await db
     .from('gifts')
     .insert({
       creator_id: creator.id,
-      pool_wallet: poolWalletAddress,
-      pool_privy_wallet_id: poolWalletId,
       total_amount: body.totalAmount,
-      token: body.token ?? 'So11111111111111111111111111111111111111112',
+      token: body.token ?? SOL_MINT,
       total_slots: body.totalSlots,
-      claimed_count: 0
+      claimed_count: 0,
     })
     .select()
     .single()

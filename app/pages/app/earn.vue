@@ -38,9 +38,11 @@ type Position = {
 	jlShares: string;
 };
 
-const { data: markets, pending: loadingMarkets } = useAsyncData<Market[]>("earn:markets", () => $fetch<Market[]>("/api/earn/markets" as string), { lazy: true });
+const { data: markets, pending: loadingMarkets, refresh: refreshMarkets } = useAsyncData<Market[]>("earn:markets", () => $fetch<Market[]>("/api/earn/markets" as string), { lazy: true, server: false });
 
-const { data: positions, pending: loadingPositions, refresh: refreshPositions } = useAsyncData<Position[]>("earn:positions", () => apiFetch("/api/earn/positions"), { lazy: true });
+const { data: positions, pending: loadingPositions, refresh: refreshPositions } = useAsyncData<Position[]>("earn:positions", () => apiFetch("/api/earn/positions"), { lazy: true, server: false });
+
+onMounted(() => { refreshMarkets(); refreshPositions() })
 
 type ModalMode = "deposit" | "withdraw";
 const modalOpen = ref(false);
@@ -55,13 +57,22 @@ const quoteError = ref("");
 const swapQuote = ref<{ outAmount: string; otherAmountThreshold: string; priceImpactPct?: string } | null>(null);
 let quoteTimer: ReturnType<typeof setTimeout> | null = null;
 
+function tokenFromMarket(market: Market): JupToken {
+	return POPULAR_TOKENS.find((t) => t.address === market.mint) ?? {
+		address: market.mint,
+		symbol: market.symbol,
+		name: market.name,
+		decimals: market.decimals,
+		logoURI: market.logoURI,
+	}
+}
+
 function openDeposit(market: Market) {
 	modal.value = { mode: "deposit", market };
 	amountRaw.value = "";
 	error.value = "";
 	successSig.value = "";
-	const match = POPULAR_TOKENS.find((t) => t.address === market.mint);
-	selectedToken.value = match ?? SOL_TOKEN;
+	selectedToken.value = tokenFromMarket(market);
 	refreshBalance();
 	modalOpen.value = true;
 }
@@ -72,8 +83,7 @@ function openWithdraw(market: Market) {
 	error.value = "";
 	successSig.value = "";
 	isMaxWithdraw.value = false;
-	const match = POPULAR_TOKENS.find((t) => t.address === market.mint);
-	selectedToken.value = match ?? SOL_TOKEN;
+	selectedToken.value = tokenFromMarket(market);
 	refreshBalance();
 	modalOpen.value = true;
 }
@@ -242,7 +252,7 @@ const totalEarningUsd = computed(() => {
 		<div class="mb-6 flex items-center justify-between">
 			<div>
 				<h1 class="text-2xl font-bold">Earn</h1>
-				<p class="mt-0.5 text-sm text-muted-foreground">Deposit tokens and earn yield via Jupiter Lend.</p>
+				<p class="mt-0.5 text-sm text-muted-foreground">Deposit tokens and earn interest.</p>
 			</div>
 		</div>
 
@@ -316,7 +326,7 @@ const totalEarningUsd = computed(() => {
 				<template v-else>
 					<div class="rounded-2xl border border-border bg-card px-4 py-3 md:px-5 md:py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-1">
 						<div>
-							<p class="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-muted-foreground">Best APR</p>
+							<p class="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-muted-foreground">Best rate</p>
 							<p class="mt-0.5 text-lg md:text-2xl font-bold text-green-500">
 								{{ markets?.length ? formatApr(Math.max(...markets.map((m) => Number(m.supplyApr)))) : "—" }}
 							</p>
@@ -349,8 +359,8 @@ const totalEarningUsd = computed(() => {
 			<!-- Markets table -->
 			<div class="col-span-1 md:col-span-12 rounded-2xl border border-border bg-card p-4 md:p-6">
 				<div class="mb-5 flex items-center justify-between">
-					<h3 class="font-semibold">Available Markets</h3>
-					<span class="text-xs text-muted-foreground">Powered by Jupiter Lend</span>
+					<h3 class="font-semibold">Available Options</h3>
+					<span class="text-xs text-muted-foreground">Powered by Jupiter</span>
 				</div>
 
 				<div v-if="loadingPage" class="divide-y divide-border">
@@ -387,13 +397,13 @@ const totalEarningUsd = computed(() => {
 								<p class="text-sm font-semibold">{{ m.symbol }}</p>
 								<span v-if="positionFor(m.mint)" class="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400">Deposited</span>
 							</div>
-							<p class="truncate text-xs text-muted-foreground">TVL {{ formatTvl(m.totalAssets, m.decimals, m.price) }}</p>
+							<p class="truncate text-xs text-muted-foreground">Pool size {{ formatTvl(m.totalAssets, m.decimals, m.price) }}</p>
 						</div>
 
-						<!-- APR -->
+						<!-- Rate -->
 						<div class="text-right shrink-0">
 							<p class="text-sm font-bold text-green-500">{{ formatApr(m.supplyApr) }}</p>
-							<p class="text-[10px] text-muted-foreground uppercase tracking-wide">APR</p>
+							<p class="text-[10px] text-muted-foreground uppercase tracking-wide">Yearly</p>
 						</div>
 
 						<!-- Deposit -->
@@ -427,7 +437,7 @@ const totalEarningUsd = computed(() => {
 							</div>
 							<div class="flex-1">
 								<DialogTitle class="text-base font-bold leading-none"> {{ modal.mode === "deposit" ? "Deposit" : "Withdraw" }} {{ modal.market.symbol }} </DialogTitle>
-								<p class="text-xs text-green-500 font-semibold mt-0.5">{{ formatApr(modal.market.supplyApr) }} APR</p>
+								<p class="text-xs text-green-500 font-semibold mt-0.5">{{ formatApr(modal.market.supplyApr) }} yearly</p>
 							</div>
 							<button class="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition" :class="{ 'animate-spin': pending }" @click="refreshBalance">
 								<RefreshCw class="h-4 w-4" />
@@ -441,10 +451,10 @@ const totalEarningUsd = computed(() => {
 							</div>
 
 							<div>
-								<TokenPicker v-model="selectedToken" :label="modal.mode === 'deposit' ? 'Pay with' : 'Receive as'" />
+								<TokenPicker v-model="selectedToken" :label="modal.mode === 'deposit' ? 'Pay with' : 'Receive as'" :exclude="markets?.map(m => m.jlMint) ?? []" :token-logos="Object.fromEntries((markets ?? []).map(m => [m.mint, m.logoURI]).filter(([,v]) => v))" />
 								<div v-if="needsSwapQuote" class="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
 									<ArrowRight class="h-3 w-3 shrink-0" />
-									<span>{{ modal.mode === "deposit" ? `Auto-swap to ${modal.market.symbol} via Jupiter` : `Auto-swap ${modal.market.symbol} to ${selectedToken.symbol} via Jupiter` }}</span>
+									<span>{{ modal.mode === "deposit" ? `Auto-converted to ${modal.market.symbol}` : `Auto-converted to ${selectedToken.symbol}` }}</span>
 								</div>
 							</div>
 

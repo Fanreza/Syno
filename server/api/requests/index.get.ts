@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: me } = await db
     .from('users')
-    .select('id')
+    .select('id, username')
     .eq('privy_user_id', auth.userId)
     .maybeSingle()
   if (!me) throw createError({ statusCode: 401, statusMessage: 'User not found' })
@@ -62,40 +62,78 @@ export default defineEventHandler(async (event) => {
 
   // ── TO ME ──────────────────────────────────────────────────────────────────
 
-  // Split bills where I'm a participant
-  const { data: participating } = await db
+  // Split participants where I'm mentioned — by user_id or username
+  const { data: participantRows } = await db
     .from('split_participants')
-    .select('id, amount, status, bill:split_bills(id, title, token, status, created_at, creator_id), payment:payments(id)')
-    .eq('user_id', me.id)
-    .order('created_at', { ascending: false })
+    .select('id, amount, status, username, user_id, bill_id, tx_signature')
+    .or(`user_id.eq.${me.id},and(user_id.is.null,username.ilike.${me.username})`)
 
-  const creatorIds = [...new Set((participating ?? []).map((p: any) => p.bill?.creator_id).filter(Boolean))]
+
+  const participating = participantRows ?? []
+
+  // Backfill user_id for username-matched rows
+  const unlinked = participating.filter((r: any) => !r.user_id).map((r: any) => r.id)
+  if (unlinked.length) {
+    await db.from('split_participants').update({ user_id: me.id }).in('id', unlinked)
+  }
+
+  // Fetch bills for those participant rows
+  const billIds = [...new Set(participating.map((r: any) => r.bill_id).filter(Boolean))]
+  const billMap: Record<string, any> = {}
+  if (billIds.length) {
+    const { data: bills } = await db
+      .from('split_bills')
+      .select('id, title, token, status, created_at, creator_id')
+      .in('id', billIds)
+    for (const b of bills ?? []) billMap[b.id] = b
+  }
+
+  // Fetch payment links linked to these participant rows
+  const { data: linkedPayments } = await db
+    .from('payments')
+    .select('id, split_participant_id')
+    .in('split_participant_id', participating.map((r: any) => r.id))
+  const paymentByParticipant: Record<string, string> = {}
+  for (const p of linkedPayments ?? []) {
+    if (p.split_participant_id) paymentByParticipant[p.split_participant_id] = p.id
+  }
+
+  // Fetch creator usernames
+  const creatorIds = [...new Set(Object.values(billMap).map((b: any) => b.creator_id).filter(Boolean))]
   const creatorMap: Record<string, string> = {}
   if (creatorIds.length) {
     const { data: creators } = await db.from('users').select('id, username').in('id', creatorIds)
     for (const u of creators ?? []) creatorMap[u.id] = u.username
   }
 
-  const toMe = (participating ?? [])
-    .filter((p: any) => p.bill)
-    .map((p: any) => ({
-      kind: 'split' as const,
-      participant_id: p.id,
-      payment_id: p.payment?.id ?? null,
-      bill_id: p.bill.id,
-      title: p.bill.title ?? 'Untitled split',
-      amount: p.amount,
-      token: p.bill.token,
-      bill_status: p.bill.status,
-      my_status: p.status,
-      created_at: p.bill.created_at,
-      from_username: creatorMap[p.bill.creator_id] ?? null,
-    }))
+  const toMe = participating
+    .map((p: any) => {
+      const bill = billMap[p.bill_id]
+      if (!bill) return null
+      return {
+        kind: 'split' as const,
+        participant_id: p.id,
+        payment_id: paymentByParticipant[p.id] ?? null,
+        bill_id: bill.id,
+        title: bill.title ?? 'Untitled split',
+        amount: p.amount,
+        token: bill.token,
+        bill_status: bill.status,
+        my_status: p.status,
+        tx_signature: p.tx_signature ?? null,
+        created_at: bill.created_at,
+        from_username: creatorMap[bill.creator_id] ?? null,
+      }
+    })
+    .filter(Boolean)
 
   return {
     by_me: [...byMeLinks, ...byMeSplits].sort((a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     ),
-    to_me: toMe,
+    to_me: toMe.sort((a: any, b: any) => {
+      if (a.my_status === b.my_status) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      return a.my_status === 'pending' ? -1 : 1
+    }),
   }
 })

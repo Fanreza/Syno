@@ -141,24 +141,26 @@ const bannerColors = computed(() => {
         </div>
 
         <!-- Address bar inside card -->
-        <div class="flex items-center gap-3 border-t border-border px-6 py-3">
-          <p class="flex-1 truncate font-mono text-xs text-muted-foreground">{{ user?.wallet_address }}</p>
-          <button
-            class="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:bg-accent"
-            @click="copyAddr"
-          >
-            <Check v-if="copiedAddr" class="h-3.5 w-3.5 text-green-500" />
-            <Copy v-else class="h-3.5 w-3.5" />
-            {{ copiedAddr ? 'Copied!' : 'Copy' }}
-          </button>
-          <a
-            :href="explorerUrl" target="_blank"
-            class="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:bg-accent"
-          >
-            <ExternalLink class="h-3.5 w-3.5" /> Explorer
-          </a>
-          <div class="flex items-center gap-1.5 rounded-lg bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-600 dark:text-green-400">
-            <Shield class="h-3.5 w-3.5" /> Non-custodial
+        <div class="border-t border-border px-5 py-3 space-y-2">
+          <p class="truncate font-mono text-xs text-muted-foreground">{{ user?.wallet_address }}</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              class="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:bg-accent"
+              @click="copyAddr"
+            >
+              <Check v-if="copiedAddr" class="h-3.5 w-3.5 text-green-500" />
+              <Copy v-else class="h-3.5 w-3.5" />
+              {{ copiedAddr ? 'Copied!' : 'Copy' }}
+            </button>
+            <a
+              :href="explorerUrl" target="_blank"
+              class="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition hover:bg-accent"
+            >
+              <ExternalLink class="h-3.5 w-3.5" /> Explorer
+            </a>
+            <div class="flex items-center gap-1.5 rounded-lg bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-600 dark:text-green-400">
+              <Shield class="h-3.5 w-3.5" /> Self-custody
+            </div>
           </div>
         </div>
       </div>
@@ -177,7 +179,7 @@ const bannerColors = computed(() => {
               Your private key gives full access to this wallet. Never share it. Store it somewhere safe if you export it.
             </p>
           </div>
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <label class="flex cursor-pointer items-center gap-2 text-sm">
               <input v-model="exportConfirmed" type="checkbox" class="rounded" />
               I understand the risks
@@ -221,7 +223,7 @@ const bannerColors = computed(() => {
               Hide
             </button>
           </div>
-          <p class="text-xs text-muted-foreground">Import into Phantom or any Solana wallet.</p>
+          <p class="text-xs text-muted-foreground">Import into any wallet app.</p>
         </div>
       </div>
 

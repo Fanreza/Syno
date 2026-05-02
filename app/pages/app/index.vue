@@ -1,29 +1,18 @@
 <script setup lang="ts">
-import SendModal from '~/components/SendModal.vue'
 import SplitModal from '~/components/SplitModal.vue'
 import GiftModal from '~/components/GiftModal.vue'
 import RequestModal from '~/components/RequestModal.vue'
+import { useOnboarding } from '~/composables/useOnboarding'
 import {
   Send, ArrowDownLeft, Users, RefreshCw, Copy, Check, Gift, QrCode,
-  ArrowUpRight, ArrowDownRight, Scissors, Star, Inbox
+  ArrowUpRight, ArrowDownRight, Scissors, Star, Inbox, Banknote, ArrowLeftRight
 } from 'lucide-vue-next'
 import { formatAmount, formatUsd, shortAddr } from '~/utils'
 
 const { user, apiFetch } = useAuth()
 const { isDark } = useTheme()
 
-const { data: balance, refresh: refreshBalance, pending: pendingBalance } = useAsyncData(
-  'dashboard-balance',
-  () => user.value?.wallet_address
-    ? $fetch<{ sol: number; usd: number; solPrice: number; tokens: any[] }>(`/api/balance?address=${user.value.wallet_address}`)
-    : Promise.resolve({ sol: 0, usd: 0, solPrice: 0, tokens: [] }),
-  { lazy: true }
-)
-
-// Re-fetch balance when wallet address becomes available (e.g. after session restore in PWA)
-watch(() => user.value?.wallet_address, (addr) => {
-  if (addr) refreshBalance()
-}, { immediate: true })
+const { balance, refresh: refreshBalance, pending: pendingBalance } = useBalance()
 
 const { data: earnPositions, refresh: refreshEarn } = useAsyncData(
   'dashboard-earn-positions',
@@ -93,10 +82,15 @@ watch(user, (u) => {
 }, { immediate: true })
 
 
-const showSend = ref(false)
+const showSend = useState<boolean>('global-show-send', () => false)
+const showSwap = useState<boolean>('global-show-swap', () => false)
 const showSplit = ref(false)
 const showGift = ref(false)
 const showRequest = ref(false)
+const showPayroll = ref(false)
+
+const { startTour, shouldShow } = useOnboarding()
+onMounted(() => { if (shouldShow()) setTimeout(startTour, 800) })
 
 const copied = ref(false)
 function copyAddr() {
@@ -169,6 +163,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
         </div>
 
         <!-- Balance -->
+        <div data-tour="balance">
         <div v-if="pendingBalance">
           <div class="h-10 w-40 animate-pulse rounded-lg bg-white/10" />
           <div class="mt-1.5 h-4 w-20 animate-pulse rounded bg-white/10" />
@@ -177,10 +172,12 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           <h2 class="text-4xl font-bold tracking-tight text-white">{{ formatUsd(totalUsd) }}</h2>
           <p class="mt-1 text-sm text-white/40">{{ formatAmount(balance?.sol || 0) }} SOL</p>
         </div>
+        </div>
 
         <!-- Action buttons -->
-        <div class="mt-6 grid grid-cols-4 gap-2">
+        <div class="mt-6 grid grid-cols-3 gap-2">
           <button
+            data-tour="send"
             class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
             @click="showSend = true"
           >
@@ -188,6 +185,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
             <span class="text-[11px] font-semibold">Send</span>
           </button>
           <button
+            data-tour="request"
             class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
             @click="showRequest = true"
           >
@@ -195,6 +193,15 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
             <span class="text-[11px] font-semibold">Request</span>
           </button>
           <button
+            data-tour="swap"
+            class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
+            @click="showSwap = true"
+          >
+            <ArrowLeftRight class="h-5 w-5" />
+            <span class="text-[11px] font-semibold">Swap</span>
+          </button>
+          <button
+            data-tour="split"
             class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
             @click="showSplit = true"
           >
@@ -202,11 +209,20 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
             <span class="text-[11px] font-semibold">Split</span>
           </button>
           <button
+            data-tour="gift"
             class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
             @click="showGift = true"
           >
             <Gift class="h-5 w-5" />
             <span class="text-[11px] font-semibold">Gift</span>
+          </button>
+          <button
+            data-tour="payroll"
+            class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
+            @click="showPayroll = true"
+          >
+            <Banknote class="h-5 w-5" />
+            <span class="text-[11px] font-semibold">Payroll</span>
           </button>
         </div>
       </div>
@@ -246,7 +262,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
       </div>
 
       <!-- Holdings -->
-      <div class="rounded-2xl border border-border bg-card">
+      <div data-tour="holdings" class="rounded-2xl border border-border bg-card">
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
           <h3 class="text-sm font-semibold">Holdings</h3>
           <span class="text-xs text-muted-foreground">{{ formatUsd(totalUsd) }}</span>
@@ -304,7 +320,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
             <Inbox class="h-5 w-5 text-muted-foreground" />
           </div>
           <p class="text-sm font-medium">No activity yet</p>
-          <p class="mt-1 text-xs text-muted-foreground">Send or receive to see it here.</p>
+          <p class="mt-1 text-xs text-muted-foreground">Your transactions will show up here.</p>
           <button
             class="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
             @click="showSend = true"
@@ -357,11 +373,11 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
 
     </div>
 
-    <!-- Modals -->
-    <SendModal v-model:open="showSend" />
+    <!-- Modals (Send + Swap rendered globally in app.vue) -->
     <SplitModal v-model:open="showSplit" />
     <GiftModal v-model:open="showGift" />
     <RequestModal v-model:open="showRequest" />
+    <PayrollModal v-model:open="showPayroll" />
 
   </div>
 </template>

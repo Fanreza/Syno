@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
     $fetch<any>(rpcUrl, {
       method: 'POST',
       retry: 0,
-      body: { jsonrpc: '2.0', id: 1, method: 'getBalance', params: [address] },
+      body: { jsonrpc: '2.0', id: 1, method: 'getBalance', params: [address, { commitment: 'processed' }] },
     }).catch(() => null),
     $fetch<any>(rpcUrl, {
       method: 'POST',

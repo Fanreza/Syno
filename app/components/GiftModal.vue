@@ -2,8 +2,8 @@
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
 import Input from '~/components/ui/input/Input.vue'
 import { Button } from '~/components/ui/button'
-import { X, Gift, AlertCircle, CheckCircle2, Copy, Check, Users, Coins } from 'lucide-vue-next'
-import { formatAmount, formatUsd } from '~/utils'
+import { X, Gift, AlertCircle, Copy, Check, Users, Coins, Share2 } from 'lucide-vue-next'
+import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
@@ -24,11 +24,24 @@ function onTotalInput(e: Event) {
   totalRaw.value = s
 }
 
+const SOL_MINT = 'So11111111111111111111111111111111111111112'
+const selectedBalance = computed(() => {
+  if (!balance.value) return null
+  if (giftToken.value.address === SOL_MINT)
+    return { amount: balance.value.sol, symbol: 'SOL' }
+  const t = balance.value.tokens?.find((t: any) => t.mint === giftToken.value.address)
+  return t ? { amount: t.balance, symbol: t.symbol } : { amount: 0, symbol: giftToken.value.symbol }
+})
+
 const totalNum = computed(() => parseFloat(totalRaw.value) || 0)
 const slotsNum = computed(() => Math.max(1, parseInt(slots.value) || 1))
 const perPerson = computed(() => totalNum.value > 0 ? (totalNum.value / slotsNum.value).toFixed(4) : '0')
 
-const canCreate = computed(() => totalNum.value > 0 && slotsNum.value >= 1 && !loading.value)
+const exceedsBalance = computed(() =>
+  totalNum.value > 0 && !!selectedBalance.value && totalNum.value > selectedBalance.value.amount
+)
+
+const canCreate = computed(() => totalNum.value > 0 && slotsNum.value >= 1 && !loading.value && !exceedsBalance.value)
 
 async function onCreate() {
   error.value = ''
@@ -36,7 +49,7 @@ async function onCreate() {
   try {
     const res = await apiFetch<{ id: string; total_amount: number; total_slots: number; token: string }>('/api/gifts/create', {
       method: 'POST',
-      body: { totalAmount: totalNum.value, totalSlots: slotsNum.value, token: giftToken.value.address }
+      body: { totalAmount: totalNum.value, totalSlots: slotsNum.value, token: giftToken.value.address, decimals: giftToken.value.decimals }
     })
     created.value = res
     refreshBalance()
@@ -93,7 +106,25 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
           </div>
           <p class="mt-2 text-xs text-muted-foreground">Share this link with anyone to let them claim their share.</p>
 
-          <div class="mt-5 flex gap-3">
+          <!-- Share buttons -->
+          <div class="mt-3 flex gap-2">
+            <a
+              :href="`https://wa.me/?text=${encodeURIComponent('Claim your gift: ' + giftLink)}`"
+              target="_blank"
+              class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-green-50 py-2 text-xs font-semibold text-green-700 transition hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
+            >
+              <Share2 class="h-3.5 w-3.5" /> WhatsApp
+            </a>
+            <a
+              :href="`https://t.me/share/url?url=${encodeURIComponent(giftLink)}&text=${encodeURIComponent('Claim your gift!')}`"
+              target="_blank"
+              class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-blue-50 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+            >
+              <Share2 class="h-3.5 w-3.5" /> Telegram
+            </a>
+          </div>
+
+          <div class="mt-3 flex gap-3">
             <Button variant="outline" class="flex-1" @click="reset">New gift</Button>
             <Button class="flex-1" @click="open = false">Done</Button>
           </div>
@@ -126,10 +157,9 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                 <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total amount ({{ giftToken.symbol }})</label>
                 <span v-if="balance" class="text-xs text-muted-foreground">
                   Balance:
-                  <button class="font-semibold text-foreground hover:text-primary transition" @click="totalRaw = balance.sol.toFixed(6)">
-                    {{ balance.sol.toFixed(4) }} SOL
+                  <button class="font-semibold text-foreground hover:text-primary transition" @click="totalRaw = selectedBalance?.amount.toFixed(6) ?? ''">
+                    {{ selectedBalance?.amount.toFixed(4) ?? '0' }} {{ giftToken.symbol }}
                   </button>
-                  <span class="text-muted-foreground/60"> · {{ formatUsd(balance.usd) }}</span>
                 </span>
               </div>
               <input
@@ -172,8 +202,11 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
               </div>
             </div>
 
-            <!-- Error -->
-            <div v-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+            <!-- Errors -->
+            <div v-if="exceedsBalance" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <AlertCircle class="h-4 w-4 shrink-0" />Not enough balance. You have {{ selectedBalance?.amount.toFixed(4) }} {{ selectedBalance?.symbol }}.
+            </div>
+            <div v-else-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
               <AlertCircle class="h-4 w-4 shrink-0" />{{ error }}
             </div>
 

@@ -1,5 +1,5 @@
 import bs58 from 'bs58'
-import { privateSend, PRIVATE_SEND_SUPPORTED_MINTS, isPrivateSendSupported, toRawAmount } from '../../utils/private-send'
+import { privateSend, toRawAmount } from '../../utils/private-send'
 
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
@@ -17,10 +17,13 @@ export default defineEventHandler(async (event) => {
   if (!body.toUsername && !body.toAddress)
     throw createError({ statusCode: 400, statusMessage: 'toUsername or toAddress required' })
 
-  const mintAddress = body.mint ?? PRIVATE_SEND_SUPPORTED_MINTS.USDC
-  if (!isPrivateSendSupported(mintAddress))
-    throw createError({ statusCode: 400, statusMessage: 'Token not supported for private transfer. Use USDC or USDT.' })
-
+  const PRIVATE_SEND_MINTS = new Set([
+    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+    'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
+  ])
+  const mintAddress = body.mint ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+  if (!PRIVATE_SEND_MINTS.has(mintAddress))
+    throw createError({ statusCode: 400, statusMessage: 'Private send only supports USDC and USDT.' })
   const decimals = body.decimals ?? 6
   const db = adminDb()
 
@@ -57,20 +60,21 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Authorization key not configured' })
 
   console.log(`[private-send] checking sender balance...`)
-  const { getAssociatedTokenAddressSync } = await import('@solana/spl-token')
   const { PublicKey, Connection } = await import('@solana/web3.js')
   const rpcUrl = (config as any).solanaRpcUrl || 'https://api.mainnet-beta.solana.com'
   const connection = new Connection(rpcUrl, 'confirmed')
+
   try {
+    const { getAssociatedTokenAddressSync } = await import('@solana/spl-token')
     const ata = getAssociatedTokenAddressSync(new PublicKey(mintAddress), new PublicKey(sender.wallet_address))
     const acct = await connection.getTokenAccountBalance(ata)
     const senderBalance = acct.value.uiAmount ?? 0
-    console.log(`[private-send] sender balance=${senderBalance}`)
+    console.log(`[private-send] token balance=${senderBalance}`)
     if (senderBalance < body.amount)
       throw createError({ statusCode: 400, statusMessage: `Insufficient balance. You have ${senderBalance} but tried to send ${body.amount}.` })
   } catch (e: any) {
     if (e.statusCode) throw e
-    throw createError({ statusCode: 400, statusMessage: `Token account not found. You need USDC or USDT in your wallet to send privately.` })
+    throw createError({ statusCode: 400, statusMessage: `Token account not found. You don't have this token in your wallet.` })
   }
 
   console.log(`[private-send] exporting private key...`)

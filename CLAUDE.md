@@ -6,7 +6,7 @@ Guidance for Claude Code when working in this repo. Keep this file short and loa
 
 ## What this is
 
-**Payra** — GoPay-style crypto payment app on Solana devnet. Send by `@username`, payment links, split bills, gift envelopes, friends list.
+**Syno** — GoPay-style crypto payment app on Solana. Send by `@username`, payment links, split bills, gift envelopes, payroll, token swap, friends list, notifications.
 
 ## Stack (all latest majors)
 
@@ -35,23 +35,33 @@ app/                    # srcDir — ~/ resolves here
   assets/css/main.css   # Tailwind v4 CSS vars, dark mode under .dark class
   components/
     ui/                 # shadcn-vue primitives
-    SideNav.vue         # desktop nav with dark mode toggle
+    SideNav.vue         # desktop sidebar + mobile bottom bar, bell badge for notifications
     SendModal.vue       # send token to @username or address
-    RequestModal.vue    # create payment link + QR
-    SplitModal.vue      # create split bill
-    GiftModal.vue       # create gift envelope
+    RequestModal.vue    # create payment link + QR, WhatsApp/Telegram share
+    SplitModal.vue      # create split bill, WhatsApp/Telegram share
+    GiftModal.vue       # create gift envelope, WhatsApp/Telegram share
+    SwapModal.vue       # swap any token via Jupiter (live quote, slippage picker)
+    PayrollModal.vue    # bulk send to multiple recipients in one flow
     TokenPicker.vue     # reusable token selector (JupToken, POPULAR_TOKENS)
     RequestQr.vue       # QR code renderer
+    ContactPicker.vue   # friend/contact dropdown used in SendModal + SplitModal
   composables/
     useAuth.ts          # ONLY place for auth state — wraps Supabase + Privy SIWS
+    useBalance.ts       # wallet balance + token prices, shared across components
     useFriends.ts       # cached friend list (useState), used in SendModal + SplitModal
     useTheme.ts         # dark mode toggle, applies .dark to <html>
+    useNotifications.ts # unread count (useState), fetchUnread(), used in SideNav badge
+    useOnboarding.ts    # driver.js tour, fires once on first login (localStorage flag)
   middleware/auth.global.ts
   pages/
-    app/index.vue       # dashboard
+    index.vue           # landing page (hardcoded light colors, not affected by dark mode)
+    app/index.vue       # dashboard — balance card, 6 action buttons, holdings, activity
+    app/notifications.vue  # notification list, mark read / mark all read
+    app/gifts.vue       # sent + received gift history
     app/friends.vue     # friends list + add/remove
     app/split/          # split index + detail
     app/activity/       # on-chain + in-app activity tabs
+    app/earn.vue        # Jupiter lending positions
     app/profile.vue
     pay/[id].vue        # public payment link page
     gift/[id].vue       # public gift claim page
@@ -62,17 +72,22 @@ server/
   utils/
     supabase.ts         # requireUser(event), adminDb()
     privy.ts            # getPrivy(), createSolanaWallet(), signAndSendSolana()
-    solana.ts           # buildTransferSolTx(), getSolBalance(), getConnection()
+    solana.ts           # buildTransferSolTx(), buildTransferSplTx(), getSolBalance()
     jupiter.ts          # getJupiterQuote(), buildJupiterSwapTx()
+    notifications.ts    # createNotification() — called by payment/split/gift/payroll APIs
   api/
     users/              # register, me, search
     payments/           # send.post, create-link.post, [id].get
     split/              # create.post, index.get, [id].get
-    gifts/              # create.post, claim.post, [id].get
+    gifts/              # create.post, claim.post, index.get, [id].get
+    swap/               # quote.get, execute.post
+    payroll/            # send.post (bulk sequential transfers)
+    notifications/      # index.get (list + unread count), read.post (single or all)
     friends/            # index.get, add.post, remove.post
     tokens/search.get   # Jupiter token search proxy
     activity.get, history.get, stats.get, balance.get, wallet/export.get
-supabase/schema.sql
+supabase/schema.sql         # core tables
+supabase/notifications.sql  # notifications table (run after schema.sql)
 ```
 
 ## Auto-imports — don't import these, just use them
@@ -99,7 +114,11 @@ Send any token:
 
 Payment link: `RequestModal` → `POST /api/payments/create-link` (stores mint address as `token`) → `/pay/[id]` public page with token picker for payer.
 
-Gift: `GiftModal` → `POST /api/gifts/create` (creates dedicated Privy pool wallet, funds it) → `/gift/[id]` claim page → `POST /api/gifts/claim`.
+Gift: `GiftModal` → `POST /api/gifts/create` (validates balance, saves to DB) → `/gift/[id]` claim page → `POST /api/gifts/claim` (partial signing: creator signs token transfer, claimer signs as fee payer).
+
+Swap: `SwapModal` → `GET /api/swap/quote` (Jupiter ExactIn quote, debounced) → `POST /api/swap/execute` (build + sign + broadcast).
+
+Payroll: `PayrollModal` → `POST /api/payroll/send` (sequential transfers to multiple recipients, one tx per person, sends notification to each receiver).
 
 ## Token handling
 
@@ -133,7 +152,16 @@ All token references use **mint addresses** (not symbols like `'SOL'`). The SOL 
 
 ## Supabase schema
 
-In [supabase/schema.sql](supabase/schema.sql). Key tables: `users` (privy_wallet_id, wallet_address, username), `payments`, `split_bills`, `split_participants`, `gifts` (pool_wallet, pool_privy_wallet_id, token), `gift_claims`, `friends` (user_id, friend_id).
+Run [supabase/schema.sql](supabase/schema.sql) first, then [supabase/notifications.sql](supabase/notifications.sql).
+
+Key tables:
+- `users` — privy_wallet_id, wallet_address, username
+- `payments` — sender_id, receiver_id, amount, token (mint address), tx_signature, memo
+- `split_bills` + `split_participants` — bill per split, one participant row per person
+- `gifts` + `gift_claims` — gift has total_slots/claimed_count; claim is one row per claimer
+- `friends` — user_id, friend_id (bidirectional, both rows inserted)
+- `notifications` — user_id, type, title, body, data (jsonb), read (bool)
+- `private_transfers` — for MagicBlock private send
 
 RLS is **not** enabled. All DB access goes through Nitro with the service role key. Do not add client-side `supabase.from(...)` calls for data tables.
 
@@ -160,23 +188,29 @@ All user-facing text must follow these rules:
 
 ```bash
 cp .env.example .env   # fill Supabase + Privy creds
-# paste supabase/schema.sql into Supabase SQL editor, run it
+# In Supabase SQL editor: run supabase/schema.sql, then supabase/notifications.sql
 npm install
 npm run dev
 ```
 
-## Feature Status (last reviewed 2026-04-20)
+## Feature Status (last reviewed 2026-05-03)
 
 ### Complete
 - **Auth** — email OTP, Google OAuth, Solana wallet SIWS (Phantom, OKX, Jupiter)
-- **Dashboard** — stats (`GET /api/stats`), recent activity (`GET /api/activity`)
-- **Send** — `SendModal` with `TokenPicker` (pay with any token, Jupiter auto-convert)
-- **Private send** — `POST /api/payments/private-send-umbra` via MagicBlock ephemeral rollup. USDC/USDT only. Direct delivery, no recipient claim. Server exports Privy key → `magicblock-runner.mjs` calls MagicBlock API → signs → broadcasts.
-- **Payment Link / QR** — `RequestModal` with `TokenPicker` → `/pay/[id]` public page
-- **Split Bill** — `SplitModal` with `TokenPicker`, friends picker per row, index + detail pages
-- **Gift** — `GiftModal` with `TokenPicker` → `/gift/[id]` claim page (pool wallet per gift)
+- **Dashboard** — balance card, stats, 6 action buttons (Send/Request/Swap/Split/Gift/Payroll), holdings, recent activity
+- **Send** — `SendModal` with `TokenPicker`, Jupiter auto-convert if input token differs from output
+- **Swap** — `SwapModal`, live Jupiter quote (debounced), slippage picker, `GET /api/swap/quote` + `POST /api/swap/execute`
+- **Private send** — `POST /api/payments/private-send-umbra` via MagicBlock ephemeral rollup. USDC/USDT only.
+- **Payment Link / QR** — `RequestModal` → `/pay/[id]` public page, WhatsApp/Telegram share
+- **Split Bill** — `SplitModal`, friends picker per row, index + detail pages, WhatsApp/Telegram share
+- **Gift** — `GiftModal` → `/gift/[id]` claim page. Direct creator→claimer transfer (no pool wallet). Partial signing for SPL: creator signs token transfer, claimer signs as fee payer. WhatsApp/Telegram share.
+- **Gift history** — `/app/gifts` page with Sent/Received tabs, progress bar, copy link
+- **Payroll** — `PayrollModal`, bulk send to multiple `@username`s, `POST /api/payroll/send`
+- **Notifications** — `notifications` table, `createNotification()` called on payment/split/gift/payroll events. `/app/notifications` page, bell badge in SideNav with unread count.
 - **Friends** — `GET/POST /api/friends/{index,add,remove}` + `/app/friends` page
 - **Profile** — balance, export private key (`GET /api/wallet/export`)
-- **Jupiter swap** — `inputToken` in `POST /api/payments/send` triggers swap
-- **On-chain history** — `GET /api/history` via Helius `getSignaturesForAddress` + `/app/activity` on-chain tab
+- **On-chain history** — `GET /api/history` via Helius + `/app/activity` on-chain tab
+- **Earn** — Jupiter lending positions, deposit/withdraw
 - **Dark mode** — neutral gray palette, toggled via `useTheme()`
+- **Onboarding tour** — driver.js, fires once on first login, covers all 6 dashboard actions
+- **Landing page** — hardcoded light colors, not affected by dark/light mode toggle

@@ -2,77 +2,37 @@
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
 import Input from '~/components/ui/input/Input.vue'
 import { Button } from '~/components/ui/button'
-import { X, Plus, Trash2, AlertCircle, CheckCircle2, Users, Search, Loader2, Check } from 'lucide-vue-next'
-import { watchDebounced } from '@vueuse/core'
-import type { RecipientUser } from '~/composables/useRecipientSearch'
+import { X, Plus, Trash2, AlertCircle, CheckCircle2, User, Users, DollarSign, Share2 } from 'lucide-vue-next'
+import { shortAddr } from '~/utils'
+import type { Contact } from '~/components/ContactPicker.vue'
 
 const open = defineModel<boolean>('open', { required: true })
-const { friends, load: loadFriends } = useFriends()
-watch(open, (v) => { if (v) loadFriends() })
+const { apiFetch } = useAuth()
 
-// ── Per-row recipient state ────────────────────────────────────────────────
-type RowStatus = 'idle' | 'searching' | 'found' | 'not-found' | 'address' | 'invalid-address'
+// ── Per-row state ──────────────────────────────────────────────────────────
 type Row = {
-  raw: string
-  user: RecipientUser | null
-  status: RowStatus
+  contact: Contact | null
   amount: string
-  showFriends: boolean
+  pickerOpen: boolean
 }
 
-const isValidSolanaAddress = (v: string) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v)
-const looksLikeAddress = (v: string) => !v.startsWith('@') && v.length >= 32
-
 function makeRow(): Row {
-  return { raw: '', user: null, status: 'idle', amount: '', showFriends: false }
+  return { contact: null, amount: '', pickerOpen: false }
 }
 
 const rows = ref<Row[]>([makeRow()])
 
-// Debounced search per row
-const searchTimers = new Map<number, ReturnType<typeof setTimeout>>()
-
-async function searchRow(i: number) {
-  const row = rows.value[i]
-  const val = row.raw.trim()
-  if (!val) { row.status = 'idle'; row.user = null; return }
-
-  if (looksLikeAddress(val)) {
-    if (!isValidSolanaAddress(val)) { row.status = 'invalid-address'; row.user = null; return }
-    row.status = 'searching'; row.user = null
-    try {
-      const results = await $fetch<RecipientUser[]>('/api/users/search', { query: { q: val } })
-      if (results[0]) { row.user = results[0]; row.status = 'found' }
-      else row.status = 'address'
-    } catch { row.status = 'address' }
-    return
-  }
-
-  const q = val.replace(/^@/, '')
-  if (q.length < 2) { row.status = 'idle'; row.user = null; return }
-  row.status = 'searching'; row.user = null
-  try {
-    const results = await $fetch<RecipientUser[]>('/api/users/search', { query: { q } })
-    const exact = results.find(u => u.username.toLowerCase() === q.toLowerCase())
-    const match = exact ?? results[0]
-    if (match) { row.user = match; row.status = 'found' }
-    else row.status = 'not-found'
-  } catch { row.status = 'not-found' }
+function selectContact(i: number, c: Contact) {
+  rows.value[i].contact = c
+  rows.value[i].pickerOpen = false
 }
 
-function onRowInput(i: number) {
-  rows.value[i].user = null
-  rows.value[i].status = 'idle'
-  rows.value[i].showFriends = false
-  clearTimeout(searchTimers.get(i))
-  searchTimers.set(i, setTimeout(() => searchRow(i), 400))
+function openPicker(i: number) {
+  rows.value[i].pickerOpen = true
 }
 
-function selectFriend(i: number, f: { username: string; wallet_address: string }) {
-  rows.value[i].raw = '@' + f.username
-  rows.value[i].user = f
-  rows.value[i].status = 'found'
-  rows.value[i].showFriends = false
+function clearRow(i: number) {
+  rows.value[i].contact = null
 }
 
 function addRow() { rows.value.push(makeRow()) }
@@ -91,8 +51,47 @@ const SOL_TOKEN: JupToken = {
   logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
 }
 const outputToken = ref<JupToken>(SOL_TOKEN)
+const tokenPrice = ref<number | null>(null)
+type Currency = 'TOKEN' | 'USD'
+const currency = ref<Currency>('TOKEN')
+
+watch(outputToken, async (t) => {
+  tokenPrice.value = null
+  currency.value = 'TOKEN'
+  totalRaw.value = ''
+  try {
+    const r = await $fetch<any>(`/api/tokens/price?ids=${t.address}`)
+    tokenPrice.value = parseFloat(r?.data?.[t.address]?.price ?? '0') || null
+  } catch {}
+}, { immediate: true })
+
 const totalNum = computed(() => parseFloat(totalRaw.value) || 0)
-const tokenSymbol = computed(() => outputToken.value.symbol === 'USDC' ? '$' : '◎')
+const totalInToken = computed(() => {
+  if (currency.value === 'TOKEN') return totalNum.value
+  if (!tokenPrice.value) return 0
+  return totalNum.value / tokenPrice.value
+})
+const convertLabel = computed(() => {
+  if (!totalNum.value) return ''
+  if (currency.value === 'TOKEN' && tokenPrice.value)
+    return `≈ $${(totalNum.value * tokenPrice.value).toFixed(2)}`
+  if (currency.value === 'USD' && tokenPrice.value)
+    return `≈ ${totalInToken.value.toFixed(6)} ${outputToken.value.symbol}`
+  return ''
+})
+
+function toggleCurrency() {
+  if (!tokenPrice.value) return
+  if (currency.value === 'TOKEN') {
+    if (totalNum.value) totalRaw.value = (totalNum.value * tokenPrice.value).toFixed(2)
+    currency.value = 'USD'
+  } else {
+    if (totalNum.value) totalRaw.value = totalInToken.value.toFixed(6)
+    currency.value = 'TOKEN'
+  }
+}
+
+const rowSymbol = computed(() => outputToken.value.symbol === 'USDC' ? '$' : '◎')
 
 function onTotalInput(e: Event) {
   let s = (e.target as HTMLInputElement).value.replace(/[^0-9.]/g, '')
@@ -102,16 +101,24 @@ function onTotalInput(e: Event) {
 }
 
 function splitEvenly() {
-  if (!totalNum.value || !rows.value.length) return
-  const each = (totalNum.value / rows.value.length).toFixed(4)
+  if (!totalInToken.value || !rows.value.length) return
+  const each = (totalInToken.value / rows.value.length).toFixed(4)
   rows.value = rows.value.map(r => ({ ...r, amount: each }))
 }
 
+const participantsTotal = computed(() =>
+  rows.value.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
+)
+const exceedsTotal = computed(() =>
+  totalInToken.value > 0 && participantsTotal.value > totalInToken.value + 0.000001
+)
+
 const canCreate = computed(() =>
   title.value.trim() &&
-  totalNum.value > 0 &&
+  totalInToken.value > 0 &&
   rows.value.length >= 1 &&
-  rows.value.every(r => (r.status === 'found' || r.status === 'address') && parseFloat(r.amount) > 0) &&
+  rows.value.every(r => r.contact !== null && parseFloat(r.amount) > 0) &&
+  !exceedsTotal.value &&
   !loading.value
 )
 
@@ -119,14 +126,14 @@ async function onCreate() {
   error.value = ''
   loading.value = true
   try {
-    const res = await $fetch<{ id: string }>('/api/split/create', {
+    const res = await apiFetch<{ id: string }>('/api/split/create', {
       method: 'POST',
       body: {
         title: title.value,
-        totalAmount: totalNum.value,
+        totalAmount: totalInToken.value,
         token: outputToken.value.address,
         participants: rows.value.map(r => ({
-          username: r.user?.username ?? r.raw.replace(/^@/, '').trim(),
+          username: r.contact?.username ?? r.contact?.wallet_address ?? '',
           amount: parseFloat(r.amount)
         }))
       }
@@ -145,7 +152,7 @@ function goToSplit() {
 function reset() {
   title.value = ''; totalRaw.value = ''
   rows.value = [makeRow()]
-  error.value = ''; createdId.value = ''; outputToken.value = SOL_TOKEN
+  error.value = ''; createdId.value = ''; outputToken.value = SOL_TOKEN; currency.value = 'TOKEN'
 }
 
 watch(open, (v) => { if (!v) setTimeout(reset, 300) })
@@ -164,12 +171,29 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
           </div>
           <DialogTitle class="text-xl font-bold">Split created</DialogTitle>
           <p class="mt-2 text-sm text-muted-foreground">
-            "{{ title }}" — {{ totalNum.toFixed(4) }} {{ outputToken.symbol }} across {{ rows.length }} people
+            "{{ title }}" — {{ totalInToken.toFixed(4) }} {{ outputToken.symbol }} across {{ rows.length }} people
           </p>
           <p v-if="outputToken.address !== SOL_TOKEN.address" class="mt-1 text-xs text-muted-foreground">
-            Each participant can pay with any token via Jupiter
+            Each person can pay with any token — auto-converted
           </p>
-          <div class="mt-5 flex gap-3">
+          <div class="mt-4 flex gap-2">
+            <a
+              :href="`https://wa.me/?text=${encodeURIComponent('Pay your share: ' + (typeof window !== 'undefined' ? window.location.origin : '') + '/app/split/' + createdId)}`"
+              target="_blank"
+              class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-green-50 py-2 text-xs font-semibold text-green-700 transition hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
+            >
+              <Share2 class="h-3.5 w-3.5" /> WhatsApp
+            </a>
+            <a
+              :href="`https://t.me/share/url?url=${encodeURIComponent((typeof window !== 'undefined' ? window.location.origin : '') + '/app/split/' + createdId)}&text=${encodeURIComponent('Pay your share!')}`"
+              target="_blank"
+              class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-blue-50 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+            >
+              <Share2 class="h-3.5 w-3.5" /> Telegram
+            </a>
+          </div>
+
+          <div class="mt-3 flex gap-3">
             <Button variant="outline" class="flex-1" @click="reset">New split</Button>
             <Button class="flex-1" @click="goToSplit">
               <Users class="h-4 w-4" /> View split
@@ -198,121 +222,98 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             <div>
               <TokenPicker v-model="outputToken" label="Settle in" />
               <p v-if="outputToken.address !== SOL_TOKEN.address" class="mt-1.5 pl-1 text-xs text-muted-foreground">
-                Participants can pay with any token — auto-converted via Jupiter
+                Each person can pay with any token — auto-converted
               </p>
             </div>
 
             <!-- Total -->
             <div>
-              <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total ({{ outputToken.symbol }})</label>
-              <div class="relative">
-                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">{{ tokenSymbol }}</span>
-                <input
-                  :value="totalRaw"
-                  inputmode="decimal"
-                  placeholder="0.00"
-                  class="flex h-11 w-full rounded-xl border border-input bg-background pl-8 pr-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-                  @input="onTotalInput"
-                />
+              <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total</label>
+              <div class="flex gap-2">
+                <button
+                  class="flex h-11 items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 text-sm font-semibold transition hover:bg-accent disabled:opacity-40"
+                  :disabled="!tokenPrice"
+                  @click="toggleCurrency"
+                >
+                  <DollarSign v-if="currency === 'USD'" class="h-4 w-4" />
+                  <img v-else-if="outputToken.logoURI" :src="outputToken.logoURI" class="h-4 w-4 rounded-full" />
+                  <span v-else class="text-xs">{{ outputToken.symbol[0] }}</span>
+                  {{ currency === 'USD' ? 'USD' : outputToken.symbol }}
+                </button>
+                <div class="relative flex-1">
+                  <input
+                    :value="totalRaw"
+                    inputmode="decimal"
+                    placeholder="0.00"
+                    class="flex h-11 w-full rounded-xl border border-input bg-background px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                    @input="onTotalInput"
+                  />
+                </div>
               </div>
+              <p v-if="convertLabel" class="mt-1.5 pl-1 text-xs text-muted-foreground">{{ convertLabel }}</p>
             </div>
 
             <!-- Participants -->
             <div>
               <div class="mb-2 flex items-center justify-between">
                 <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Participants</label>
-                <button class="text-xs font-semibold text-primary transition hover:opacity-70" @click="splitEvenly">
+                <button
+                  class="text-xs font-semibold text-primary transition hover:opacity-70 disabled:opacity-30 disabled:cursor-not-allowed"
+                  :disabled="!totalInToken"
+                  @click="splitEvenly"
+                >
                   Split evenly
                 </button>
               </div>
 
               <div class="space-y-2">
-                <div v-for="(row, i) in rows" :key="i" class="space-y-1">
-                  <div class="flex items-center gap-2">
+                <div v-for="(row, i) in rows" :key="i" class="flex items-center gap-2">
 
-                    <!-- Recipient input -->
-                    <div class="relative flex-1">
-                      <div class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-                        <Loader2 v-if="row.status === 'searching'" class="h-4 w-4 animate-spin text-muted-foreground" />
-                        <Check v-else-if="row.status === 'found' || row.status === 'address'" class="h-4 w-4 text-green-500" />
-                        <Search v-else class="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <input
-                        :value="row.raw"
-                        placeholder="@username or address"
-                        class="flex h-11 w-full rounded-xl border bg-background pl-9 pr-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground transition"
-                        :class="row.status === 'found' || row.status === 'address'
-                          ? 'border-green-500/40'
-                          : row.status === 'not-found' || row.status === 'invalid-address'
-                            ? 'border-destructive/40'
-                            : 'border-input'"
-                        @input="row.raw = ($event.target as HTMLInputElement).value; onRowInput(i)"
-                        @focus="row.showFriends = true"
-                      />
+                  <!-- Contact button -->
+                  <button
+                    v-if="!row.contact"
+                    type="button"
+                    class="flex h-11 flex-1 items-center gap-2 rounded-xl border border-dashed border-border bg-secondary px-3 text-sm text-muted-foreground transition hover:bg-accent"
+                    @click="openPicker(i)"
+                  >
+                    <User class="h-4 w-4 shrink-0" />
+                    <span>Select contact…</span>
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    class="flex h-11 flex-1 items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/5 px-3 text-left transition hover:bg-green-500/10"
+                    @click="openPicker(i)"
+                  >
+                    <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                      <span v-if="row.contact.username">{{ row.contact.username[0].toUpperCase() }}</span>
+                      <User v-else class="h-3.5 w-3.5" />
                     </div>
+                    <span class="flex-1 truncate text-sm font-semibold">
+                      {{ row.contact.username ? '@' + row.contact.username : shortAddr(row.contact.wallet_address, 6) }}
+                    </span>
+                    <CheckCircle2 class="h-4 w-4 shrink-0 text-green-500" />
+                  </button>
 
-                    <!-- Friends toggle -->
-                    <button
-                      v-if="friends.length"
-                      type="button"
-                      class="flex h-11 w-10 shrink-0 items-center justify-center rounded-xl border border-border transition"
-                      :class="row.showFriends ? 'border-primary text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground'"
-                      @click="row.showFriends = !row.showFriends"
-                    >
-                      <Users class="h-4 w-4" />
-                    </button>
-
-                    <!-- Amount -->
-                    <div class="relative w-28">
-                      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{{ tokenSymbol }}</span>
-                      <input
-                        v-model="row.amount"
-                        inputmode="decimal"
-                        placeholder="0.00"
-                        class="flex h-11 w-full rounded-xl border border-input bg-background pl-7 pr-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-                      />
-                    </div>
-
-                    <!-- Delete -->
-                    <button
-                      :disabled="rows.length <= 1"
-                      class="flex h-11 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground transition hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive disabled:opacity-30"
-                      @click="removeRow(i)"
-                    >
-                      <Trash2 class="h-4 w-4" />
-                    </button>
+                  <!-- Amount -->
+                  <div class="relative w-28">
+                    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{{ rowSymbol }}</span>
+                    <input
+                      v-model="row.amount"
+                      inputmode="decimal"
+                      placeholder="0.00"
+                      class="flex h-11 w-full rounded-xl border border-input bg-background pl-7 pr-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                    />
                   </div>
 
-                  <!-- Found user chip -->
-                  <div v-if="row.status === 'found' && row.user" class="flex items-center gap-2 rounded-lg bg-green-500/5 px-3 py-1.5">
-                    <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                      {{ row.user.username[0].toUpperCase() }}
-                    </div>
-                    <span class="text-xs font-medium">@{{ row.user.username }}</span>
-                    <span class="ml-auto font-mono text-[10px] text-muted-foreground">{{ row.user.wallet_address.slice(0, 8) }}…</span>
-                  </div>
-
-                  <!-- Status messages -->
-                  <p v-else-if="row.status === 'address'" class="pl-1 text-xs text-muted-foreground">Valid Solana address</p>
-                  <p v-else-if="row.status === 'not-found'" class="pl-1 text-xs text-destructive">User not found</p>
-                  <p v-else-if="row.status === 'invalid-address'" class="pl-1 text-xs text-destructive">Invalid address</p>
-
-                  <!-- Friends dropdown -->
-                  <div v-if="row.showFriends && friends.length" class="overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-                    <p class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Friends</p>
-                    <button
-                      v-for="f in friends"
-                      :key="f.id"
-                      type="button"
-                      class="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-accent"
-                      @click="selectFriend(i, f)"
-                    >
-                      <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                        {{ f.username[0].toUpperCase() }}
-                      </div>
-                      <span class="text-sm font-medium">@{{ f.username }}</span>
-                    </button>
-                  </div>
+                  <!-- Delete -->
+                  <button
+                    :disabled="rows.length <= 1"
+                    class="flex h-11 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground transition hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive disabled:opacity-30"
+                    @click="removeRow(i)"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
@@ -325,7 +326,10 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Error -->
-            <div v-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+            <div v-if="exceedsTotal" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+              <AlertCircle class="h-4 w-4 shrink-0" />Participant amounts exceed the total ({{ totalInToken.toFixed(4) }} {{ outputToken.symbol }}).
+            </div>
+            <div v-else-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
               <AlertCircle class="h-4 w-4 shrink-0" />{{ error }}
             </div>
 
@@ -338,4 +342,12 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
       </DialogContent>
     </DialogPortal>
   </DialogRoot>
+
+  <!-- One ContactPicker per row, mounted lazily -->
+  <ContactPicker
+    v-for="(row, i) in rows"
+    :key="i"
+    v-model:open="row.pickerOpen"
+    @select="(c) => selectContact(i, c)"
+  />
 </template>

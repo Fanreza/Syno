@@ -56,13 +56,17 @@ async function main() {
     const txBytes = Buffer.from(txBase64, 'base64')
 
     let signature
+    let isVersioned = false
     try {
-      // Try versioned first
+      VersionedTransaction.deserialize(txBytes)
+      isVersioned = true
+    } catch {}
+
+    if (isVersioned) {
       const vtx = VersionedTransaction.deserialize(txBytes)
       vtx.sign([senderKeypair])
       signature = await broadcastConnection.sendRawTransaction(vtx.serialize(), { skipPreflight: false })
-    } catch {
-      // Fall back to legacy
+    } else {
       const tx = Transaction.from(txBytes)
       const { blockhash } = await connection.getLatestBlockhash()
       tx.recentBlockhash = blockhash

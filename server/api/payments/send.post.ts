@@ -1,4 +1,5 @@
 import { authorizationContext } from '../../utils/privy'
+import { createNotification } from '../../utils/notifications'
 import { Connection, Transaction, VersionedTransaction } from '@solana/web3.js'
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112'
@@ -181,6 +182,9 @@ export default defineEventHandler(async (event) => {
     signature = await signAndBroadcast(privy, sender.privy_wallet_id, txBase64, connection, blockhash, lastValidBlockHeight, authCtx)
   }
 
+  const { data: senderUser } = await db.from('users').select('username').eq('id', sender.id).maybeSingle()
+  const senderUsername = senderUser?.username ?? 'someone'
+
   if (body.paymentLinkId) {
     const { data: link } = await db.from('payments')
       .update({ sender_id: sender.id, status: 'confirmed', tx_signature: signature })
@@ -193,6 +197,33 @@ export default defineEventHandler(async (event) => {
       await db.from('split_participants')
         .update({ status: 'paid', tx_signature: signature, paid_at: new Date().toISOString() })
         .eq('id', link.split_participant_id)
+
+      const { data: participant } = await db.from('split_participants')
+        .select('bill_id')
+        .eq('id', link.split_participant_id)
+        .maybeSingle()
+
+      if (participant?.bill_id) {
+        const { data: allParticipants } = await db.from('split_participants')
+          .select('status')
+          .eq('bill_id', participant.bill_id)
+        const allPaid = allParticipants?.every((p: any) => p.status === 'paid')
+        if (allPaid) {
+          await db.from('split_bills').update({ status: 'settled' }).eq('id', participant.bill_id)
+        }
+
+        // Notify split creator
+        const { data: bill } = await db.from('split_bills').select('creator_id, title').eq('id', participant.bill_id).maybeSingle()
+        if (bill?.creator_id && bill.creator_id !== sender.id) {
+          await createNotification({
+            userId: bill.creator_id,
+            type: 'split_paid',
+            title: 'Split payment received',
+            body: `@${senderUsername} paid their share of "${bill.title ?? 'split bill'}"`,
+            data: { bill_id: participant.bill_id, tx_signature: signature },
+          })
+        }
+      }
     }
   } else {
     await db.from('payments').insert({
@@ -205,6 +236,18 @@ export default defineEventHandler(async (event) => {
       tx_signature: signature,
       memo: body.memo ?? null,
     })
+
+    // Notify receiver
+    if (receiverId && receiverId !== sender.id) {
+      const tokenSymbol = actualToken === SOL_MINT ? 'SOL' : actualToken.slice(0, 6)
+      await createNotification({
+        userId: receiverId,
+        type: 'payment_received',
+        title: 'Payment received',
+        body: `@${senderUsername} sent you ${actualAmount.toFixed(4)} ${tokenSymbol}${body.memo ? ` · ${body.memo}` : ''}`,
+        data: { tx_signature: signature, amount: actualAmount, token: actualToken },
+      })
+    }
   }
 
   return { signature, amount: actualAmount, token: actualToken, toAddress }

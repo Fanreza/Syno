@@ -10,6 +10,8 @@ import {
   getAssociatedTokenAddressSync,
   createTransferCheckedInstruction,
   createAssociatedTokenAccountInstruction,
+  TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
 } from '@solana/spl-token'
 
 export function getConnection(): Connection {
@@ -48,6 +50,12 @@ export async function refreshBlockhash(base64Tx: string, blockhash?: string): Pr
   }
 }
 
+async function getTokenProgramId(connection: Connection, mintPk: PublicKey): Promise<PublicKey> {
+  const info = await connection.getAccountInfo(mintPk)
+  if (info?.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID
+  return TOKEN_PROGRAM_ID
+}
+
 export async function buildTransferSplTx(
   from: string, to: string, mint: string, amount: number, decimals: number, blockhash?: string
 ): Promise<string> {
@@ -55,21 +63,24 @@ export async function buildTransferSplTx(
   const fromPk = new PublicKey(from)
   const toPk = new PublicKey(to)
   const mintPk = new PublicKey(mint)
-  const hash = blockhash ?? (await connection.getLatestBlockhash('confirmed')).blockhash
 
-  const fromAta = getAssociatedTokenAddressSync(mintPk, fromPk)
-  const toAta = getAssociatedTokenAddressSync(mintPk, toPk)
+  const [hash, tokenProgramId] = await Promise.all([
+    blockhash ?? connection.getLatestBlockhash('confirmed').then(r => r.blockhash),
+    getTokenProgramId(connection, mintPk),
+  ])
 
-  const tx = new Transaction({ feePayer: fromPk, recentBlockhash: hash })
+  const fromAta = getAssociatedTokenAddressSync(mintPk, fromPk, false, tokenProgramId)
+  const toAta = getAssociatedTokenAddressSync(mintPk, toPk, false, tokenProgramId)
 
-  // Create recipient ATA if it doesn't exist
+  const tx = new Transaction({ feePayer: fromPk, recentBlockhash: hash as string })
+
   const toAtaInfo = await connection.getAccountInfo(toAta)
   if (!toAtaInfo) {
-    tx.add(createAssociatedTokenAccountInstruction(fromPk, toAta, toPk, mintPk))
+    tx.add(createAssociatedTokenAccountInstruction(fromPk, toAta, toPk, mintPk, tokenProgramId))
   }
 
   const rawAmount = BigInt(Math.round(amount * Math.pow(10, decimals)))
-  tx.add(createTransferCheckedInstruction(fromAta, mintPk, toAta, fromPk, rawAmount, decimals))
+  tx.add(createTransferCheckedInstruction(fromAta, mintPk, toAta, fromPk, rawAmount, decimals, [], tokenProgramId))
 
   return Buffer.from(tx.serialize({ requireAllSignatures: false, verifySignatures: false })).toString('base64')
 }

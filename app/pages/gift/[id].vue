@@ -172,7 +172,7 @@ if (import.meta.client) {
           </template>
 
           <p class="text-center text-xs text-muted-foreground">
-            Powered by <span class="font-semibold text-foreground">Syno</span> on Solana
+            Powered by <span class="font-semibold text-foreground">Syno</span>
           </p>
         </div>
       </div>

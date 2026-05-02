@@ -1,17 +1,6 @@
 import { spawn } from 'child_process'
 import { join } from 'path'
 
-export const PRIVATE_SEND_SUPPORTED_MINTS = {
-  USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
-} as const
-
-const SUPPORTED_SET = new Set(Object.values(PRIVATE_SEND_SUPPORTED_MINTS))
-
-export function isPrivateSendSupported(mintAddress: string): boolean {
-  return SUPPORTED_SET.has(mintAddress as any)
-}
-
 export function toRawAmount(amount: number, decimals: number): bigint {
   return BigInt(Math.round(amount * Math.pow(10, decimals)))
 }

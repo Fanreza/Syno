@@ -4,6 +4,9 @@ import { formatAmount, shortAddr, formatUsd } from '~/utils'
 
 definePageMeta({ layout: false })
 
+const { init: initTheme } = useTheme()
+onMounted(() => initTheme())
+
 const route = useRoute()
 const id = route.params.id as string
 const { isAuthenticated, user, apiFetch, isReady } = useAuth()
@@ -14,9 +17,10 @@ const SOL_MINT = 'So11111111111111111111111111111111111111112'
 const { data: payment, error: fetchError } = await useFetch<{
   id: string
   amount: number
-  token: string  // now a mint address
+  token: string
   status: string
   memo: string | null
+  tx_signature: string | null
   receiver_address: string
   receiver: { username: string; wallet_address: string } | null
 }>(`/api/payments/${id}`)
@@ -29,21 +33,18 @@ const pageUrl = computed(() => {
 const copiedAddr = ref(false)
 
 // ---- Output token info ----
-const USDC_TOKEN: JupToken = {
-  address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', symbol: 'USDC', name: 'USD Coin', decimals: 6,
-  logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
-}
-
 const outputTokenInfo = ref<JupToken>(SOL_TOKEN)
 
-// Fetch output token metadata
+// Fetch output token metadata from POPULAR_TOKENS first, then Jupiter search
 onMounted(async () => {
   const mint = payment.value?.token
   if (!mint || mint === SOL_MINT || mint === 'SOL') { outputTokenInfo.value = SOL_TOKEN; return }
-  if (mint === 'USDC' || mint === USDC_TOKEN.address) { outputTokenInfo.value = USDC_TOKEN; return }
+  const known = POPULAR_TOKENS.find(t => t.address === mint)
+  if (known) { outputTokenInfo.value = known; return }
   try {
-    const t = await $fetch<JupToken>(`/api/tokens/search?q=${mint}`)
-    if (Array.isArray(t) && t[0]) outputTokenInfo.value = t[0]
+    const results = await $fetch<JupToken[]>(`/api/tokens/search?q=${mint}`)
+    const match = results.find(t => t.address === mint) ?? results[0]
+    if (match) outputTokenInfo.value = match
   } catch {}
 })
 
@@ -171,7 +172,7 @@ const selectedInputBalance = computed(() => {
           <p class="mt-1 text-sm text-muted-foreground">This link may be invalid or expired.</p>
         </div>
 
-        <!-- Success -->
+        <!-- Success (just paid this session) -->
         <div v-else-if="successSig" class="rounded-2xl border border-border bg-card p-8 text-center">
           <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
             <CheckCircle2 class="h-8 w-8 text-green-500" />
@@ -185,6 +186,35 @@ const selectedInputBalance = computed(() => {
           </p>
           <a
             :href="`https://solscan.io/tx/${successSig}`"
+            target="_blank"
+            class="mt-4 flex items-center justify-center gap-1.5 text-xs text-primary hover:opacity-80 transition"
+          >
+            <ExternalLink class="h-3.5 w-3.5" />
+            View on Explorer
+          </a>
+          <NuxtLink
+            v-if="isAuthenticated"
+            to="/app"
+            class="mt-3 flex items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-accent"
+          >
+            Back to dashboard
+          </NuxtLink>
+        </div>
+
+        <!-- Already paid (loaded from DB) -->
+        <div v-else-if="payment.status === 'confirmed'" class="rounded-2xl border border-border bg-card p-8 text-center">
+          <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
+            <CheckCircle2 class="h-8 w-8 text-green-500" />
+          </div>
+          <p class="text-xl font-bold">Already paid</p>
+          <p class="mt-2 text-sm text-muted-foreground">
+            {{ formatAmount(Number(payment.amount)) }} {{ outputTokenInfo.symbol }}
+            <span v-if="payment.receiver"> to <span class="font-semibold text-foreground">@{{ payment.receiver.username }}</span></span>
+            has been paid.
+          </p>
+          <a
+            v-if="payment.tx_signature"
+            :href="`https://solscan.io/tx/${payment.tx_signature}`"
             target="_blank"
             class="mt-4 flex items-center justify-center gap-1.5 text-xs text-primary hover:opacity-80 transition"
           >
@@ -272,7 +302,7 @@ const selectedInputBalance = computed(() => {
                   <Search class="h-4 w-4 shrink-0 text-muted-foreground" />
                   <input
                     v-model="inputSearchQuery"
-                    placeholder="Search token or paste CA..."
+                    placeholder="Search or paste token address..."
                     autofocus
                     class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                   />
@@ -308,7 +338,7 @@ const selectedInputBalance = computed(() => {
               </div>
 
               <p v-if="needsSwap" class="mt-1.5 text-xs text-muted-foreground pl-1">
-                Auto-converted to {{ outputTokenInfo.symbol }} via Jupiter
+                Auto-converted to {{ outputTokenInfo.symbol }}
               </p>
 
               <!-- Balance -->
@@ -334,13 +364,13 @@ const selectedInputBalance = computed(() => {
               <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               <template v-else>
                 {{ isAuthenticated
-                  ? `Pay ${formatAmount(Number(payment.amount))} ${outputTokenInfo.symbol}${needsSwap ? ' via Jupiter' : ''}`
+                  ? `Pay ${formatAmount(Number(payment.amount))} ${outputTokenInfo.symbol}`
                   : 'Sign in to pay' }}
               </template>
             </button>
 
             <p class="text-center text-xs text-muted-foreground">
-              Powered by <span class="font-semibold text-foreground">Syno</span> on Solana
+              Powered by <span class="font-semibold text-foreground">Syno</span>
             </p>
           </div>
 

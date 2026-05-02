@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { Home, User, LogOut, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, Link } from 'lucide-vue-next'
+import { Home, User, LogOut, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, Link, Gift, Bell, Send, ArrowLeftRight, QrCode, Banknote, Scissors } from 'lucide-vue-next'
+import { useNotifications } from '~/composables/useNotifications'
 import { createAvatar } from '@dicebear/core'
 import { bottts } from '@dicebear/collection'
 
 const route = useRoute()
 const { user, logout } = useAuth()
 const { isDark, toggle } = useTheme()
+const { unread, fetchUnread } = useNotifications()
+
+onMounted(() => fetchUnread())
 
 const avatarDataUrl = computed(() => {
   const seed = user.value?.username ?? 'default'
@@ -15,25 +19,35 @@ const avatarDataUrl = computed(() => {
 
 const items = [
   { to: '/app', icon: Home, label: 'Home' },
+  { to: '/app/notifications', icon: Bell, label: 'Notifications' },
   { to: '/app/requests', icon: Link, label: 'Requests' },
+  { to: '/app/gifts', icon: Gift, label: 'Gifts' },
   { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
   { to: '/app/friends', icon: Users, label: 'Friends' },
   { to: '/app/activity', icon: Activity, label: 'Activity' },
   { to: '/app/profile', icon: User, label: 'Profile' },
 ]
 
-// Bottom bar: 4 core items + More button
+// Bottom bar: Home | Activity | [Send FAB] | Request | More
 const bottomItems = [
   { to: '/app', icon: Home, label: 'Home' },
-  { to: '/app/requests', icon: Link, label: 'Requests' },
   { to: '/app/activity', icon: Activity, label: 'Activity' },
-  { to: '/app/profile', icon: User, label: 'Profile' },
 ]
 
 const showMore = ref(false)
+const showSendGlobal = useState<boolean>('global-show-send', () => false)
+const showSwapGlobal = useState<boolean>('global-show-swap', () => false)
+const showRequestGlobal = useState<boolean>('global-show-request', () => false)
+const showSplitGlobal = useState<boolean>('global-show-split', () => false)
+const showGiftGlobal = useState<boolean>('global-show-gift', () => false)
+const showPayrollGlobal = useState<boolean>('global-show-payroll', () => false)
+
 const moreItems = [
+  { to: '/app/notifications', icon: Bell, label: 'Notifications', badge: true },
+  { to: '/app/gifts', icon: Gift, label: 'Gifts' },
   { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
   { to: '/app/friends', icon: Users, label: 'Friends' },
+  { to: '/app/profile', icon: User, label: 'Profile' },
 ]
 
 function isActive(to: string) {
@@ -73,7 +87,13 @@ function isActive(to: string) {
           ? 'bg-primary text-primary-foreground shadow-sm'
           : 'text-muted-foreground hover:bg-accent hover:text-foreground'"
       >
-        <component :is="item.icon" class="h-4 w-4 shrink-0" />
+        <div class="relative shrink-0">
+          <component :is="item.icon" class="h-4 w-4" />
+          <span
+            v-if="item.to === '/app/notifications' && unread > 0"
+            class="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white"
+          >{{ unread > 9 ? '9+' : unread }}</span>
+        </div>
         {{ item.label }}
       </NuxtLink>
     </nav>
@@ -100,25 +120,48 @@ function isActive(to: string) {
 
   <!-- ── Mobile bottom bar ──────────────────────────────────────────────── -->
   <nav class="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-border bg-card/95 backdrop-blur-md">
-    <div class="flex items-center justify-around px-2 py-2 safe-bottom">
+    <div class="flex items-center px-2 safe-bottom" style="padding-top: 8px; padding-bottom: 8px;">
+
+      <!-- Left: Home, Activity -->
       <NuxtLink
         v-for="item in bottomItems"
         :key="item.to"
         :to="item.to"
-        class="flex flex-col items-center gap-0.5 flex-1 py-1.5 rounded-xl transition-all min-w-0"
+        class="flex flex-col items-center gap-0.5 flex-1 py-1 rounded-xl transition-all min-w-0"
         :class="isActive(item.to) ? 'text-primary' : 'text-muted-foreground'"
       >
-        <component :is="item.icon" class="h-4.5 w-4.5 shrink-0 transition-transform" :class="isActive(item.to) ? 'scale-110' : ''" />
+        <component :is="item.icon" class="h-5 w-5 shrink-0 transition-transform" :class="isActive(item.to) ? 'scale-110' : ''" />
         <span class="text-[9px] font-medium truncate">{{ item.label }}</span>
       </NuxtLink>
 
-      <!-- More button -->
+      <!-- Center: Send FAB -->
+      <div class="flex flex-col items-center flex-1 min-w-0 -mt-5">
+        <button
+          class="flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all active:scale-95"
+          style="background: linear-gradient(135deg, hsl(252 60% 38%) 0%, hsl(258 55% 50%) 100%); box-shadow: 0 4px 20px hsl(252 60% 38% / 0.5);"
+          @click="showSendGlobal = true"
+        >
+          <Send class="h-6 w-6 text-white" />
+        </button>
+        <span class="mt-1 text-[9px] font-medium text-muted-foreground">Send</span>
+      </div>
+
+      <!-- Right: Request -->
+      <NuxtLink
+        to="/app/requests"
+        class="flex flex-col items-center gap-0.5 flex-1 py-1 rounded-xl transition-all min-w-0"
+        :class="isActive('/app/requests') ? 'text-primary' : 'text-muted-foreground'"
+      >
+        <QrCode class="h-5 w-5 shrink-0" />
+        <span class="text-[9px] font-medium">Request</span>
+      </NuxtLink>
+
       <button
-        class="flex flex-col items-center gap-0.5 flex-1 py-1.5 rounded-xl transition-all min-w-0"
+        class="flex flex-col items-center gap-0.5 flex-1 py-1 rounded-xl transition-all min-w-0"
         :class="showMore ? 'text-primary' : 'text-muted-foreground'"
         @click="showMore = !showMore"
       >
-        <MoreHorizontal class="h-4.5 w-4.5 shrink-0" />
+        <MoreHorizontal class="h-5 w-5 shrink-0" />
         <span class="text-[9px] font-medium">More</span>
       </button>
     </div>
@@ -141,7 +184,13 @@ function isActive(to: string) {
             :class="isActive(item.to) ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent'"
             @click="showMore = false"
           >
-            <component :is="item.icon" class="h-4 w-4 shrink-0" />
+            <div class="relative shrink-0">
+              <component :is="item.icon" class="h-4 w-4" />
+              <span
+                v-if="item.badge && unread > 0"
+                class="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white"
+              >{{ unread > 9 ? '9+' : unread }}</span>
+            </div>
             {{ item.label }}
           </NuxtLink>
           <button

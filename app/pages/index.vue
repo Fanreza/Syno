@@ -27,7 +27,7 @@ const faqItems = [
   },
   {
     q: 'Which tokens can I send?',
-    a: 'Any SPL token on Solana — SOL, USDC, USDT, BONK, and more. Auto-convert lets you pay with one token while the recipient gets a different one, routed through Jupiter.',
+    a: 'SOL, USDC, USDT, BONK, and more. Auto-convert lets you pay with one token while the recipient gets a different one.',
   },
   {
     q: 'Can I split a bill unevenly?',
@@ -78,19 +78,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen overflow-x-hidden bg-white text-foreground">
+  <div class="min-h-screen overflow-x-hidden bg-white text-gray-900">
 
     <!-- Navbar -->
-    <header class="fixed top-0 z-50 w-full border-b border-border/40 bg-white/80 backdrop-blur-xl">
+    <header class="fixed top-0 z-50 w-full border-b border-gray-200/40 bg-white/80 backdrop-blur-xl">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-5 md:px-10 py-4">
         <div class="flex items-center gap-2.5">
           <img src="/syno-logo.jpeg" alt="Syno" class="h-8 w-8 rounded-xl object-cover shadow-sm" />
-          <span class="text-lg font-bold tracking-tight">Syno</span>
+          <span class="text-lg font-bold tracking-tight text-gray-900">Syno</span>
         </div>
         <div class="flex items-center gap-3 md:gap-6">
-          <a href="#features" class="hidden md:block text-sm text-muted-foreground transition hover:text-foreground">Features</a>
-          <a href="#how" class="hidden md:block text-sm text-muted-foreground transition hover:text-foreground">How it works</a>
-          <a href="#faq" class="hidden md:block text-sm text-muted-foreground transition hover:text-foreground">FAQ</a>
+          <a href="#features" class="hidden md:block text-sm text-gray-500 transition hover:text-gray-900">Features</a>
+          <a href="#how" class="hidden md:block text-sm text-gray-500 transition hover:text-gray-900">How it works</a>
+          <a href="#faq" class="hidden md:block text-sm text-gray-500 transition hover:text-gray-900">FAQ</a>
           <NuxtLink to="/login" class="rounded-xl bg-primary px-4 md:px-6 py-2 md:py-2.5 text-sm font-semibold text-white shadow transition hover:opacity-90">
             Get Started
           </NuxtLink>
@@ -116,13 +116,13 @@ onMounted(() => {
 
           <!-- Left -->
           <div class="flex-1 text-center md:text-left" :class="heroVisible ? 'animate-slide-up' : 'opacity-0'">
-            <h1 class="text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight">
+            <h1 class="text-5xl md:text-7xl font-extrabold leading-[1.05] tracking-tight text-gray-900">
               Crypto<br />payments,<br />
               <span class="text-shimmer">done right.</span>
             </h1>
 
-            <p class="mt-6 mx-auto md:mx-0 max-w-md text-lg md:text-xl leading-relaxed text-muted-foreground">
-              Send to <span class="font-semibold text-foreground">@username</span> instead of a 44-character address. Split bills, go private, auto-convert any token.
+            <p class="mt-6 mx-auto md:mx-0 max-w-md text-lg md:text-xl leading-relaxed text-gray-500">
+              Send to <span class="font-semibold text-gray-900">@username</span> instead of a 44-character address. Split bills, go private, auto-convert any token.
             </p>
 
             <div class="mt-8 md:mt-10 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3 md:gap-4">
@@ -132,7 +132,7 @@ onMounted(() => {
                 Start for free
                 <ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </NuxtLink>
-              <a href="#features" class="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl border border-border px-8 py-4 text-base font-semibold transition hover:bg-secondary">
+              <a href="#features" class="w-full sm:w-auto flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-8 py-4 text-base font-semibold transition hover:bg-gray-100">
                 See features <ChevronDown class="h-4 w-4" />
               </a>
             </div>
@@ -140,7 +140,7 @@ onMounted(() => {
             <div class="mt-10 flex items-center justify-center md:justify-start gap-8">
               <div v-for="s in [{ v: '<1s', l: 'settlement' }, { v: '~$0', l: 'gas fees' }, { v: 'SOL', l: 'powered by' }]" :key="s.l">
                 <p class="text-2xl font-extrabold text-primary">{{ s.v }}</p>
-                <p class="text-xs text-muted-foreground">{{ s.l }}</p>
+                <p class="text-xs text-gray-500">{{ s.l }}</p>
               </div>
             </div>
           </div>
@@ -174,7 +174,7 @@ onMounted(() => {
                   style="background: linear-gradient(135deg, hsl(222 55% 12%), hsl(222 40% 28%))">A</div>
                 <div>
                   <p class="text-xs font-semibold">Sent to @rina</p>
-                  <p class="text-[11px] text-muted-foreground">0.05 SOL · just now</p>
+                  <p class="text-[11px] text-gray-500">0.05 SOL · just now</p>
                 </div>
                 <div class="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">✓</div>
               </div>
@@ -186,7 +186,7 @@ onMounted(() => {
               <div class="space-y-1">
                 <div v-for="(p, i) in [{ n: '@budi', paid: true }, { n: '@rafi', paid: true }, { n: '@sari', paid: false }]" :key="i"
                   class="flex items-center justify-between gap-4 text-[11px]">
-                  <span class="text-muted-foreground">{{ p.n }}</span>
+                  <span class="text-gray-500">{{ p.n }}</span>
                   <span :class="p.paid ? 'text-green-600 font-semibold' : 'text-orange-500'">
                     {{ p.paid ? 'Paid ✓' : 'Pending' }}
                   </span>
@@ -200,7 +200,7 @@ onMounted(() => {
                 <RefreshCw class="h-4 w-4 text-primary" />
                 <div>
                   <p class="text-xs font-semibold">Auto-converted</p>
-                  <p class="text-[10px] text-muted-foreground">USDC → SOL instantly</p>
+                  <p class="text-[10px] text-gray-500">USDC → SOL instantly</p>
                 </div>
               </div>
             </div>
@@ -211,16 +211,16 @@ onMounted(() => {
     </section>
 
     <!-- Live ticker -->
-    <div class="overflow-hidden border-y border-border bg-secondary/60 py-3">
+    <div class="overflow-hidden border-y border-gray-200 bg-gray-50 py-3">
       <div class="flex animate-ticker whitespace-nowrap">
         <div v-for="(tx, i) in [...tickerItems, ...tickerItems]" :key="i"
-          class="mx-6 inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <span class="font-semibold text-foreground">{{ tx.from }}</span>
+          class="mx-6 inline-flex items-center gap-2 text-sm text-gray-500">
+          <span class="font-semibold text-gray-900">{{ tx.from }}</span>
           <span>→</span>
-          <span class="font-semibold text-foreground">{{ tx.to }}</span>
+          <span class="font-semibold text-gray-900">{{ tx.to }}</span>
           <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{{ tx.amount }}</span>
-          <span class="text-muted-foreground/60">{{ tx.note }}</span>
-          <span class="mx-4 text-border">·</span>
+          <span class="text-gray-400">{{ tx.note }}</span>
+          <span class="mx-4 text-gray-300">·</span>
         </div>
       </div>
     </div>
@@ -230,7 +230,7 @@ onMounted(() => {
       <div class="mx-auto max-w-6xl px-5 md:px-10">
         <div class="mb-12 md:mb-20 text-center">
           <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-primary/70">Why Syno</p>
-          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight">What makes it<br />different.</h2>
+          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight text-gray-900">What makes it<br />different.</h2>
         </div>
 
         <!-- Feature 1: Private Transaction -->
@@ -273,15 +273,15 @@ onMounted(() => {
               <Shield class="h-4 w-4 text-purple-600" />
               <span class="text-sm font-semibold text-purple-700">Private Transactions</span>
             </div>
-            <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">Your money,<br />your business.</h3>
-            <p class="mb-6 text-base md:text-lg leading-relaxed text-muted-foreground">
+            <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-gray-900">Your money,<br />your business.</h3>
+            <p class="mb-6 text-base md:text-lg leading-relaxed text-gray-500">
               On-chain transactions are public by default. Anyone can look up your wallet and see exactly what you sent, to whom, and when. Syno routes payments through a privacy layer so that doesn't happen.
             </p>
             <ul class="space-y-3 text-left">
               <li v-for="t in ['Amount hidden from public explorers', 'Recipient address not exposed on-chain', 'Only the two parties can see the details']" :key="t"
                 class="flex items-start gap-3 text-sm">
                 <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-purple-600 text-xs font-bold">✓</span>
-                <span class="text-muted-foreground">{{ t }}</span>
+                <span class="text-gray-500">{{ t }}</span>
               </li>
             </ul>
           </div>
@@ -295,15 +295,15 @@ onMounted(() => {
               <Users class="h-4 w-4 text-blue-600" />
               <span class="text-sm font-semibold text-blue-700">Split Bills</span>
             </div>
-            <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">No more awkward<br />"you owe me" texts.</h3>
-            <p class="mb-6 text-base md:text-lg leading-relaxed text-muted-foreground">
+            <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-gray-900">No more awkward<br />"you owe me" texts.</h3>
+            <p class="mb-6 text-base md:text-lg leading-relaxed text-gray-500">
               Create a split, share a link to each person, and watch who pays. No more chasing people down or doing mental math on who owes what.
             </p>
             <ul class="space-y-3 text-left">
               <li v-for="t in ['Even split or custom amount per person', 'Each participant gets their own payment link', 'Live status updates as people pay']" :key="t"
                 class="flex items-start gap-3 text-sm">
                 <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-xs font-bold">✓</span>
-                <span class="text-muted-foreground">{{ t }}</span>
+                <span class="text-gray-500">{{ t }}</span>
               </li>
             </ul>
           </div>
@@ -311,15 +311,15 @@ onMounted(() => {
             <div class="overflow-hidden rounded-3xl bg-white p-5 md:p-6 shadow-2xl" style="border: 1px solid hsl(220 15% 88%)">
               <div class="mb-4 flex items-center justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="truncate font-bold">🍣 Sushi Tei Dinner</p>
-                  <p class="text-xs text-muted-foreground">0.45 SOL total · 4 people</p>
+                  <p class="truncate font-bold text-gray-900">🍣 Sushi Tei Dinner</p>
+                  <p class="text-xs text-gray-500">0.45 SOL total · 4 people</p>
                 </div>
                 <span class="shrink-0 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">Open</span>
               </div>
-              <div class="mb-4 h-2 overflow-hidden rounded-full bg-secondary">
+              <div class="mb-4 h-2 overflow-hidden rounded-full bg-gray-100">
                 <div class="h-full w-3/4 rounded-full transition-all" style="background: linear-gradient(90deg, hsl(222 55% 12%), hsl(222 40% 35%))" />
               </div>
-              <p class="mb-3 text-xs text-muted-foreground">3 of 4 paid</p>
+              <p class="mb-3 text-xs text-gray-500">3 of 4 paid</p>
               <div class="space-y-2">
                 <div v-for="(p, i) in [
                   { n: '@budi', amt: '0.11 SOL', paid: true },
@@ -328,9 +328,9 @@ onMounted(() => {
                   { n: '@sari', amt: '0.12 SOL', paid: false },
                 ]" :key="i" class="flex items-center justify-between rounded-xl px-3 py-2.5"
                   :class="p.paid ? 'bg-green-50' : 'bg-orange-50'">
-                  <span class="text-sm font-medium">{{ p.n }}</span>
+                  <span class="text-sm font-medium text-gray-900">{{ p.n }}</span>
                   <div class="flex items-center gap-2 shrink-0">
-                    <span class="text-xs text-muted-foreground">{{ p.amt }}</span>
+                    <span class="text-xs text-gray-500">{{ p.amt }}</span>
                     <span :class="p.paid ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
                       class="rounded-full px-2 py-0.5 text-[10px] font-bold">
                       {{ p.paid ? 'Paid ✓' : 'Pending' }}
@@ -378,7 +378,7 @@ onMounted(() => {
                   </div>
                 </div>
                 <div class="flex items-center justify-between rounded-xl bg-white/5 px-4 py-2">
-                  <span class="text-xs text-white/40">Best rate via Jupiter</span>
+                  <span class="text-xs text-white/40">Best rate</span>
                   <span class="text-xs font-semibold text-green-400">0.3% fee</span>
                 </div>
               </div>
@@ -392,15 +392,15 @@ onMounted(() => {
               <RefreshCw class="h-4 w-4 text-green-600" />
               <span class="text-sm font-semibold text-green-700">Auto-Convert</span>
             </div>
-            <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">Pay in any token.<br />Receive any token.</h3>
-            <p class="mb-6 text-base md:text-lg leading-relaxed text-muted-foreground">
+            <h3 class="mb-4 text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-gray-900">Pay in any token.<br />Receive any token.</h3>
+            <p class="mb-6 text-base md:text-lg leading-relaxed text-gray-500">
               You pay with whatever token you have. The recipient gets whatever token they want. Jupiter finds the best rate automatically — you just hit send.
             </p>
             <ul class="space-y-3 text-left">
-              <li v-for="t in ['Best rate across Solana DEXes, automatically', 'Works with any SPL token on both ends', 'Slippage protection built in']" :key="t"
+              <li v-for="t in ['Best rate, found automatically', 'Works with any token on both ends', 'Slippage protection built in']" :key="t"
                 class="flex items-start gap-3 text-sm">
                 <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600 text-xs font-bold">✓</span>
-                <span class="text-muted-foreground">{{ t }}</span>
+                <span class="text-gray-500">{{ t }}</span>
               </li>
             </ul>
           </div>
@@ -414,7 +414,7 @@ onMounted(() => {
       <div class="mx-auto max-w-6xl px-5 md:px-10">
         <div class="mb-12 md:mb-16 text-center">
           <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-primary/70">How it works</p>
-          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight">Up and running<br />in 60 seconds.</h2>
+          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight text-gray-900">Up and running<br />in 60 seconds.</h2>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
           <div v-for="(s, i) in [
@@ -426,40 +426,40 @@ onMounted(() => {
               style="background: linear-gradient(135deg, hsl(222 55% 12%) 0%, hsl(222 40% 28%) 100%)">
               {{ s.num }}
             </div>
-            <div v-if="i < 2" class="absolute top-7 hidden md:block h-0.5 bg-border" style="left: 3.8rem; right: -1rem" />
-            <h3 class="mb-3 text-lg md:text-xl font-bold">{{ s.title }}</h3>
-            <p class="leading-relaxed text-muted-foreground text-sm md:text-base">{{ s.desc }}</p>
+            <div v-if="i < 2" class="absolute top-7 hidden md:block h-0.5 bg-gray-200" style="left: 3.8rem; right: -1rem" />
+            <h3 class="mb-3 text-lg md:text-xl font-bold text-gray-900">{{ s.title }}</h3>
+            <p class="leading-relaxed text-gray-500 text-sm md:text-base">{{ s.desc }}</p>
           </div>
         </div>
       </div>
     </section>
 
     <!-- FAQ -->
-    <section id="faq" class="py-20 md:py-28">
+    <section id="faq" class="py-20 md:py-28 bg-white">
       <div class="mx-auto max-w-3xl px-5 md:px-10">
         <div class="mb-12 md:mb-16 text-center">
           <p class="mb-3 text-sm font-semibold uppercase tracking-widest text-primary/70">FAQ</p>
-          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight">Common<br />questions.</h2>
+          <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight text-gray-900">Common<br />questions.</h2>
         </div>
         <div class="space-y-3">
           <div
             v-for="(item, i) in faqItems"
             :key="i"
-            class="overflow-hidden rounded-2xl border border-border transition-all"
-            :class="openFaq === i ? 'bg-secondary/60' : 'bg-white hover:bg-secondary/30'"
+            class="overflow-hidden rounded-2xl border border-gray-200 transition-all"
+            :class="openFaq === i ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'"
           >
             <button
               class="flex w-full items-center justify-between gap-4 px-5 md:px-6 py-4 md:py-5 text-left"
               @click="toggleFaq(i)"
             >
-              <span class="text-sm md:text-base font-semibold">{{ item.q }}</span>
-              <span class="shrink-0 text-muted-foreground">
+              <span class="text-sm md:text-base font-semibold text-gray-900">{{ item.q }}</span>
+              <span class="shrink-0 text-gray-400">
                 <Minus v-if="openFaq === i" class="h-4 w-4" />
                 <Plus v-else class="h-4 w-4" />
               </span>
             </button>
             <div v-if="openFaq === i" class="px-5 md:px-6 pb-4 md:pb-5">
-              <p class="text-sm md:text-[15px] leading-relaxed text-muted-foreground">{{ item.a }}</p>
+              <p class="text-sm md:text-[15px] leading-relaxed text-gray-500">{{ item.a }}</p>
             </div>
           </div>
         </div>
@@ -488,21 +488,21 @@ onMounted(() => {
     </section>
 
     <!-- Footer -->
-    <footer class="border-t border-border py-8 md:py-10">
+    <footer class="border-t border-gray-200 bg-white py-8 md:py-10">
       <div class="mx-auto max-w-6xl px-5 md:px-10">
         <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div class="flex items-center gap-2">
             <img src="/syno-logo.jpeg" alt="Syno" class="h-6 w-6 rounded-lg object-cover" />
-            <span class="text-sm font-semibold">Syno</span>
+            <span class="text-sm font-semibold text-gray-900">Syno</span>
           </div>
-          <div class="flex items-center gap-4 md:gap-6 text-sm text-muted-foreground">
-            <a href="#features" class="transition hover:text-foreground">Features</a>
-            <a href="#faq" class="transition hover:text-foreground">FAQ</a>
-            <NuxtLink to="/terms" class="transition hover:text-foreground">Terms</NuxtLink>
-            <NuxtLink to="/privacy" class="transition hover:text-foreground">Privacy</NuxtLink>
+          <div class="flex items-center gap-4 md:gap-6 text-sm text-gray-500">
+            <a href="#features" class="transition hover:text-gray-900">Features</a>
+            <a href="#faq" class="transition hover:text-gray-900">FAQ</a>
+            <NuxtLink to="/terms" class="transition hover:text-gray-900">Terms</NuxtLink>
+            <NuxtLink to="/privacy" class="transition hover:text-gray-900">Privacy</NuxtLink>
           </div>
         </div>
-        <div class="mt-6 border-t border-border pt-6 text-center text-xs text-muted-foreground">
+        <div class="mt-6 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
           Built on Solana · {{ new Date().getFullYear() }} Syno. Not financial advice.
         </div>
       </div>

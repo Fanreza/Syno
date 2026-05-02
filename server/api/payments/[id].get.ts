@@ -3,7 +3,7 @@ export default defineEventHandler(async (event) => {
   const db = adminDb()
   const { data } = await db
     .from('payments')
-    .select('id, amount, token, status, receiver_address, memo, receiver_id, sender_id')
+    .select('id, amount, token, status, tx_signature, receiver_address, memo, receiver_id, sender_id')
     .eq('id', id)
     .maybeSingle()
   if (!data) throw createError({ statusCode: 404, statusMessage: 'Not found' })

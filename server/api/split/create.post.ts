@@ -1,3 +1,5 @@
+import { createNotification } from '../../utils/notifications'
+
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
   const body = await readBody<{
@@ -30,6 +32,9 @@ export default defineEventHandler(async (event) => {
     .single()
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
 
+  const { data: creator } = await db.from('users').select('username').eq('id', me?.id).maybeSingle()
+  const creatorUsername = creator?.username ?? 'someone'
+
   const rows = await Promise.all(
     body.participants.map(async (p) => {
       const clean = p.username.replace(/^@/, '').toLowerCase()
@@ -39,11 +44,26 @@ export default defineEventHandler(async (event) => {
         user_id: u?.id || null,
         username: clean,
         amount: p.amount,
-        status: 'pending'
+        status: 'pending',
+        _userId: u?.id,
       }
     })
   )
-  await db.from('split_participants').insert(rows)
+
+  const insertRows = rows.map(({ _userId: _, ...r }) => r)
+  await db.from('split_participants').insert(insertRows)
+
+  // Notify participants
+  const notifPromises = rows
+    .filter(r => r._userId && r._userId !== me?.id)
+    .map(r => createNotification({
+      userId: r._userId!,
+      type: 'split_created',
+      title: 'You were added to a split',
+      body: `@${creatorUsername} added you to "${body.title || 'a split bill'}" — ${r.amount} due`,
+      data: { bill_id: bill.id },
+    }))
+  await Promise.allSettled(notifPromises)
 
   return { id: bill.id }
 })

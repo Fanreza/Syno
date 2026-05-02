@@ -2,7 +2,7 @@
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
 import Input from '~/components/ui/input/Input.vue'
 import { Button } from '~/components/ui/button'
-import { X, Copy, Check, Link, QrCode, ExternalLink, DollarSign } from 'lucide-vue-next'
+import { X, Copy, Check, Link, QrCode, ExternalLink, DollarSign, Share2 } from 'lucide-vue-next'
 import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -114,7 +114,7 @@ function copyLink() {
 function reset() {
   amountRaw.value = ''; memo.value = ''; error.value = ''
   payLink.value = ''; currency.value = 'TOKEN'
-  outputToken.value = SOL_TOKEN; searchQuery.value = ''
+  outputToken.value = SOL_TOKEN
 }
 
 watch(open, (v) => { if (!v) setTimeout(reset, 300) })
@@ -152,7 +152,7 @@ const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
               <span v-if="memo"> for {{ memo }}</span>
             </p>
             <p v-if="isNonSOL" class="mt-1 text-xs text-muted-foreground">
-              Payer can pay with any token — auto-converted via Jupiter
+              They can pay with any token — auto-converted
             </p>
           </div>
 
@@ -171,10 +171,22 @@ const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
               <Copy v-else class="h-4 w-4" />
               {{ copiedLink ? 'Copied!' : 'Copy link' }}
             </button>
-            <a :href="payLink" target="_blank"
-              class="flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-medium transition hover:bg-accent">
-              <ExternalLink class="h-4 w-4" />
-              Preview
+          </div>
+
+          <div class="flex gap-2">
+            <a
+              :href="`https://wa.me/?text=${encodeURIComponent('Pay me here: ' + payLink)}`"
+              target="_blank"
+              class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-green-50 py-2 text-xs font-semibold text-green-700 transition hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
+            >
+              <Share2 class="h-3.5 w-3.5" /> WhatsApp
+            </a>
+            <a
+              :href="`https://t.me/share/url?url=${encodeURIComponent(payLink)}&text=${encodeURIComponent('Pay me here!')}`"
+              target="_blank"
+              class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-blue-50 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
+            >
+              <Share2 class="h-3.5 w-3.5" /> Telegram
             </a>
           </div>
 
@@ -200,7 +212,7 @@ const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
           <div>
             <TokenPicker v-model="outputToken" label="Receive as" />
             <p v-if="isNonSOL" class="mt-1.5 pl-1 text-xs text-muted-foreground">
-              Payer can pay with any token — auto-converted via Jupiter
+              They can pay with any token — auto-converted
             </p>
           </div>
 

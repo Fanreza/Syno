@@ -158,7 +158,7 @@ function refresh() {
         </div>
         <p class="font-medium">No activity</p>
         <p class="mt-1 text-sm text-muted-foreground">
-          {{ filter === 'all' ? 'Send or receive SOL to see it here.' : `No ${filter} transactions yet.` }}
+          {{ filter === 'all' ? 'Send or receive to see it here.' : `No ${filter} transactions yet.` }}
         </p>
       </div>
 
@@ -268,7 +268,7 @@ function refresh() {
           <div class="min-w-0 flex-1">
             <p class="font-mono text-sm">{{ shortAddr(tx.tx_hash, 8) }}</p>
             <p class="mt-0.5 text-xs text-muted-foreground">
-              {{ tx.to_address ? `To ${shortAddr(tx.to_address, 6)}` : 'Contract interaction' }}
+              {{ tx.to_address ? `To ${shortAddr(tx.to_address, 6)}` : 'Transaction' }}
             </p>
           </div>
 

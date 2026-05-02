@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, Copy, Check, Clock, CheckCircle2, ExternalLink, Plus, ChevronRight, Users } from 'lucide-vue-next'
+import { Link, Copy, Check, Clock, CheckCircle2, ExternalLink, Plus, ChevronRight, Users, ArrowUpRight } from 'lucide-vue-next'
 import { formatAmount } from '~/utils'
 
 const { apiFetch } = useAuth()
@@ -43,20 +43,38 @@ function fmtDate(iso: string) {
   <div class="min-h-screen p-4 md:p-8">
 
     <!-- Header -->
-    <div class="mb-6 flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold">Requests</h1>
-        <p class="mt-0.5 text-sm text-muted-foreground">Payment requests and split bills.</p>
+    <div class="mb-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold">Requests</h1>
+          <p class="mt-0.5 text-sm text-muted-foreground">Payment requests and split bills.</p>
+        </div>
+        <!-- Desktop buttons -->
+        <div class="hidden sm:flex items-center gap-2">
+          <button
+            class="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold transition hover:bg-accent"
+            @click="showSplit = true"
+          >
+            <Users class="h-4 w-4" /> Split request
+          </button>
+          <button
+            class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+            @click="showRequest = true"
+          >
+            <Plus class="h-4 w-4" /> Payment request
+          </button>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
+      <!-- Mobile buttons -->
+      <div class="mt-3 flex gap-2 sm:hidden">
         <button
-          class="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold transition hover:bg-accent"
+          class="flex flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold transition hover:bg-accent"
           @click="showSplit = true"
         >
-          <Users class="h-4 w-4" /> Split request
+          <Users class="h-4 w-4" /> Split
         </button>
         <button
-          class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+          class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
           @click="showRequest = true"
         >
           <Plus class="h-4 w-4" /> Payment request
@@ -130,30 +148,28 @@ function fmtDate(iso: string) {
       <template v-for="item in byMe" :key="item.id">
 
         <!-- Payment link row -->
-        <div v-if="item.kind === 'link'" class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 transition hover:bg-accent">
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+        <div v-if="item.kind === 'link'" class="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition hover:bg-accent">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
             :class="item.status === 'confirmed' ? 'bg-green-500/10' : 'bg-secondary'">
-            <CheckCircle2 v-if="item.status === 'confirmed'" class="h-5 w-5 text-green-500" />
-            <Clock v-else class="h-5 w-5 text-muted-foreground" />
+            <CheckCircle2 v-if="item.status === 'confirmed'" class="h-4 w-4 text-green-500" />
+            <Clock v-else class="h-4 w-4 text-muted-foreground" />
           </div>
           <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <p class="font-semibold">{{ formatAmount(item.amount) }} {{ sym(item.token) }}</p>
-              <span class="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-500">
-                Request
-              </span>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <p class="font-semibold text-sm">{{ formatAmount(item.amount) }} {{ sym(item.token) }}</p>
+              <span class="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-500">Request</span>
               <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
                 :class="item.status === 'confirmed' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-secondary text-muted-foreground'">
                 {{ item.status === 'confirmed' ? 'Paid' : 'Pending' }}
               </span>
             </div>
-            <p class="mt-0.5 text-xs text-muted-foreground">
-              <span v-if="item.memo" class="mr-2">{{ item.memo }}</span>
+            <p class="mt-0.5 text-xs text-muted-foreground truncate">
+              <span v-if="item.memo" class="mr-1.5">{{ item.memo }}</span>
               {{ fmtDate(item.created_at) }}
-              <span v-if="item.paid_by"> · Paid by <span class="font-medium text-foreground">@{{ item.paid_by }}</span></span>
+              <span v-if="item.paid_by"> · @{{ item.paid_by }}</span>
             </p>
           </div>
-          <div class="flex shrink-0 items-center gap-1.5">
+          <div class="flex shrink-0 items-center gap-1">
             <button v-if="item.status === 'pending'"
               class="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background transition hover:bg-accent"
               @click="copyLink(item.id)">
@@ -173,19 +189,17 @@ function fmtDate(iso: string) {
 
         <!-- Split bill row -->
         <NuxtLink v-else-if="item.kind === 'split'" :to="`/app/split/${item.id}`"
-          class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 transition hover:bg-accent">
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-500/10">
-            <Users class="h-5 w-5 text-purple-500" />
+          class="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3.5 transition hover:bg-accent">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-500/10">
+            <Users class="h-4 w-4 text-purple-500" />
           </div>
           <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <p class="truncate font-semibold">{{ item.title }}</p>
-              <span class="shrink-0 rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-purple-500">
-                Split
-              </span>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <p class="truncate font-semibold text-sm max-w-30 sm:max-w-none">{{ item.title }}</p>
+              <span class="shrink-0 rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-purple-500">Split</span>
               <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
                 :class="item.status === 'open' ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' : 'bg-green-500/10 text-green-600 dark:text-green-400'">
-                {{ item.status }}
+                {{ item.status === 'open' ? 'Open' : 'Settled' }}
               </span>
             </div>
             <div class="mt-1.5 flex items-center gap-2">
@@ -193,11 +207,11 @@ function fmtDate(iso: string) {
                 <div class="h-full rounded-full bg-purple-500 transition-all"
                   :style="{ width: item.total ? `${Math.round((item.paid / item.total) * 100)}%` : '0%' }" />
               </div>
-              <span class="shrink-0 text-xs text-muted-foreground">{{ item.paid }}/{{ item.total }} paid</span>
+              <span class="shrink-0 text-xs text-muted-foreground">{{ item.paid }}/{{ item.total }}</span>
             </div>
           </div>
           <div class="shrink-0 text-right">
-            <p class="text-sm font-semibold">{{ formatAmount(item.amount) }} {{ sym(item.token) }}</p>
+            <p class="text-xs font-semibold whitespace-nowrap">{{ formatAmount(item.amount) }} {{ sym(item.token) }}</p>
           </div>
           <ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
         </NuxtLink>
@@ -229,6 +243,15 @@ function fmtDate(iso: string) {
             From <span class="font-medium text-foreground">@{{ item.from_username }}</span>
             · {{ formatAmount(item.amount) }} {{ sym(item.token) }}
           </p>
+          <a
+            v-if="item.tx_signature"
+            :href="`https://solscan.io/tx/${item.tx_signature}`"
+            target="_blank"
+            class="mt-1 flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-primary transition"
+          >
+            <ArrowUpRight class="h-3 w-3" />
+            {{ item.tx_signature.slice(0, 16) }}…
+          </a>
         </div>
         <NuxtLink v-if="item.my_status !== 'paid' && item.payment_id" :to="`/pay/${item.payment_id}`"
           class="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90">
