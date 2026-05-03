@@ -10,9 +10,45 @@ const { balance, refresh: refreshBalance } = useBalance()
 
 interface Row { username: string; amount: string; memo: string }
 
+const isSolanaAddress = (v: string) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v)
+function rowAddressError(username: string): string | null {
+  const v = username.trim()
+  if (!v || v.startsWith('@')) return null
+  if (!isSolanaAddress(v)) return 'Invalid Solana address'
+  return null
+}
+
+const registeredCache = ref<Record<string, string | null>>({})
+
+async function lookupAddress(address: string) {
+  if (registeredCache.value[address] !== undefined) return
+  registeredCache.value[address] = null
+  try {
+    const res = await $fetch<{ username: string | null }[]>('/api/users/search', { query: { q: address } })
+    registeredCache.value[address] = res[0]?.username ?? null
+  } catch {}
+}
+
 const label = ref('')
 const token = ref<JupToken>(SOL_TOKEN)
 const rows = ref<Row[]>([{ username: '', amount: '', memo: '' }])
+
+watch(rows, (newRows) => {
+  for (const row of newRows) {
+    const v = row.username.trim()
+    if (v && !v.startsWith('@') && isSolanaAddress(v)) lookupAddress(v)
+  }
+}, { deep: true })
+const pickerOpenIndex = ref<number | null>(null)
+
+function openPicker(i: number) { pickerOpenIndex.value = i }
+function onPickerOpen(val: boolean) { if (!val) pickerOpenIndex.value = null }
+function selectContact(c: { username: string | null; wallet_address: string }) {
+  const i = pickerOpenIndex.value
+  if (i === null || !rows.value[i]) return
+  rows.value[i]!.username = c.username ? `@${c.username}` : c.wallet_address
+  pickerOpenIndex.value = null
+}
 const loading = ref(false)
 const error = ref('')
 const result = ref<{ succeeded: number; failed: number; results: any[] } | null>(null)
@@ -34,12 +70,16 @@ const exceedsBalance = computed(() =>
   totalAmount.value > 0 && !!selectedBalance.value && totalAmount.value > selectedBalance.value.amount
 )
 
+const hasAddressErrors = computed(() =>
+  rows.value.some(r => rowAddressError(r.username) !== null)
+)
+
 const validRows = computed(() =>
-  rows.value.filter(r => r.username.trim() && parseFloat(r.amount) > 0)
+  rows.value.filter(r => r.username.trim() && parseFloat(r.amount) > 0 && !rowAddressError(r.username))
 )
 
 const canSend = computed(() =>
-  validRows.value.length > 0 && !loading.value && !exceedsBalance.value
+  validRows.value.length > 0 && !loading.value && !exceedsBalance.value && !hasAddressErrors.value
 )
 
 function addRow() {
@@ -143,21 +183,18 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
 
           <div class="space-y-4 p-6">
 
-            <!-- Label + Token -->
-            <div class="flex gap-3">
-              <div class="flex-1">
-                <label class="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Label (optional)</label>
-                <input
-                  v-model="label"
-                  placeholder="e.g. May salary"
-                  class="flex h-10 w-full rounded-xl border border-input bg-background px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-                />
-              </div>
-              <div class="shrink-0">
-                <label class="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Token</label>
-                <TokenPicker v-model="token" label="" class="h-10" />
-              </div>
+            <!-- Label -->
+            <div>
+              <label class="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Label (optional)</label>
+              <input
+                v-model="label"
+                placeholder="e.g. May salary"
+                class="flex h-10 w-full rounded-xl border border-input bg-background px-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+              />
             </div>
+
+            <!-- Token -->
+            <TokenPicker v-model="token" label="Token" />
 
             <!-- Balance -->
             <div class="flex items-center justify-between text-xs text-muted-foreground">
@@ -173,18 +210,21 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                 class="rounded-xl border border-border bg-secondary/30 p-2.5 space-y-2"
               >
                 <div class="flex items-center gap-2">
-                  <input
-                    v-model="row.username"
-                    placeholder="@username"
-                    class="h-9 min-w-0 flex-1 rounded-xl border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-                  />
-                  <input
-                    v-model="row.amount"
-                    type="number"
-                    placeholder="Amount"
-                    min="0"
-                    class="h-9 w-28 shrink-0 rounded-xl border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-                  />
+                  <div class="relative min-w-0 flex-1">
+                    <input
+                      v-model="row.username"
+                      placeholder="@username or address"
+                      class="h-9 w-full rounded-xl border bg-background pl-3 pr-9 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                      :class="rowAddressError(row.username) ? 'border-destructive' : 'border-input'"
+                    />
+                    <button
+                      type="button"
+                      class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+                      @click="openPicker(i)"
+                    >
+                      <Users class="h-4 w-4" />
+                    </button>
+                  </div>
                   <button
                     class="shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                     @click="removeRow(i)"
@@ -192,6 +232,24 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                     <Trash2 class="h-4 w-4" />
                   </button>
                 </div>
+                <p v-if="rowAddressError(row.username)" class="text-xs text-destructive px-1">
+                  {{ rowAddressError(row.username) }}
+                </p>
+                <p v-else-if="isSolanaAddress(row.username.trim()) && registeredCache[row.username.trim()] !== undefined" class="flex items-center gap-1 px-1 text-xs">
+                  <template v-if="registeredCache[row.username.trim()]">
+                    <span class="text-green-600 dark:text-green-400">✓ Registered as <span class="font-semibold">@{{ registeredCache[row.username.trim()] }}</span></span>
+                  </template>
+                  <template v-else-if="registeredCache[row.username.trim()] === null">
+                    <span class="text-muted-foreground">Not registered — sending directly to address</span>
+                  </template>
+                </p>
+                <input
+                  v-model="row.amount"
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="Amount"
+                  class="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                />
                 <input
                   v-model="row.memo"
                   placeholder="Note (optional)"
@@ -234,4 +292,10 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
       </DialogContent>
     </DialogPortal>
   </DialogRoot>
+
+  <ContactPicker
+    :open="pickerOpenIndex !== null"
+    @update:open="onPickerOpen"
+    @select="selectContact"
+  />
 </template>

@@ -20,6 +20,12 @@ const results = ref<Contact[]>([])
 const searching = ref(false)
 const isValidSolanaAddress = (v: string) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v)
 
+const invalidAddress = computed(() => {
+  const q = query.value.trim()
+  if (!q || q.startsWith('@') || q.length < 32) return false
+  return !isValidSolanaAddress(q)
+})
+
 watchDebounced(query, async (v) => {
   const q = v.trim()
   if (!q) { results.value = []; return }
@@ -33,6 +39,8 @@ watchDebounced(query, async (v) => {
         results.value = res.length ? res : [{ username: null, wallet_address: q }]
       } catch { results.value = [{ username: null, wallet_address: q }] }
       finally { searching.value = false }
+    } else {
+      results.value = []
     }
     return
   }
@@ -91,6 +99,9 @@ const displayList = computed<Contact[]>(() =>
           <p v-if="!query.trim() && friends.length" class="px-4 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             <Users class="mr-1 inline h-3 w-3" />Friends
           </p>
+          <p v-else-if="invalidAddress" class="px-4 py-8 text-center text-sm text-destructive">
+            Invalid Solana address
+          </p>
           <p v-else-if="query.trim() && !searching && !results.length" class="px-4 py-8 text-center text-sm text-muted-foreground">
             No results
           </p>
@@ -102,11 +113,14 @@ const displayList = computed<Contact[]>(() =>
             @click="pick(contact)"
           >
             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-              <span v-if="contact.username">{{ contact.username[0].toUpperCase() }}</span>
+              <span v-if="contact.username">{{ contact.username[0]?.toUpperCase() }}</span>
               <User v-else class="h-4 w-4" />
             </div>
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-semibold">{{ contact.username ? '@' + contact.username : 'Wallet address' }}</p>
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-semibold">{{ contact.username ? '@' + contact.username : 'Wallet address' }}</p>
+                <span v-if="contact.username && query.trim() && !query.trim().startsWith('@')" class="shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400">Registered</span>
+              </div>
               <p class="font-mono text-xs text-muted-foreground truncate">{{ shortAddr(contact.wallet_address, 8) }}</p>
             </div>
           </button>

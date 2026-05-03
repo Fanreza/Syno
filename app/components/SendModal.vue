@@ -20,16 +20,24 @@ const showContactPicker = ref(false)
 const recipientRaw = ref('')
 const recipientUser = ref<{ username: string | null; wallet_address: string } | null>(null)
 const recipientStatus = ref<'idle' | 'found' | 'address'>('idle')
+const recipientRegistered = ref<string | null | undefined>(undefined)
 const isValidSolanaAddress = (v: string) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v)
 
-function selectContact(c: Contact) {
+async function selectContact(c: Contact) {
   recipientUser.value = c
   recipientRaw.value = c.username ? '@' + c.username : c.wallet_address
   recipientStatus.value = c.username ? 'found' : 'address'
+  recipientRegistered.value = undefined
+  if (!c.username) {
+    try {
+      const res = await $fetch<{ username: string | null }[]>('/api/users/search', { query: { q: c.wallet_address } })
+      recipientRegistered.value = res[0]?.username ?? null
+    } catch { recipientRegistered.value = null }
+  }
 }
 
 function clearRecipient() {
-  recipientRaw.value = ''; recipientUser.value = null; recipientStatus.value = 'idle'
+  recipientRaw.value = ''; recipientUser.value = null; recipientStatus.value = 'idle'; recipientRegistered.value = undefined
 }
 
 const isRawAddress = (v: string) => isValidSolanaAddress(v.trim())
@@ -209,7 +217,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                   isPrivate = !isPrivate
                   const PRIVATE_MINTS = ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB']
                   if (isPrivate && !PRIVATE_MINTS.includes(inputToken.address))
-                    inputToken = POPULAR_TOKENS.find(t => t.address === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') ?? POPULAR_TOKENS[1]
+                    inputToken = POPULAR_TOKENS.find(t => t.address === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') ?? POPULAR_TOKENS[1]!
                 }"
               >
                 <ShieldCheck class="h-3.5 w-3.5" />
@@ -239,18 +247,25 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
               </button>
 
               <!-- Recipient selected -->
-              <div v-else class="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/5 px-3 py-2.5">
-                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                  <span v-if="recipientUser.username">{{ recipientUser.username[0].toUpperCase() }}</span>
-                  <User v-else class="h-4 w-4" />
+              <div v-else class="rounded-xl border border-green-500/20 bg-green-500/5 px-3 py-2.5">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    <span v-if="recipientUser.username">{{ recipientUser.username[0]?.toUpperCase() }}</span>
+                    <User v-else class="h-4 w-4" />
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold">{{ recipientUser.username ? '@' + recipientUser.username : 'Wallet address' }}</p>
+                    <p class="font-mono text-xs text-muted-foreground">{{ shortAddr(recipientUser.wallet_address, 8) }}</p>
+                  </div>
+                  <button class="shrink-0 rounded-lg p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground" @click="clearRecipient">
+                    <X class="h-4 w-4" />
+                  </button>
                 </div>
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm font-semibold">{{ recipientUser.username ? '@' + recipientUser.username : 'Wallet address' }}</p>
-                  <p class="font-mono text-xs text-muted-foreground">{{ shortAddr(recipientUser.wallet_address, 8) }}</p>
-                </div>
-                <button class="shrink-0 rounded-lg p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground" @click="clearRecipient">
-                  <X class="h-4 w-4" />
-                </button>
+                <template v-if="recipientStatus === 'address'">
+                  <p v-if="recipientRegistered === undefined" class="mt-1.5 text-xs text-muted-foreground animate-pulse">Checking address…</p>
+                  <p v-else-if="recipientRegistered" class="mt-1.5 text-xs text-green-600 dark:text-green-400">✓ Registered as <span class="font-semibold">@{{ recipientRegistered }}</span></p>
+                  <p v-else class="mt-1.5 text-xs text-muted-foreground">Not registered — sending directly to address</p>
+                </template>
               </div>
             </div>
 

@@ -14,25 +14,35 @@ type Row = {
   contact: Contact | null
   amount: string
   pickerOpen: boolean
+  registered: string | null | undefined
 }
 
 function makeRow(): Row {
-  return { contact: null, amount: '', pickerOpen: false }
+  return { contact: null, amount: '', pickerOpen: false, registered: undefined }
 }
 
 const rows = ref<Row[]>([makeRow()])
 
-function selectContact(i: number, c: Contact) {
-  rows.value[i].contact = c
-  rows.value[i].pickerOpen = false
+async function selectContact(i: number, c: Contact) {
+  const row = rows.value[i]
+  if (!row) return
+  row.contact = c
+  row.pickerOpen = false
+  row.registered = undefined
+  if (!c.username) {
+    try {
+      const res = await $fetch<{ username: string | null }[]>('/api/users/search', { query: { q: c.wallet_address } })
+      if (rows.value[i]) rows.value[i]!.registered = res[0]?.username ?? null
+    } catch { if (rows.value[i]) rows.value[i]!.registered = null }
+  }
 }
 
 function openPicker(i: number) {
-  rows.value[i].pickerOpen = true
+  rows.value[i]?.pickerOpen === undefined || (rows.value[i]!.pickerOpen = true)
 }
 
 function clearRow(i: number) {
-  rows.value[i].contact = null
+  if (rows.value[i]) rows.value[i]!.contact = null
 }
 
 function addRow() { rows.value.push(makeRow()) }
@@ -178,14 +188,14 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
           </p>
           <div class="mt-4 flex gap-2">
             <a
-              :href="`https://wa.me/?text=${encodeURIComponent('Pay your share: ' + (typeof window !== 'undefined' ? window.location.origin : '') + '/app/split/' + createdId)}`"
+              :href="`https://wa.me/?text=${encodeURIComponent('Pay your share: ' + useRequestURL().origin + '/app/split/' + createdId)}`"
               target="_blank"
               class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-green-50 py-2 text-xs font-semibold text-green-700 transition hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
             >
               <Share2 class="h-3.5 w-3.5" /> WhatsApp
             </a>
             <a
-              :href="`https://t.me/share/url?url=${encodeURIComponent((typeof window !== 'undefined' ? window.location.origin : '') + '/app/split/' + createdId)}&text=${encodeURIComponent('Pay your share!')}`"
+              :href="`https://t.me/share/url?url=${encodeURIComponent(useRequestURL().origin + '/app/split/' + createdId)}&text=${encodeURIComponent('Pay your share!')}`"
               target="_blank"
               class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-blue-50 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
             >
@@ -279,21 +289,27 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                     <User class="h-4 w-4 shrink-0" />
                     <span>Select contact…</span>
                   </button>
-                  <button
-                    v-else
-                    type="button"
-                    class="flex h-11 flex-1 items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/5 px-3 text-left transition hover:bg-green-500/10"
-                    @click="openPicker(i)"
-                  >
-                    <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                      <span v-if="row.contact.username">{{ row.contact.username[0].toUpperCase() }}</span>
-                      <User v-else class="h-3.5 w-3.5" />
-                    </div>
-                    <span class="flex-1 truncate text-sm font-semibold">
-                      {{ row.contact.username ? '@' + row.contact.username : shortAddr(row.contact.wallet_address, 6) }}
-                    </span>
-                    <CheckCircle2 class="h-4 w-4 shrink-0 text-green-500" />
-                  </button>
+                  <div v-else class="flex-1 min-w-0">
+                    <button
+                      type="button"
+                      class="flex h-11 w-full items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/5 px-3 text-left transition hover:bg-green-500/10"
+                      @click="openPicker(i)"
+                    >
+                      <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                        <span v-if="row.contact.username">{{ row.contact.username[0]?.toUpperCase() }}</span>
+                        <User v-else class="h-3.5 w-3.5" />
+                      </div>
+                      <span class="flex-1 truncate text-sm font-semibold">
+                        {{ row.contact.username ? '@' + row.contact.username : shortAddr(row.contact.wallet_address, 6) }}
+                      </span>
+                      <CheckCircle2 class="h-4 w-4 shrink-0 text-green-500" />
+                    </button>
+                    <template v-if="!row.contact.username">
+                      <p v-if="row.registered === undefined" class="mt-0.5 text-[10px] text-muted-foreground animate-pulse px-1">Checking…</p>
+                      <p v-else-if="row.registered" class="mt-0.5 text-[10px] text-green-600 dark:text-green-400 px-1">✓ @{{ row.registered }}</p>
+                      <p v-else class="mt-0.5 text-[10px] text-muted-foreground px-1">Not registered</p>
+                    </template>
+                  </div>
 
                   <!-- Amount -->
                   <div class="relative w-28">
