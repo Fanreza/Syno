@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
 import { Button } from '~/components/ui/button'
-import { X, Plus, Trash2, Send, AlertCircle, CheckCircle2, Users } from 'lucide-vue-next'
+import { X, Plus, Trash2, Send, AlertCircle, CheckCircle2, Users, DollarSign, Coins } from 'lucide-vue-next'
 import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -33,6 +33,44 @@ const label = ref('')
 const token = ref<JupToken>(SOL_TOKEN)
 const rows = ref<Row[]>([{ username: '', amount: '', memo: '' }])
 
+type Currency = 'TOKEN' | 'USD'
+const currency = ref<Currency>('TOKEN')
+const tokenPrice = ref<number | null>(null)
+
+watch(token, async (t) => {
+  tokenPrice.value = null
+  currency.value = 'TOKEN'
+  rows.value.forEach(r => (r.amount = ''))
+  try {
+    const r = await $fetch<any>(`/api/tokens/price?ids=${t.address}`)
+    tokenPrice.value = parseFloat(r?.data?.[t.address]?.price ?? '0') || null
+  } catch {}
+}, { immediate: true })
+
+function toggleCurrency() {
+  if (!tokenPrice.value) return
+  if (currency.value === 'TOKEN') {
+    rows.value.forEach(r => {
+      const n = parseFloat(r.amount)
+      if (n) r.amount = (n * tokenPrice.value!).toFixed(2)
+    })
+    currency.value = 'USD'
+  } else {
+    rows.value.forEach(r => {
+      const n = parseFloat(r.amount)
+      if (n) r.amount = (n / tokenPrice.value!).toFixed(6)
+    })
+    currency.value = 'TOKEN'
+  }
+}
+
+function rowAmountInToken(amount: string): number {
+  const n = parseFloat(amount) || 0
+  if (currency.value === 'TOKEN') return n
+  if (!tokenPrice.value) return 0
+  return n / tokenPrice.value
+}
+
 watch(rows, (newRows) => {
   for (const row of newRows) {
     const v = row.username.trim()
@@ -63,7 +101,7 @@ const selectedBalance = computed(() => {
 })
 
 const totalAmount = computed(() =>
-  rows.value.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
+  rows.value.reduce((s, r) => s + rowAmountInToken(r.amount), 0)
 )
 
 const exceedsBalance = computed(() =>
@@ -75,7 +113,7 @@ const hasAddressErrors = computed(() =>
 )
 
 const validRows = computed(() =>
-  rows.value.filter(r => r.username.trim() && parseFloat(r.amount) > 0 && !rowAddressError(r.username))
+  rows.value.filter(r => r.username.trim() && rowAmountInToken(r.amount) > 0 && !rowAddressError(r.username))
 )
 
 const canSend = computed(() =>
@@ -94,8 +132,12 @@ function removeRow(i: number) {
 function fillEqual() {
   const n = rows.value.length
   if (!selectedBalance.value || n === 0) return
-  const each = (selectedBalance.value.amount / n).toFixed(6)
-  rows.value.forEach(r => (r.amount = each))
+  const eachToken = selectedBalance.value.amount / n
+  if (currency.value === 'USD' && tokenPrice.value) {
+    rows.value.forEach(r => (r.amount = (eachToken * tokenPrice.value!).toFixed(2)))
+  } else {
+    rows.value.forEach(r => (r.amount = eachToken.toFixed(6)))
+  }
 }
 
 async function onSend() {
@@ -105,18 +147,24 @@ async function onSend() {
     const res = await apiFetch<{ results: any[]; succeeded: number; failed: number }>('/api/payroll/send', {
       method: 'POST',
       body: {
-        recipients: validRows.value.map(r => ({
-          username: r.username.replace(/^@/, ''),
-          amount: parseFloat(r.amount),
-          memo: r.memo || undefined,
-        })),
+        recipients: validRows.value.map(r => {
+          const raw = r.username.trim()
+          const isAddr = isSolanaAddress(raw)
+          return {
+            username: isAddr ? undefined : raw.replace(/^@/, ''),
+            address: isAddr ? raw : undefined,
+            amount: rowAmountInToken(r.amount),
+            memo: r.memo || undefined,
+          }
+        }),
         token: token.value.address,
         decimals: token.value.decimals,
         label: label.value || undefined,
       },
     })
     result.value = res
-    refreshBalance()
+    await refreshBalance()
+    setTimeout(() => refreshBalance(), 3000)
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Failed to send'
   } finally {
@@ -125,7 +173,7 @@ async function onSend() {
 }
 
 function reset() {
-  label.value = ''; token.value = SOL_TOKEN
+  label.value = ''; token.value = SOL_TOKEN; currency.value = 'TOKEN'
   rows.value = [{ username: '', amount: '', memo: '' }]
   error.value = ''; result.value = null
 }
@@ -196,10 +244,22 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             <!-- Token -->
             <TokenPicker v-model="token" label="Token" />
 
-            <!-- Balance -->
-            <div class="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Total: <span class="font-semibold text-foreground">{{ formatAmount(totalAmount) }} {{ token.symbol }}</span></span>
-              <span>Balance: <span class="font-semibold text-foreground">{{ selectedBalance?.amount.toFixed(4) ?? '0' }} {{ token.symbol }}</span></span>
+            <!-- Currency + balance summary -->
+            <div class="flex items-center justify-between">
+              <button
+                class="flex h-9 items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 text-sm font-semibold transition hover:bg-accent"
+                @click="toggleCurrency"
+              >
+                <DollarSign v-if="currency === 'USD'" class="h-4 w-4" />
+                <img v-else-if="token.logoURI" :src="token.logoURI" class="h-4 w-4 rounded-full" />
+                <Coins v-else class="h-4 w-4" />
+                {{ currency === 'USD' ? 'USD' : token.symbol }}
+              </button>
+              <div class="text-xs text-muted-foreground text-right">
+                <span>Total: <span class="font-semibold text-foreground">{{ formatAmount(totalAmount) }} {{ token.symbol }}</span></span>
+                <span class="mx-1.5">·</span>
+                <span>Balance: <span class="font-semibold text-foreground">{{ selectedBalance?.amount.toFixed(4) ?? '0' }} {{ token.symbol }}</span></span>
+              </div>
             </div>
 
             <!-- Recipients -->
@@ -243,13 +303,25 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                     <span class="text-muted-foreground">Not registered — sending directly to address</span>
                   </template>
                 </p>
-                <input
-                  v-model="row.amount"
-                  type="text"
-                  inputmode="decimal"
-                  placeholder="Amount"
-                  class="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-                />
+                <div class="relative">
+                  <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                    {{ currency === 'USD' ? '$' : '' }}
+                  </span>
+                  <input
+                    v-model="row.amount"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="0.00"
+                    :class="currency === 'USD' ? 'pl-8' : 'pl-4'"
+                    class="flex h-11 w-full rounded-xl border border-input bg-background pr-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                  />
+                </div>
+                <p v-if="row.amount && tokenPrice && currency === 'USD'" class="pl-1 text-xs text-muted-foreground">
+                  ≈ {{ rowAmountInToken(row.amount).toFixed(6) }} {{ token.symbol }}
+                </p>
+                <p v-else-if="row.amount && tokenPrice && currency === 'TOKEN'" class="pl-1 text-xs text-muted-foreground">
+                  ≈ ${{ (parseFloat(row.amount) * tokenPrice).toFixed(2) }}
+                </p>
                 <input
                   v-model="row.memo"
                   placeholder="Note (optional)"

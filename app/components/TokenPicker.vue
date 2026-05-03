@@ -97,7 +97,8 @@ onMounted(() => {
     <!-- Trigger -->
     <button
       type="button"
-      class="flex shrink-0 items-center gap-2 rounded-xl border border-border bg-secondary px-3 py-2 transition hover:bg-accent"
+      class="flex items-center gap-2 rounded-xl border border-border bg-secondary px-3 py-2 transition hover:bg-accent"
+      :class="label ? 'w-full' : 'shrink-0'"
       @click="open = !open"
     >
       <img v-if="modelValue.logoURI" :src="modelValue.logoURI" :alt="modelValue.symbol" class="h-6 w-6 rounded-full object-cover" />
@@ -112,7 +113,7 @@ onMounted(() => {
     </button>
 
     <!-- Dropdown -->
-    <div v-if="open" class="absolute right-0 top-full z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+    <div v-if="open" class="absolute top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-card shadow-xl" :class="label ? 'left-0 right-0' : 'right-0 w-64'">
       <!-- Search input -->
       <div class="flex items-center gap-2 border-b border-border px-3 py-2.5">
         <Search class="h-4 w-4 shrink-0 text-muted-foreground" />

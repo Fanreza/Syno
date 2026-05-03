@@ -24,12 +24,22 @@ export async function buildTransferSolTx(from: string, to: string, sol: number, 
   const fromPk = new PublicKey(from)
   const toPk = new PublicKey(to)
   const hash = blockhash ?? (await connection.getLatestBlockhash('confirmed')).blockhash
+
+  let lamports = Math.round(sol * LAMPORTS_PER_SOL)
+
+  // Build a draft tx to compute the actual fee, then cap lamports so sender doesn't go negative
+  const draftTx = new Transaction({ feePayer: fromPk, recentBlockhash: hash }).add(
+    SystemProgram.transfer({ fromPubkey: fromPk, toPubkey: toPk, lamports })
+  )
+  const fee = await connection.getFeeForMessage(draftTx.compileMessage(), 'confirmed')
+  if (fee.value !== null) {
+    const balanceLamports = await connection.getBalance(fromPk, 'confirmed')
+    const maxLamports = balanceLamports - fee.value
+    if (lamports > maxLamports) lamports = Math.max(0, maxLamports)
+  }
+
   const tx = new Transaction({ feePayer: fromPk, recentBlockhash: hash }).add(
-    SystemProgram.transfer({
-      fromPubkey: fromPk,
-      toPubkey: toPk,
-      lamports: Math.round(sol * LAMPORTS_PER_SOL)
-    })
+    SystemProgram.transfer({ fromPubkey: fromPk, toPubkey: toPk, lamports })
   )
   const serialized = tx.serialize({ requireAllSignatures: false, verifySignatures: false })
   return Buffer.from(serialized).toString('base64')

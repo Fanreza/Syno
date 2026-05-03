@@ -106,7 +106,8 @@ async function onSwap() {
       },
     })
     result.value = res
-    refreshBalance()
+    await refreshBalance()
+    setTimeout(() => refreshBalance(), 3000)
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Swap failed'
   } finally {

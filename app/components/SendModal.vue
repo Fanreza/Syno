@@ -103,6 +103,8 @@ const isPrivate = ref(false)
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112'
 
+const SOL_FEE_RESERVE = 0.000005
+
 const selectedTokenBalance = computed(() => {
   if (!balance.value) return null
   if (inputToken.value.address === SOL_MINT) {
@@ -113,6 +115,13 @@ const selectedTokenBalance = computed(() => {
   return { amount: t.balance, usd: t.usd, symbol: t.symbol }
 })
 
+const maxSendable = computed(() => {
+  if (!selectedTokenBalance.value) return 0
+  if (inputToken.value.address === SOL_MINT)
+    return Math.max(0, selectedTokenBalance.value.amount - SOL_FEE_RESERVE)
+  return selectedTokenBalance.value.amount
+})
+
 // ── Submit ─────────────────────────────────────────────────────────────────
 const loading = ref(false)
 const error = ref('')
@@ -120,7 +129,7 @@ const successSig = ref('')
 
 const exceedsBalance = computed(() => {
   if (!selectedTokenBalance.value || amountInToken.value <= 0) return false
-  return amountInToken.value > selectedTokenBalance.value.amount
+  return amountInToken.value > maxSendable.value + 0.000001
 })
 
 const canSend = computed(() =>
@@ -151,6 +160,7 @@ async function onSend() {
     const res = await apiFetch<{ signature?: string; withdrawSignature?: string }>(endpoint, { method: 'POST', body })
     successSig.value = res.withdrawSignature ?? res.signature ?? ''
     await refreshBalance()
+    setTimeout(() => refreshBalance(), 3000)
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Transaction failed'
   } finally { loading.value = false }
@@ -284,7 +294,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                 <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Amount</label>
                 <span v-if="selectedTokenBalance" class="text-xs text-muted-foreground">
                   Balance:
-                  <button class="font-semibold text-foreground hover:text-primary transition" @click="amountRaw = selectedTokenBalance.amount.toFixed(6); currency = 'TOKEN'">
+                  <button class="font-semibold text-foreground hover:text-primary transition" @click="amountRaw = maxSendable.toFixed(6); currency = 'TOKEN'">
                     {{ selectedTokenBalance.amount.toFixed(4) }} {{ selectedTokenBalance.symbol }}
                   </button>
                   <span class="text-muted-foreground/60"> · {{ formatUsd(selectedTokenBalance.usd) }}</span>
@@ -327,7 +337,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
 
             <!-- Insufficient balance -->
             <div v-if="exceedsBalance" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-              <AlertCircle class="h-4 w-4 shrink-0" />Insufficient balance. You have {{ selectedTokenBalance?.amount.toFixed(4) }} {{ selectedTokenBalance?.symbol }}.
+              <AlertCircle class="h-4 w-4 shrink-0" />Insufficient balance. Max sendable: {{ maxSendable.toFixed(6) }} {{ selectedTokenBalance?.symbol }}.
             </div>
 
             <!-- Error -->

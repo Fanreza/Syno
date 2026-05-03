@@ -2,7 +2,7 @@
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
 import Input from '~/components/ui/input/Input.vue'
 import { Button } from '~/components/ui/button'
-import { X, Gift, AlertCircle, Copy, Check, Users, Coins, Share2 } from 'lucide-vue-next'
+import { X, Gift, AlertCircle, Copy, Check, Users, Coins, Share2, DollarSign } from 'lucide-vue-next'
 import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -16,6 +16,46 @@ const loading = ref(false)
 const error = ref('')
 const created = ref<{ id: string; total_amount: number; total_slots: number; token: string } | null>(null)
 const copied = ref(false)
+
+type Currency = 'TOKEN' | 'USD'
+const currency = ref<Currency>('TOKEN')
+const tokenPrice = ref<number | null>(null)
+
+watch(giftToken, async (t) => {
+  tokenPrice.value = null
+  currency.value = 'TOKEN'
+  totalRaw.value = ''
+  try {
+    const r = await $fetch<any>(`/api/tokens/price?ids=${t.address}`)
+    tokenPrice.value = parseFloat(r?.data?.[t.address]?.price ?? '0') || null
+  } catch {}
+}, { immediate: true })
+
+const totalNum = computed(() => parseFloat(totalRaw.value) || 0)
+const totalInToken = computed(() => {
+  if (currency.value === 'TOKEN') return totalNum.value
+  if (!tokenPrice.value) return 0
+  return totalNum.value / tokenPrice.value
+})
+const convertLabel = computed(() => {
+  if (!totalNum.value) return ''
+  if (currency.value === 'TOKEN' && tokenPrice.value)
+    return `≈ $${(totalNum.value * tokenPrice.value).toFixed(2)}`
+  if (currency.value === 'USD' && tokenPrice.value)
+    return `≈ ${totalInToken.value.toFixed(6)} ${giftToken.value.symbol}`
+  return ''
+})
+
+function toggleCurrency() {
+  if (!tokenPrice.value) return
+  if (currency.value === 'TOKEN') {
+    if (totalNum.value) totalRaw.value = (totalNum.value * tokenPrice.value).toFixed(2)
+    currency.value = 'USD'
+  } else {
+    if (totalNum.value) totalRaw.value = totalInToken.value.toFixed(6)
+    currency.value = 'TOKEN'
+  }
+}
 
 function onTotalInput(e: Event) {
   let s = (e.target as HTMLInputElement).value.replace(/[^0-9.]/g, '')
@@ -33,15 +73,14 @@ const selectedBalance = computed(() => {
   return t ? { amount: t.balance, symbol: t.symbol } : { amount: 0, symbol: giftToken.value.symbol }
 })
 
-const totalNum = computed(() => parseFloat(totalRaw.value) || 0)
 const slotsNum = computed(() => Math.max(1, parseInt(slots.value) || 1))
-const perPerson = computed(() => totalNum.value > 0 ? (totalNum.value / slotsNum.value).toFixed(4) : '0')
+const perPerson = computed(() => totalInToken.value > 0 ? (totalInToken.value / slotsNum.value).toFixed(4) : '0')
 
 const exceedsBalance = computed(() =>
-  totalNum.value > 0 && !!selectedBalance.value && totalNum.value > selectedBalance.value.amount
+  totalInToken.value > 0 && !!selectedBalance.value && totalInToken.value > selectedBalance.value.amount
 )
 
-const canCreate = computed(() => totalNum.value > 0 && slotsNum.value >= 1 && !loading.value && !exceedsBalance.value)
+const canCreate = computed(() => totalInToken.value > 0 && slotsNum.value >= 1 && !loading.value && !exceedsBalance.value)
 
 async function onCreate() {
   error.value = ''
@@ -49,17 +88,18 @@ async function onCreate() {
   try {
     const res = await apiFetch<{ id: string; total_amount: number; total_slots: number; token: string }>('/api/gifts/create', {
       method: 'POST',
-      body: { totalAmount: totalNum.value, totalSlots: slotsNum.value, token: giftToken.value.address, decimals: giftToken.value.decimals }
+      body: { totalAmount: totalInToken.value, totalSlots: slotsNum.value, token: giftToken.value.address, decimals: giftToken.value.decimals }
     })
     created.value = res
-    refreshBalance()
+    await refreshBalance()
+    setTimeout(() => refreshBalance(), 3000)
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Failed to create gift'
   } finally { loading.value = false }
 }
 
 const giftLink = computed(() =>
-  created.value ? `${window.location.origin}/gift/${created.value.id}` : ''
+  created.value ? `${useRequestURL().origin}/gift/${created.value.id}` : ''
 )
 
 function copyLink() {
@@ -70,7 +110,7 @@ function copyLink() {
 
 function reset() {
   totalRaw.value = ''; slots.value = '5'; giftToken.value = SOL_TOKEN
-  error.value = ''; created.value = null; copied.value = false
+  error.value = ''; created.value = null; copied.value = false; currency.value = 'TOKEN'
 }
 
 watch(open, (v) => { if (!v) setTimeout(reset, 300) })
@@ -154,21 +194,39 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             <!-- Total amount -->
             <div>
               <div class="mb-2 flex items-center justify-between">
-                <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total amount ({{ giftToken.symbol }})</label>
+                <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total amount</label>
                 <span v-if="balance" class="text-xs text-muted-foreground">
                   Balance:
-                  <button class="font-semibold text-foreground hover:text-primary transition" @click="totalRaw = selectedBalance?.amount.toFixed(6) ?? ''">
+                  <button class="font-semibold text-foreground hover:text-primary transition" @click="totalRaw = selectedBalance?.amount.toFixed(6) ?? ''; currency = 'TOKEN'">
                     {{ selectedBalance?.amount.toFixed(4) ?? '0' }} {{ giftToken.symbol }}
                   </button>
                 </span>
               </div>
-              <input
-                :value="totalRaw"
-                inputmode="decimal"
-                placeholder="0.00"
-                class="flex h-11 w-full rounded-xl border border-input bg-background px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
-                @input="onTotalInput"
-              />
+              <div class="flex gap-2">
+                <button
+                  class="flex h-11 items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 text-sm font-semibold transition hover:bg-accent"
+                  @click="toggleCurrency"
+                >
+                  <DollarSign v-if="currency === 'USD'" class="h-4 w-4" />
+                  <img v-else-if="giftToken.logoURI" :src="giftToken.logoURI" class="h-4 w-4 rounded-full" />
+                  <Coins v-else class="h-4 w-4" />
+                  {{ currency === 'USD' ? 'USD' : giftToken.symbol }}
+                </button>
+                <div class="relative flex-1">
+                  <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                    {{ currency === 'USD' ? '$' : '' }}
+                  </span>
+                  <input
+                    :value="totalRaw"
+                    inputmode="decimal"
+                    placeholder="0.00"
+                    :class="currency === 'USD' ? 'pl-8' : 'pl-4'"
+                    class="flex h-11 w-full rounded-xl border border-input bg-background pr-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                    @input="onTotalInput"
+                  />
+                </div>
+              </div>
+              <p v-if="convertLabel" class="mt-1.5 pl-1 text-xs text-muted-foreground">{{ convertLabel }}</p>
             </div>
 
             <!-- Slots -->
@@ -194,11 +252,11 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Per person preview -->
-            <div v-if="totalNum > 0" class="flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-4 py-3">
+            <div v-if="totalInToken > 0" class="flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-4 py-3">
               <Coins class="h-4 w-4 shrink-0 text-yellow-500" />
               <div>
                 <p class="text-sm font-semibold">{{ perPerson }} {{ giftToken.symbol }} per person</p>
-                <p class="text-xs text-muted-foreground">{{ totalNum.toFixed(4) }} {{ giftToken.symbol }} ÷ {{ slotsNum }} slots</p>
+                <p class="text-xs text-muted-foreground">{{ totalInToken.toFixed(4) }} {{ giftToken.symbol }} ÷ {{ slotsNum }} slots</p>
               </div>
             </div>
 

@@ -2,7 +2,7 @@
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
 import Input from '~/components/ui/input/Input.vue'
 import { Button } from '~/components/ui/button'
-import { X, Copy, Check, Link, QrCode, ExternalLink, DollarSign, Share2 } from 'lucide-vue-next'
+import { X, Copy, Check, Link, QrCode, ExternalLink, DollarSign, Coins, Share2 } from 'lucide-vue-next'
 import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -221,21 +221,24 @@ const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
             <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Amount</label>
             <div class="flex gap-2">
               <button
-                class="flex h-11 items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 text-sm font-semibold transition hover:bg-accent disabled:opacity-40"
-                :disabled="!tokenPrice"
+                class="flex h-11 items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 text-sm font-semibold transition hover:bg-accent"
                 @click="toggleCurrency"
               >
                 <DollarSign v-if="currency === 'USD'" class="h-4 w-4" />
                 <img v-else-if="outputToken.logoURI" :src="outputToken.logoURI" class="h-4 w-4 rounded-full" />
-                <span v-else class="text-xs">{{ outputToken.symbol[0] }}</span>
+                <Coins v-else class="h-4 w-4" />
                 {{ currency === 'USD' ? 'USD' : outputToken.symbol }}
               </button>
               <div class="relative flex-1">
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                  {{ currency === 'USD' ? '$' : '' }}
+                </span>
                 <input
                   :value="amountRaw"
                   inputmode="decimal"
                   placeholder="0.00"
-                  class="flex h-11 w-full rounded-xl border border-input bg-background px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
+                  :class="currency === 'USD' ? 'pl-8' : 'pl-4'"
+                  class="flex h-11 w-full rounded-xl border border-input bg-background pr-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring placeholder:text-muted-foreground"
                   @input="onAmountInput"
                 />
               </div>
