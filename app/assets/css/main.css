@@ -189,3 +189,16 @@ html.dark {
   pointer-events: none;
   border-radius: inherit;
 }
+
+/* driver.js — ensure popover buttons are always tappable on mobile/PWA */
+#driver-popover-content {
+  touch-action: manipulation;
+}
+#driver-popover-content .driver-popover-footer button {
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 40px;
+  min-width: 64px;
+}

@@ -8,9 +8,12 @@ export function useOnboarding() {
     const driverObj = driver({
       animate: true,
       showProgress: true,
-      nextBtnText: 'Next',
-      prevBtnText: 'Back',
-      doneBtnText: 'Done',
+      nextBtnText: 'Next →',
+      prevBtnText: '← Back',
+      doneBtnText: 'Done ✓',
+      overlayOpacity: 0.65,
+      allowClose: false,
+      disableActiveInteraction: true,
       steps: [
         {
           element: '[data-tour="balance"]',
@@ -81,6 +84,7 @@ export function useOnboarding() {
       ],
       onDestroyStarted: () => {
         localStorage.setItem(STORAGE_KEY, '1')
+        driverObj.destroy()
       },
     })
 
