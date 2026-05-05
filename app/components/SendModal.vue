@@ -4,7 +4,8 @@ import Input from '~/components/ui/input/Input.vue'
 import { Button } from '~/components/ui/button'
 import {
   X, CheckCircle2, AlertCircle, User,
-  Coins, DollarSign, Send, ExternalLink, ChevronDown, ShieldCheck
+  Coins, DollarSign, Send, ExternalLink, ChevronDown, ShieldCheck,
+  ShieldAlert, ShieldX, Shield
 } from 'lucide-vue-next'
 import { shortAddr } from '~/utils'
 const { formatDisplay, fetchRates, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
@@ -27,6 +28,7 @@ const recipientRegistered = ref<string | null | undefined>(undefined)
 const isValidSolanaAddress = (v: string) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v)
 
 async function selectContact(c: Contact) {
+  riskScore.value = null
   recipientUser.value = c
   recipientRaw.value = c.username ? '@' + c.username : c.wallet_address
   recipientStatus.value = c.username ? 'found' : 'address'
@@ -41,7 +43,25 @@ async function selectContact(c: Contact) {
 
 function clearRecipient() {
   recipientRaw.value = ''; recipientUser.value = null; recipientStatus.value = 'idle'; recipientRegistered.value = undefined
+  riskScore.value = null; riskLoading.value = false
 }
+
+// ── Risk score ─────────────────────────────────────────────────────────────
+type RiskLevel = 'low' | 'medium' | 'high'
+type RiskData = { score: number; level: RiskLevel; flags: string[]; totalTokens: number; spamTokens: number; hasActivity: boolean; totalUsd: number }
+const riskScore = ref<RiskData | null>(null)
+const riskLoading = ref(false)
+
+watch(recipientUser, async (u) => {
+  riskScore.value = null
+  if (!u?.wallet_address) return
+  riskLoading.value = true
+  try {
+    riskScore.value = await $fetch<RiskData>('/api/risk', { query: { address: u.wallet_address } })
+  } catch { /* non-blocking */ } finally {
+    riskLoading.value = false
+  }
+})
 
 const isRawAddress = (v: string) => isValidSolanaAddress(v.trim())
 
@@ -173,7 +193,7 @@ function reset() {
   recipientRaw.value = ''; recipientUser.value = null; recipientStatus.value = 'idle'
   amountRaw.value = ''; memo.value = ''; isPrivate.value = false
   error.value = ''; successSig.value = ''; currency.value = 'TOKEN'; inputToken.value = SOL_TOKEN
-  showContactPicker.value = false
+  showContactPicker.value = false; riskScore.value = null; riskLoading.value = false
 }
 
 watch(open, (v) => { if (!v) setTimeout(reset, 300) })
@@ -280,6 +300,38 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                   <p v-else class="mt-1.5 text-xs text-muted-foreground">Not registered — sending directly to address</p>
                 </template>
               </div>
+            </div>
+
+            <!-- Risk score -->
+            <div v-if="riskLoading" class="flex items-center gap-2 rounded-xl border border-border bg-secondary px-3.5 py-2.5 text-xs text-muted-foreground">
+              <span class="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" />
+              Checking wallet risk…
+            </div>
+            <div v-else-if="riskScore" class="rounded-xl border px-3.5 py-2.5 text-xs"
+              :class="{
+                'border-green-500/20 bg-green-500/5': riskScore.level === 'low',
+                'border-yellow-500/20 bg-yellow-500/5': riskScore.level === 'medium',
+                'border-red-500/20 bg-red-500/5': riskScore.level === 'high',
+              }"
+            >
+              <div class="flex items-center gap-2">
+                <ShieldCheck v-if="riskScore.level === 'low'" class="h-4 w-4 shrink-0 text-green-500" />
+                <ShieldAlert v-else-if="riskScore.level === 'medium'" class="h-4 w-4 shrink-0 text-yellow-500" />
+                <ShieldX v-else class="h-4 w-4 shrink-0 text-red-500" />
+                <span class="font-semibold"
+                  :class="{
+                    'text-green-600 dark:text-green-400': riskScore.level === 'low',
+                    'text-yellow-600 dark:text-yellow-400': riskScore.level === 'medium',
+                    'text-red-600 dark:text-red-400': riskScore.level === 'high',
+                  }"
+                >
+                  {{ riskScore.level === 'low' ? 'Wallet looks safe' : riskScore.level === 'medium' ? 'Some risk detected' : 'High risk wallet' }}
+                </span>
+                <span class="ml-auto text-muted-foreground">Score {{ riskScore.score }}/100</span>
+              </div>
+              <ul v-if="riskScore.flags.length" class="mt-1.5 space-y-0.5 pl-6 text-muted-foreground">
+                <li v-for="f in riskScore.flags" :key="f">· {{ f }}</li>
+              </ul>
             </div>
 
             <!-- Private mode banner -->

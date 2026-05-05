@@ -53,6 +53,7 @@ export default defineNuxtConfig({
     solanaRpcUrl: process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
     solanaCaip2: process.env.SOLANA_CAIP2 || 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
     jupiterApiKey: process.env.JUPITER_API_KEY || '',
+    goldrushApiKey: process.env.GOLDRUSH_API_KEY || '',
     public: {
       privyAppId: process.env.NUXT_PUBLIC_PRIVY_APP_ID || process.env.PRIVY_APP_ID || '',
       privyClientId: process.env.NUXT_PUBLIC_PRIVY_CLIENT_ID || '',
