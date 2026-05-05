@@ -1,13 +1,42 @@
 <script setup lang="ts">
 import {
   ArrowUpRight, ArrowDownRight, Scissors, Star, ExternalLink,
-  RefreshCw, Inbox, Filter
+  RefreshCw, Inbox, Filter, Download
 } from 'lucide-vue-next'
 import { formatAmount, shortAddr } from '~/utils'
 
 const { apiFetch } = useAuth()
 const { balance } = useBalance()
 const { formatDisplay } = useDisplayCurrency()
+
+// Export
+const showExport = ref(false)
+const exportFrom = ref('')
+const exportTo = ref('')
+const exporting = ref<'csv' | 'pdf' | null>(null)
+
+async function doExport(format: 'csv' | 'pdf') {
+  exporting.value = format
+  try {
+    const params = new URLSearchParams({ format })
+    if (exportFrom.value) params.set('from', exportFrom.value)
+    if (exportTo.value) params.set('to', exportTo.value)
+    // Fetch as arraybuffer so it works for both CSV and PDF
+    const data = await $fetch<ArrayBuffer>(`/api/export?${params}`, {
+      responseType: 'arrayBuffer',
+    })
+    const mime = format === 'pdf' ? 'application/pdf' : 'text/csv'
+    const blob = new Blob([data], { type: mime })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `syno-tax-export.${format}`
+    a.click()
+    URL.revokeObjectURL(url)
+  } finally {
+    exporting.value = null
+  }
+}
 
 function toUsd(amount: number, token: string): string {
   if (!balance.value) return ''
@@ -105,17 +134,69 @@ function refresh() {
   <div class="min-h-screen p-4 md:p-8">
 
     <!-- Header -->
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-6 flex items-center justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold">Activity</h1>
         <p class="mt-0.5 text-sm text-muted-foreground">Your full transaction history.</p>
       </div>
-      <button
-        class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent"
-        @click="refresh()"
-      >
-        <RefreshCw class="h-3.5 w-3.5" /> Refresh
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent"
+          @click="showExport = !showExport"
+        >
+          <Download class="h-3.5 w-3.5" /> Export
+        </button>
+        <button
+          class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent"
+          @click="refresh()"
+        >
+          <RefreshCw class="h-3.5 w-3.5" /> Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Export panel -->
+    <div v-if="showExport" class="mb-6 rounded-2xl border border-border bg-card p-5">
+      <p class="mb-4 text-sm font-semibold">Export for taxes</p>
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-muted-foreground">From</label>
+          <input
+            v-model="exportFrom"
+            type="date"
+            class="rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-muted-foreground">To</label>
+          <input
+            v-model="exportTo"
+            type="date"
+            class="rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <div class="flex gap-2">
+          <button
+            class="flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium transition hover:bg-accent disabled:opacity-50"
+            :disabled="exporting !== null"
+            @click="doExport('csv')"
+          >
+            <span v-if="exporting === 'csv'" class="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" />
+            <Download v-else class="h-3.5 w-3.5" />
+            {{ exporting === 'csv' ? 'Exporting…' : 'CSV' }}
+          </button>
+          <button
+            class="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+            :disabled="exporting !== null"
+            @click="doExport('pdf')"
+          >
+            <span v-if="exporting === 'pdf'" class="h-3.5 w-3.5 animate-spin rounded-full border border-primary-foreground border-t-transparent" />
+            <Download v-else class="h-3.5 w-3.5" />
+            {{ exporting === 'pdf' ? 'Exporting…' : 'PDF' }}
+          </button>
+        </div>
+      </div>
+      <p class="mt-3 text-xs text-muted-foreground">Includes all payments, splits, and gifts. Leave dates empty to export everything.</p>
     </div>
 
     <!-- Tabs -->
