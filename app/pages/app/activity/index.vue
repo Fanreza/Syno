@@ -6,6 +6,22 @@ import {
 import { formatAmount, shortAddr } from '~/utils'
 
 const { apiFetch } = useAuth()
+const { balance } = useBalance()
+const { formatDisplay } = useDisplayCurrency()
+
+function toUsd(amount: number, token: string): string {
+  if (!balance.value) return ''
+  const solPrice = balance.value.solPrice ?? 0
+  const SOL_MINT = 'So11111111111111111111111111111111111111112'
+  let price = 0
+  if (token === 'SOL' || token === SOL_MINT) price = solPrice
+  else {
+    const t = balance.value.tokens?.find((t: any) => t.symbol === token || t.mint === token)
+    price = t ? t.usd / t.balance : 0
+  }
+  const usd = amount * price
+  return usd > 0 ? formatDisplay(usd) : ''
+}
 
 type ActivityItem = {
   type: 'sent' | 'received' | 'split' | 'gift_claim'
@@ -201,6 +217,7 @@ function refresh() {
             >
               {{ item.type === 'received' || item.type === 'gift_claim' ? '+' : item.type === 'sent' ? '-' : '' }}{{ formatAmount(item.amount) }} <span class="text-xs font-normal">{{ item.token }}</span>
             </p>
+            <p v-if="toUsd(item.amount, item.token)" class="text-xs text-muted-foreground">{{ toUsd(item.amount, item.token) }}</p>
             <p class="mt-0.5 text-xs text-muted-foreground">{{ timeAgo(item.created_at) }}</p>
           </div>
 

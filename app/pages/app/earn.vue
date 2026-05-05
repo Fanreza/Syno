@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { TrendingUp, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, AlertCircle, ExternalLink, Loader2, Zap, ArrowRight, RefreshCw } from "lucide-vue-next";
 import TokenPicker from "~/components/TokenPicker.vue";
-import { formatUsd } from "~/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
+const { formatDisplay, fetchRates } = useDisplayCurrency()
+onMounted(() => fetchRates())
 
 const { apiFetch } = useAuth();
 const { balance, pending, refresh: refreshBalance } = useBalance();
@@ -38,9 +39,15 @@ type Position = {
 	jlShares: string;
 };
 
-const { data: markets, pending: loadingMarkets, refresh: refreshMarkets } = useAsyncData<Market[]>("earn:markets", () => $fetch<Market[]>("/api/earn/markets" as string), { lazy: true, server: false });
+const { data: markets, pending: loadingMarkets, refresh: refreshMarkets, error: marketsError } = useAsyncData<Market[]>("earn:markets", () => $fetch<Market[]>("/api/earn/markets" as string), { lazy: true, server: false, default: () => [] });
 
-const { data: positions, pending: loadingPositions, refresh: refreshPositions } = useAsyncData<Position[]>("earn:positions", () => apiFetch("/api/earn/positions"), { lazy: true, server: false });
+const { data: positions, pending: loadingPositions, refresh: refreshPositions, error: positionsError } = useAsyncData<Position[]>("earn:positions", () => apiFetch("/api/earn/positions"), { lazy: true, server: false, default: () => [] });
+
+const fetchError = computed(() => marketsError.value || positionsError.value)
+
+async function retryAll() {
+  await Promise.all([refreshMarkets(), refreshPositions()])
+}
 
 onMounted(() => { refreshMarkets(); refreshPositions() })
 
@@ -227,10 +234,7 @@ function formatApr(apr: number | string) {
 
 function formatTvl(totalAssets: number, decimals: number, price: number) {
 	const usd = (totalAssets / Math.pow(10, decimals)) * price;
-	if (usd >= 1_000_000_000) return "$" + (usd / 1_000_000_000).toFixed(1) + "B";
-	if (usd >= 1_000_000) return "$" + (usd / 1_000_000).toFixed(1) + "M";
-	if (usd >= 1_000) return "$" + (usd / 1_000).toFixed(1) + "K";
-	return usd > 0 ? "$" + usd.toFixed(0) : "—";
+	return usd > 0 ? formatDisplay(usd) : "—";
 }
 
 function positionFor(mint: string) {
@@ -285,7 +289,7 @@ const totalEarningUsd = computed(() => {
 						<div>
 							<p class="text-xs font-medium text-white/50">Total deposited</p>
 							<h2 class="mt-1 text-3xl font-bold tracking-tight text-white">
-								{{ totalEarningUsd > 0 ? "$" + totalEarningUsd.toFixed(2) : positions?.length ? "—" : "$0.00" }}
+								{{ totalEarningUsd > 0 ? formatDisplay(totalEarningUsd) : positions?.length ? "—" : formatDisplay(0) }}
 							</h2>
 							<p v-if="positions?.length" class="mt-0.5 text-sm text-white/40">across {{ positions.length }} position{{ positions.length > 1 ? "s" : "" }}</p>
 							<p v-else class="mt-0.5 text-sm text-white/40">Start earning by depositing below</p>
@@ -304,6 +308,12 @@ const totalEarningUsd = computed(() => {
 							<span class="rounded-md bg-green-500/20 px-1.5 py-0.5 text-[10px] font-bold text-green-300">{{ formatApr(pos.supplyApr) }}</span>
 							<button class="ml-1 rounded-lg bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/70 transition hover:bg-white/20" @click="openWithdraw({ mint: pos.mint, jlMint: pos.jlMint, symbol: pos.symbol, name: pos.symbol, logoURI: pos.logoURI, decimals: pos.decimals, supplyApr: pos.supplyApr, totalAssets: 0, totalSupply: 0, price: 0 })">Withdraw</button>
 						</div>
+					</div>
+					<div v-else-if="fetchError && !loadingPage" class="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-3">
+						<AlertCircle class="h-4 w-4 text-white/40" />
+						<p class="text-xs text-white/40">Could not load positions.
+							<button class="underline hover:text-white/70 transition" @click="retryAll">Retry</button>
+						</p>
 					</div>
 					<div v-else-if="!loadingPage" class="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-3">
 						<Zap class="h-4 w-4 text-white/40" />
@@ -376,6 +386,19 @@ const totalEarningUsd = computed(() => {
 						</div>
 						<div class="h-9 w-24 rounded-xl bg-secondary animate-pulse shrink-0" />
 					</div>
+				</div>
+
+				<div v-else-if="fetchError" class="flex flex-col items-center justify-center py-12 text-center gap-3">
+					<AlertCircle class="h-8 w-8 text-muted-foreground" />
+					<div>
+						<p class="font-medium">Failed to load markets</p>
+						<p class="mt-1 text-sm text-muted-foreground">
+							{{ (fetchError as any)?.statusCode === 429 ? 'Rate limited — wait a moment and try again.' : 'Something went wrong. Try again.' }}
+						</p>
+					</div>
+					<button class="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2 text-sm font-semibold transition hover:bg-accent" @click="retryAll">
+						<RefreshCw class="h-4 w-4" /> Retry
+					</button>
 				</div>
 
 				<div v-else-if="!markets?.length" class="flex flex-col items-center justify-center py-12 text-center">
@@ -464,7 +487,7 @@ const totalEarningUsd = computed(() => {
 									<span v-if="inputTokenBalance && modal.mode === 'deposit'" class="text-xs text-muted-foreground">
 										Balance:
 										<button class="font-semibold text-foreground hover:text-primary transition" @click="amountRaw = inputTokenBalance.amount.toFixed(6)">{{ inputTokenBalance.amount.toFixed(4) }} {{ inputTokenBalance.symbol }}</button>
-										<span class="text-muted-foreground/60"> · {{ formatUsd(inputTokenBalance.usd) }}</span>
+										<span class="text-muted-foreground/60"> · {{ formatDisplay(inputTokenBalance.usd) }}</span>
 									</span>
 									<span v-else-if="positionForModal && modal.mode === 'withdraw'" class="text-xs text-muted-foreground flex items-center gap-1.5">
 										<span>{{ Number(positionForModal.balance).toFixed(4) }} {{ modal.market.symbol }}</span>

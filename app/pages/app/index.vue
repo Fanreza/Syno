@@ -7,7 +7,9 @@ import {
   Send, ArrowDownLeft, Users, RefreshCw, Copy, Check, Gift, QrCode,
   ArrowUpRight, ArrowDownRight, Scissors, Star, Inbox, Banknote, ArrowLeftRight
 } from 'lucide-vue-next'
-import { formatAmount, formatUsd, shortAddr } from '~/utils'
+import { formatAmount, shortAddr } from '~/utils'
+const { formatDisplay, fetchRates } = useDisplayCurrency()
+onMounted(() => fetchRates())
 
 const { user, apiFetch } = useAuth()
 const { isDark } = useTheme()
@@ -169,7 +171,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           <div class="mt-1.5 h-4 w-20 animate-pulse rounded bg-white/10" />
         </div>
         <div v-else>
-          <h2 class="text-4xl font-bold tracking-tight text-white">{{ formatUsd(totalUsd) }}</h2>
+          <h2 class="text-4xl font-bold tracking-tight text-white">{{ formatDisplay(totalUsd) }}</h2>
           <p class="mt-1 text-sm text-white/40">{{ formatAmount(balance?.sol || 0) }} SOL</p>
         </div>
         </div>
@@ -265,7 +267,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
       <div data-tour="holdings" class="rounded-2xl border border-border bg-card">
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
           <h3 class="text-sm font-semibold">Holdings</h3>
-          <span class="text-xs text-muted-foreground">{{ formatUsd(totalUsd) }}</span>
+          <span class="text-xs text-muted-foreground">{{ formatDisplay(totalUsd) }}</span>
         </div>
         <div v-if="pendingBalance" class="px-4 pb-4 space-y-3">
           <div v-for="i in 2" :key="i" class="flex items-center gap-3">
@@ -292,7 +294,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
               </div>
               <p class="text-xs text-muted-foreground">{{ formatAmount(token.balance) }}</p>
             </div>
-            <p class="text-sm font-semibold">{{ formatUsd(token.usd) }}</p>
+            <p class="text-sm font-semibold">{{ formatDisplay(token.usd) }}</p>
           </div>
         </div>
       </div>

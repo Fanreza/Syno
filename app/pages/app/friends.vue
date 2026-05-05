@@ -92,7 +92,7 @@ function avatarColor(username: string) {
           @click="addFriend(u.username)"
         >
           <div :class="['flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white', avatarColor(u.username)]">
-            {{ u.username[0].toUpperCase() }}
+            {{ (u.username[0] ?? '?').toUpperCase() }}
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold">@{{ u.username }}</p>
@@ -145,7 +145,7 @@ function avatarColor(username: string) {
           class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 transition hover:bg-accent"
         >
           <div :class="['flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white', avatarColor(f.friend.username)]">
-            {{ f.friend.username[0].toUpperCase() }}
+            {{ (f.friend.username[0] ?? '?').toUpperCase() }}
           </div>
           <div class="flex-1 min-w-0">
             <p class="font-semibold">@{{ f.friend.username }}</p>

@@ -91,7 +91,7 @@ export default defineEventHandler(async (event) => {
 	if (outputMint !== body.mint) {
 		// Use actual on-chain balance after redeem to avoid slippage mismatch
 		const actualBalance = await getTokenBalance(me.wallet_address, body.mint);
-		const withdrawnRaw = actualBalance > 0 ? actualBalance : Math.round(body.amount * Math.pow(10, body.decimals));
+		const withdrawnRaw = actualBalance > BigInt(0) ? Number(actualBalance) : Math.round(body.amount * Math.pow(10, body.decimals));
 
 		const quote = await getJupiterQuote({
 			inputMint: body.mint,

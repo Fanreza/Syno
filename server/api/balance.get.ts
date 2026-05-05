@@ -20,7 +20,7 @@ async function getCachedSolPrice(): Promise<number> {
   return _solPriceCache
 }
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<{ address: string; sol: number; usd: number; solPrice: number; tokens: any[] }> => {
   const { address } = getQuery(event) as { address?: string }
   if (!address) throw createError({ statusCode: 400, statusMessage: 'address required' })
 

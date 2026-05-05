@@ -3,13 +3,32 @@ import { Gift, CheckCircle2, Clock, ExternalLink, Plus, ChevronRight } from 'luc
 import { formatAmount } from '~/utils'
 
 const { apiFetch } = useAuth()
+const { balance } = useBalance()
+const { formatDisplay } = useDisplayCurrency()
+
+const SOL_MINT = 'So11111111111111111111111111111111111111112'
+function toUsd(amount: number, tokenSymbol: string): string {
+  if (!balance.value) return ''
+  const solPrice = balance.value.solPrice ?? 0
+  let price = 0
+  if (tokenSymbol === 'SOL') price = solPrice
+  else if (tokenSymbol === 'USDC' || tokenSymbol === 'USDT') price = 1
+  else {
+    const t = balance.value.tokens?.find((t: any) => t.symbol === tokenSymbol)
+    if (t && t.balance > 0) price = t.usd / t.balance
+  }
+  const usd = amount * price
+  return usd > 0 ? formatDisplay(usd) : ''
+}
 const showGift = ref(false)
 
 const { data, refresh, pending } = useAsyncData(
   'gifts-page',
   () => apiFetch<{ created: any[]; claimed: any[] }>('/api/gifts'),
-  { lazy: true }
+  { lazy: true, server: false }
 )
+
+onMounted(() => refresh())
 
 watch(showGift, (v) => { if (!v) setTimeout(refresh, 500) })
 
@@ -112,7 +131,7 @@ function copyLink(id: string) {
 
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <p class="font-semibold">{{ formatAmount(g.total_amount) }} {{ g.token_symbol }}</p>
+                <p class="font-semibold">{{ formatAmount(g.total_amount) }} {{ g.token_symbol }}<span v-if="toUsd(g.total_amount, g.token_symbol)" class="ml-1.5 text-xs font-normal text-muted-foreground">{{ toUsd(g.total_amount, g.token_symbol) }}</span></p>
                 <span
                   class="rounded-full px-2 py-0.5 text-[10px] font-semibold"
                   :class="g.settled ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'"
@@ -175,7 +194,7 @@ function copyLink(id: string) {
           </div>
 
           <div class="min-w-0 flex-1">
-            <p class="font-semibold">+{{ formatAmount(c.amount) }} {{ c.token_symbol }}</p>
+            <p class="font-semibold">+{{ formatAmount(c.amount) }} {{ c.token_symbol }}<span v-if="toUsd(c.amount, c.token_symbol)" class="ml-1.5 text-xs font-normal text-muted-foreground">{{ toUsd(c.amount, c.token_symbol) }}</span></p>
             <p class="mt-0.5 text-xs text-muted-foreground">
               From <span class="font-medium text-foreground">@{{ c.from_username ?? 'unknown' }}</span>
               · {{ fmtDate(c.created_at) }}

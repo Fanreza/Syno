@@ -1,4 +1,4 @@
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<any[]> => {
   const { q } = getQuery(event) as { q?: string }
 
   // If query looks like a mint address (base58, 32-44 chars), fetch directly

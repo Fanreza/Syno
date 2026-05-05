@@ -7,6 +7,8 @@ import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch, user } = useAuth()
+const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
+const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 
 const SOL_TOKEN: JupToken = {
   address: 'So11111111111111111111111111111111111111112',
@@ -56,7 +58,7 @@ const amountInToken = computed(() => {
 const convertLabel = computed(() => {
   if (!amountNum.value) return ''
   if (currency.value === 'TOKEN' && tokenPrice.value) {
-    return `≈ $${(amountNum.value * tokenPrice.value).toFixed(2)}`
+    return `≈ ${formatDisplay(amountNum.value * tokenPrice.value)}`
   }
   if (currency.value === 'USD' && tokenPrice.value) {
     return `≈ ${amountInToken.value.toFixed(6)} ${outputToken.value.symbol}`
@@ -231,7 +233,7 @@ const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
               </button>
               <div class="relative flex-1">
                 <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                  {{ currency === 'USD' ? '$' : '' }}
+                  {{ currency === 'USD' ? currencySymbol : '' }}
                 </span>
                 <input
                   :value="amountRaw"

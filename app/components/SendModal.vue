@@ -6,7 +6,10 @@ import {
   X, CheckCircle2, AlertCircle, User,
   Coins, DollarSign, Send, ExternalLink, ChevronDown, ShieldCheck
 } from 'lucide-vue-next'
-import { shortAddr, formatUsd } from '~/utils'
+import { shortAddr } from '~/utils'
+const { formatDisplay, fetchRates, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
+const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
+onMounted(() => fetchRates())
 import type { Contact } from '~/components/ContactPicker.vue'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -79,7 +82,7 @@ const amountInSol = computed(() => {
 const convertLabel = computed(() => {
   if (!amountNum.value) return ''
   if (currency.value === 'TOKEN' && tokenPrice.value)
-    return `≈ ${formatUsd(amountNum.value * tokenPrice.value)}`
+    return `≈ ${formatDisplay(amountNum.value * tokenPrice.value)}`
   if (currency.value === 'USD' && tokenPrice.value)
     return `≈ ${amountInToken.value.toFixed(6)} ${inputToken.value.symbol}`
   return ''
@@ -297,7 +300,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                   <button class="font-semibold text-foreground hover:text-primary transition" @click="amountRaw = maxSendable.toFixed(6); currency = 'TOKEN'">
                     {{ selectedTokenBalance.amount.toFixed(4) }} {{ selectedTokenBalance.symbol }}
                   </button>
-                  <span class="text-muted-foreground/60"> · {{ formatUsd(selectedTokenBalance.usd) }}</span>
+                  <span class="text-muted-foreground/60"> · {{ formatDisplay(selectedTokenBalance.usd) }}</span>
                 </span>
               </div>
               <div class="flex gap-2">
@@ -312,7 +315,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                 </button>
                 <div class="relative flex-1">
                   <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                    {{ currency === 'USD' ? '$' : '' }}
+                    {{ currency === 'USD' ? currencySymbol : '' }}
                   </span>
                   <input
                     :value="amountRaw"

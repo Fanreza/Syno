@@ -190,15 +190,73 @@ html.dark {
   border-radius: inherit;
 }
 
-/* driver.js — ensure popover buttons are always tappable on mobile/PWA */
+/* driver.js — theme + mobile fix */
 #driver-popover-content {
+  background: hsl(250 18% 10%) !important;
+  border: 1px solid hsl(250 18% 18%) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6), 0 0 0 1px hsl(252 85% 65% / 0.15) !important;
+  color: hsl(250 15% 92%) !important;
   touch-action: manipulation;
+  padding: 1.25rem 1.25rem 1rem !important;
+}
+#driver-popover-content .driver-popover-title {
+  color: hsl(250 15% 96%) !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 0.4rem !important;
+}
+#driver-popover-content .driver-popover-description {
+  color: hsl(250 10% 62%) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+#driver-popover-content .driver-popover-progress-text {
+  color: hsl(250 10% 50%) !important;
+  font-size: 0.75rem !important;
+}
+#driver-popover-content .driver-popover-footer {
+  margin-top: 1rem !important;
+  gap: 0.5rem !important;
 }
 #driver-popover-content .driver-popover-footer button {
   pointer-events: auto !important;
   touch-action: manipulation;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  min-height: 40px;
+  min-height: 36px;
   min-width: 64px;
+  border-radius: 0.625rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  border: none !important;
+  padding: 0 0.875rem !important;
+  transition: opacity 0.15s !important;
 }
+#driver-popover-content .driver-popover-footer button:hover {
+  opacity: 0.85 !important;
+}
+/* Next / Done button — purple */
+#driver-popover-content .driver-popover-next-btn {
+  background: hsl(252 85% 65%) !important;
+  color: #fff !important;
+}
+/* Prev button — muted */
+#driver-popover-content .driver-popover-prev-btn {
+  background: hsl(250 18% 18%) !important;
+  color: hsl(250 15% 80%) !important;
+}
+/* Close/skip button */
+#driver-popover-content .driver-popover-close-btn {
+  color: hsl(250 10% 52%) !important;
+  font-size: 1.1rem !important;
+  background: transparent !important;
+}
+#driver-popover-content .driver-popover-close-btn:hover {
+  color: hsl(250 15% 92%) !important;
+}
+/* Arrow */
+.driver-popover-arrow-side-left.driver-popover-arrow { border-right-color: hsl(250 18% 10%) !important; }
+.driver-popover-arrow-side-right.driver-popover-arrow { border-left-color: hsl(250 18% 10%) !important; }
+.driver-popover-arrow-side-top.driver-popover-arrow { border-bottom-color: hsl(250 18% 10%) !important; }
+.driver-popover-arrow-side-bottom.driver-popover-arrow { border-top-color: hsl(250 18% 10%) !important; }

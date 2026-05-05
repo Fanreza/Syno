@@ -8,6 +8,8 @@ import type { Contact } from '~/components/ContactPicker.vue'
 
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
+const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
+const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 
 // ── Per-row state ──────────────────────────────────────────────────────────
 type Row = {
@@ -84,7 +86,7 @@ const totalInToken = computed(() => {
 const convertLabel = computed(() => {
   if (!totalNum.value) return ''
   if (currency.value === 'TOKEN' && tokenPrice.value)
-    return `≈ $${(totalNum.value * tokenPrice.value).toFixed(2)}`
+    return `≈ ${formatDisplay(totalNum.value * tokenPrice.value)}`
   if (currency.value === 'USD' && tokenPrice.value)
     return `≈ ${totalInToken.value.toFixed(6)} ${outputToken.value.symbol}`
   return ''
@@ -251,7 +253,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                 </button>
                 <div class="relative flex-1">
                   <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                    {{ currency === 'USD' ? '$' : '' }}
+                    {{ currency === 'USD' ? currencySymbol : '' }}
                   </span>
                   <input
                     :value="totalRaw"

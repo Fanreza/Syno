@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, User, LogOut, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, Link, Gift, Bell, Send, ArrowLeftRight, QrCode, Banknote, Scissors } from 'lucide-vue-next'
+import { Home, User, LogOut, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, Link, Gift, Bell, Send, ArrowLeftRight, QrCode, Banknote, Scissors, HelpCircle } from 'lucide-vue-next'
 import { useNotifications } from '~/composables/useNotifications'
 import { createAvatar } from '@dicebear/core'
 import { bottts } from '@dicebear/collection'
@@ -8,6 +8,12 @@ const route = useRoute()
 const { user, logout } = useAuth()
 const { isDark, toggle } = useTheme()
 const { unread, fetchUnread } = useNotifications()
+const { startTour, resetTour } = useOnboarding()
+
+function replayTour() {
+  resetTour()
+  startTour()
+}
 
 onMounted(() => fetchUnread())
 
@@ -82,6 +88,7 @@ function isActive(to: string) {
         v-for="item in items"
         :key="item.to"
         :to="item.to"
+        :data-tour="`nav-${item.to.split('/').pop()}`"
         class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all"
         :class="isActive(item.to)
           ? 'bg-primary text-primary-foreground shadow-sm'
@@ -109,6 +116,13 @@ function isActive(to: string) {
         {{ isDark ? 'Light mode' : 'Dark mode' }}
       </button>
       <button
+        class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+        @click="replayTour"
+      >
+        <HelpCircle class="h-4 w-4 shrink-0" />
+        Tour guide
+      </button>
+      <button
         class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
         @click="logout"
       >
@@ -127,6 +141,7 @@ function isActive(to: string) {
         v-for="item in bottomItems"
         :key="item.to"
         :to="item.to"
+        :data-tour="`nav-${item.to.split('/').pop()}`"
         class="flex flex-col items-center gap-0.5 flex-1 py-1 rounded-xl transition-all min-w-0"
         :class="isActive(item.to) ? 'text-primary' : 'text-muted-foreground'"
       >

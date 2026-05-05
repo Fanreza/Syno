@@ -4,7 +4,8 @@ const isApp = computed(() => route.path.startsWith('/app'))
 const showNav = computed(() => isApp.value && !route.path.startsWith('/app/pay/'))
 
 const { init, isDark } = useTheme()
-onMounted(() => init())
+const { fetchRates } = useDisplayCurrency()
+onMounted(() => { init(); fetchRates() })
 
 watch(isDark, (dark) => {
   document.documentElement.classList.toggle('dark', dark)

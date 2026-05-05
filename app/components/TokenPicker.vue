@@ -2,8 +2,8 @@
 import { Search, ChevronDown, Check } from 'lucide-vue-next'
 import type { JupToken } from '~/utils/tokens'
 import { POPULAR_TOKENS } from '~/utils/tokens'
-import { formatUsd } from '~/utils'
 import { useBalance } from '~/composables/useBalance'
+const { formatDisplay } = useDisplayCurrency()
 
 const props = defineProps<{ label?: string; filter?: string[]; exclude?: string[]; tokenLogos?: Record<string, string> }>()
 const modelValue = defineModel<JupToken>({ required: true })
@@ -150,7 +150,7 @@ onMounted(() => {
           <div class="shrink-0 text-right">
             <template v-if="tokenBalance(token.address) > 0">
               <p class="text-xs font-semibold">{{ tokenBalance(token.address).toFixed(4) }}</p>
-              <p class="text-[10px] text-muted-foreground">{{ formatUsd(tokenUsd(token.address)) }}</p>
+              <p class="text-[10px] text-muted-foreground">{{ formatDisplay(tokenUsd(token.address)) }}</p>
             </template>
             <Check v-else-if="modelValue.address === token.address" class="h-4 w-4 text-primary" />
           </div>

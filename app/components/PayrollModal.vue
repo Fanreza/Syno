@@ -6,6 +6,8 @@ import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
+const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
+const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 const { balance, refresh: refreshBalance } = useBalance()
 
 interface Row { username: string; amount: string; memo: string }
@@ -305,7 +307,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                 </p>
                 <div class="relative">
                   <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                    {{ currency === 'USD' ? '$' : '' }}
+                    {{ currency === 'USD' ? currencySymbol : '' }}
                   </span>
                   <input
                     v-model="row.amount"
@@ -320,7 +322,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                   ≈ {{ rowAmountInToken(row.amount).toFixed(6) }} {{ token.symbol }}
                 </p>
                 <p v-else-if="row.amount && tokenPrice && currency === 'TOKEN'" class="pl-1 text-xs text-muted-foreground">
-                  ≈ ${{ (parseFloat(row.amount) * tokenPrice).toFixed(2) }}
+                  ≈ {{ formatDisplay(parseFloat(row.amount) * (tokenPrice ?? 0)) }}
                 </p>
                 <input
                   v-model="row.memo"

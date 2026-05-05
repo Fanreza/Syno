@@ -3,6 +3,25 @@ import { ArrowLeft, Copy, Check, CheckCircle2, Clock, RefreshCw, ExternalLink } 
 import { formatAmount, shortAddr } from '~/utils'
 
 const route = useRoute()
+const { balance } = useBalance()
+const { formatDisplay } = useDisplayCurrency()
+
+const SOL_MINT = 'So11111111111111111111111111111111111111112'
+function toUsd(amount: number): string {
+  if (!balance.value || !bill.value?.token) return ''
+  const token = bill.value.token
+  const solPrice = balance.value.solPrice ?? 0
+  let price = 0
+  if (token === 'SOL' || token === SOL_MINT) price = solPrice
+  else if (token === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') price = 1
+  else if (token === 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB') price = 1
+  else {
+    const t = balance.value.tokens?.find((t: any) => t.mint === token)
+    if (t && t.balance > 0) price = t.usd / t.balance
+  }
+  const usd = amount * price
+  return usd > 0 ? formatDisplay(usd) : ''
+}
 const id = route.params.id as string
 const { apiFetch } = useAuth()
 const config = useRuntimeConfig()
@@ -23,7 +42,7 @@ watch(bill, (b) => {
 }, { immediate: true })
 
 async function generateLink(participant: any): Promise<string> {
-  if (payLinks.value[participant.id]) return payLinks.value[participant.id]
+  if (payLinks.value[participant.id]) return payLinks.value[participant.id]!
   generating.value[participant.id] = true
   try {
     const res = await apiFetch<{ id: string }>('/api/payments/create-link', {
@@ -102,6 +121,7 @@ const tokenSymbol = computed(() => {
             {{ formatAmount(bill?.total_amount || 0) }}
           </p>
           <p class="mt-1 text-lg font-semibold text-muted-foreground">{{ tokenSymbol }}</p>
+          <p v-if="toUsd(bill?.total_amount || 0)" class="mt-0.5 text-sm text-muted-foreground">≈ {{ toUsd(bill?.total_amount || 0) }}</p>
 
           <div class="mt-5 space-y-2">
             <div class="flex items-center justify-between text-sm">
@@ -176,7 +196,7 @@ const tokenSymbol = computed(() => {
                   <p class="font-semibold">@{{ p.username }}</p>
                   <span v-if="bill?.myParticipantId === p.id" class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">you</span>
                 </div>
-                <p class="text-sm text-muted-foreground">{{ formatAmount(p.amount) }} {{ tokenSymbol }}</p>
+                <p class="text-sm text-muted-foreground">{{ formatAmount(p.amount) }} {{ tokenSymbol }}<span v-if="toUsd(p.amount)" class="ml-1 text-xs">· {{ toUsd(p.amount) }}</span></p>
                 <a
                   v-if="p.tx_signature"
                   :href="`https://solscan.io/tx/${p.tx_signature}`"

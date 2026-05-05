@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Copy, Check, ExternalLink, LogOut, Shield, Mail, KeyRound, Eye, EyeOff, AlertTriangle } from 'lucide-vue-next'
+import { Copy, Check, ExternalLink, LogOut, Shield, Mail, KeyRound, Eye, EyeOff, AlertTriangle, Globe, ChevronDown } from 'lucide-vue-next'
 import { createAvatar } from '@dicebear/core'
 import { bottts } from '@dicebear/collection'
 
 const { user, apiFetch, logout } = useAuth()
+const { selectedCurrency, SUPPORTED_CURRENCIES, setCurrency, formatDisplay, fetchRates } = useDisplayCurrency()
+onMounted(() => fetchRates())
 
 const exportLoading = ref(false)
 const exportError = ref('')
@@ -70,7 +72,8 @@ const bannerColors = computed(() => {
     ['#200122', '#6f0000', '#200122'],
     ['#0f2027', '#203a43', '#2c5364'],
   ]
-  const [a, b, c] = palettes[name.charCodeAt(0) % palettes.length]
+  const palette = palettes[name.charCodeAt(0) % palettes.length] ?? palettes[0]
+  const [a, b, c] = palette as [string, string, string]
   return { a, b, c }
 })
 </script>
@@ -133,7 +136,7 @@ const bannerColors = computed(() => {
             <!-- Balance -->
             <div class="text-right">
               <div v-if="pendingBalance" class="h-7 w-24 animate-pulse rounded-md bg-secondary ml-auto" />
-              <p v-else class="text-2xl font-bold">{{ formatUsd(balance?.usd || 0) }}</p>
+              <p v-else class="text-2xl font-bold">{{ formatDisplay(balance?.usd || 0) }}</p>
               <div v-if="pendingBalance" class="mt-1 h-4 w-16 animate-pulse rounded bg-secondary ml-auto" />
               <p v-else class="text-sm text-muted-foreground">{{ formatAmount(balance?.sol || 0) }} SOL</p>
             </div>
@@ -163,6 +166,34 @@ const bannerColors = computed(() => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Display currency -->
+      <div class="rounded-2xl border border-border bg-card p-5">
+        <div class="mb-4 flex items-center gap-2">
+          <Globe class="h-4 w-4 text-muted-foreground" />
+          <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Display Currency</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="relative flex-1">
+            <select
+              :value="selectedCurrency"
+              class="w-full appearance-none rounded-xl border border-border bg-background px-4 py-2.5 pr-10 text-sm font-medium text-foreground outline-none focus:ring-2 focus:ring-ring transition cursor-pointer"
+              @change="setCurrency(($event.target as HTMLSelectElement).value)"
+            >
+              <option
+                v-for="c in SUPPORTED_CURRENCIES"
+                :key="c.code"
+                :value="c.code"
+              >{{ c.symbol }} {{ c.code }} — {{ c.name }}</option>
+            </select>
+            <ChevronDown class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
+          <div class="shrink-0 rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm font-semibold tabular-nums">
+            {{ formatDisplay(1) }}
+          </div>
+        </div>
+        <p class="mt-2.5 text-xs text-muted-foreground">Amounts across the app update instantly.</p>
       </div>
 
       <!-- Export private key -->

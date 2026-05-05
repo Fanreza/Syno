@@ -3,6 +3,24 @@ import { Link, Copy, Check, Clock, CheckCircle2, ExternalLink, Plus, ChevronRigh
 import { formatAmount } from '~/utils'
 
 const { apiFetch } = useAuth()
+const { balance } = useBalance()
+const { formatDisplay } = useDisplayCurrency()
+
+const SOL_MINT = 'So11111111111111111111111111111111111111112'
+function toUsd(amount: number, token: string): string {
+  if (!balance.value) return ''
+  const solPrice = balance.value.solPrice ?? 0
+  let price = 0
+  if (token === 'SOL' || token === SOL_MINT) price = solPrice
+  else {
+    const t = balance.value.tokens?.find((t: any) => t.symbol === token || t.mint === token)
+    if (t && t.balance > 0) price = t.usd / t.balance
+    else if (token === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' || token === 'USDC') price = 1
+    else if (token === 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB' || token === 'USDT') price = 1
+  }
+  const usd = amount * price
+  return usd > 0 ? formatDisplay(usd) : ''
+}
 const config = useRuntimeConfig()
 const showRequest = ref(false)
 const showSplit = ref(false)
@@ -157,6 +175,7 @@ function fmtDate(iso: string) {
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-1.5">
               <p class="font-semibold text-sm">{{ formatAmount(item.amount) }} {{ sym(item.token) }}</p>
+              <p v-if="toUsd(item.amount, item.token)" class="text-xs text-muted-foreground">{{ toUsd(item.amount, item.token) }}</p>
               <span class="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-blue-500">Request</span>
               <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
                 :class="item.status === 'confirmed' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-secondary text-muted-foreground'">
@@ -212,6 +231,7 @@ function fmtDate(iso: string) {
           </div>
           <div class="shrink-0 text-right">
             <p class="text-xs font-semibold whitespace-nowrap">{{ formatAmount(item.amount) }} {{ sym(item.token) }}</p>
+            <p v-if="toUsd(item.amount, item.token)" class="text-[10px] text-muted-foreground">{{ toUsd(item.amount, item.token) }}</p>
           </div>
           <ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
         </NuxtLink>
@@ -241,7 +261,7 @@ function fmtDate(iso: string) {
           </div>
           <p class="mt-0.5 text-xs text-muted-foreground">
             From <span class="font-medium text-foreground">@{{ item.from_username }}</span>
-            · {{ formatAmount(item.amount) }} {{ sym(item.token) }}
+            · {{ formatAmount(item.amount) }} {{ sym(item.token) }}{{ toUsd(item.amount, item.token) ? ` (${toUsd(item.amount, item.token)})` : '' }}
           </p>
           <a
             v-if="item.tx_signature"

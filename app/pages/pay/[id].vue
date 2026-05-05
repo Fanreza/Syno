@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { CheckCircle2, AlertCircle, ExternalLink, Copy, Check, LogIn, Search, ChevronDown } from 'lucide-vue-next'
-import { formatAmount, shortAddr, formatUsd } from '~/utils'
+import { formatAmount, shortAddr } from '~/utils'
+const { formatDisplay, fetchRates } = useDisplayCurrency()
 
 definePageMeta({ layout: false })
 
 const { init: initTheme } = useTheme()
-onMounted(() => initTheme())
+onMounted(() => { initTheme(); fetchRates() })
 
 const route = useRoute()
 const id = route.params.id as string
@@ -124,6 +125,12 @@ async function onPay() {
 const isSelf = computed(() =>
   isAuthenticated.value && user.value?.wallet_address === payment.value?.receiver_address
 )
+
+function copyPageUrl() {
+  navigator.clipboard.writeText(pageUrl.value)
+  copiedAddr.value = true
+  setTimeout(() => (copiedAddr.value = false), 1500)
+}
 
 const selectedInputBalance = computed(() => {
   if (!balance.value) return null
@@ -260,7 +267,7 @@ const selectedInputBalance = computed(() => {
               <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Scan to pay</p>
               <button
                 class="flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent"
-                @click="() => { navigator.clipboard.writeText(pageUrl); copiedAddr = true; setTimeout(() => copiedAddr = false, 1500) }"
+                @click="copyPageUrl"
               >
                 <Check v-if="copiedAddr" class="h-3.5 w-3.5 text-green-500" />
                 <Copy v-else class="h-3.5 w-3.5" />
@@ -328,7 +335,7 @@ const selectedInputBalance = computed(() => {
                           : (balance?.tokens?.find((t: any) => t.mint === token.address)?.balance ?? 0).toFixed(4) }}
                       </p>
                       <p class="text-xs text-muted-foreground">
-                        {{ formatUsd(token.address === SOL_MINT
+                        {{ formatDisplay(token.address === SOL_MINT
                           ? (balance?.sol ?? 0) * (balance?.solPrice ?? 0)
                           : (balance?.tokens?.find((t: any) => t.mint === token.address)?.usd ?? 0)) }}
                       </p>
@@ -346,7 +353,7 @@ const selectedInputBalance = computed(() => {
                 <span class="text-muted-foreground">Your balance</span>
                 <span class="font-semibold">
                   {{ selectedInputBalance.amount.toFixed(4) }} {{ selectedInputBalance.symbol }}
-                  <span v-if="selectedInputBalance.usd" class="font-normal text-muted-foreground">· {{ formatUsd(selectedInputBalance.usd) }}</span>
+                  <span v-if="selectedInputBalance.usd" class="font-normal text-muted-foreground">· {{ formatDisplay(selectedInputBalance.usd) }}</span>
                 </span>
               </div>
             </div>

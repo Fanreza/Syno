@@ -22,7 +22,7 @@ export default defineNuxtPlugin(() => {
 
     iframe.addEventListener('load', () => {
       if (iframe.contentWindow) {
-        privyRef.setMessagePoster(iframe.contentWindow)
+        privyRef.setMessagePoster(iframe.contentWindow as any)
       }
       iframeReady = true
       // Tell the auth store it's safe to read existing session
