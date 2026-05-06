@@ -89,12 +89,12 @@ function copyLink(id: string) {
     <!-- Skeleton -->
     <div v-if="pending" class="space-y-2">
       <div v-for="i in 3" :key="i" class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4">
-        <div class="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-secondary" />
+        <div class="h-10 w-10 shrink-0 skeleton rounded-xl" />
         <div class="flex-1 space-y-2">
-          <div class="h-4 w-36 animate-pulse rounded bg-secondary" />
-          <div class="h-3 w-24 animate-pulse rounded bg-secondary" />
+          <div class="h-4 w-36 skeleton rounded" />
+          <div class="h-3 w-24 skeleton rounded" />
         </div>
-        <div class="h-4 w-16 animate-pulse rounded bg-secondary" />
+        <div class="h-4 w-16 skeleton rounded" />
       </div>
     </div>
 
@@ -116,9 +116,10 @@ function copyLink(id: string) {
 
       <div v-else class="space-y-2">
         <div
-          v-for="g in data.created"
+          v-for="(g, i) in data.created"
           :key="g.id"
-          class="rounded-2xl border border-border bg-card px-5 py-4"
+          class="rounded-2xl border border-border bg-card px-5 py-4 animate-item-in"
+          :style="`animation-delay: ${i * 50}ms`"
         >
           <div class="flex items-center gap-4">
             <div
@@ -185,9 +186,10 @@ function copyLink(id: string) {
 
       <div v-else class="space-y-2">
         <div
-          v-for="c in data.claimed"
+          v-for="(c, i) in data.claimed"
           :key="c.id"
-          class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4"
+          class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 animate-item-in"
+          :style="`animation-delay: ${i * 50}ms`"
         >
           <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-500/10">
             <Gift class="h-5 w-5 text-green-500" />

@@ -327,10 +327,10 @@ const totalEarningUsd = computed(() => {
 				<template v-if="loadingPage">
 					<div v-for="i in 3" :key="i" class="rounded-2xl border border-border bg-card px-4 py-3 md:px-5 md:py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-1">
 						<div class="w-full space-y-2">
-							<div class="h-3 w-20 rounded bg-secondary animate-pulse" />
-							<div class="h-8 w-24 rounded bg-secondary animate-pulse" />
+							<div class="h-3 w-20 rounded skeleton" />
+							<div class="h-8 w-24 rounded skeleton" />
 						</div>
-						<div class="hidden md:block h-4 w-4 rounded bg-secondary animate-pulse" />
+						<div class="hidden md:block h-4 w-4 rounded skeleton" />
 					</div>
 				</template>
 				<template v-else>
@@ -375,16 +375,16 @@ const totalEarningUsd = computed(() => {
 
 				<div v-if="loadingPage" class="divide-y divide-border">
 					<div v-for="i in 6" :key="i" class="flex items-center gap-3 py-3.5 first:pt-0 last:pb-0">
-						<div class="h-8 w-8 rounded-full bg-secondary animate-pulse shrink-0" />
+						<div class="h-8 w-8 rounded-full skeleton shrink-0" />
 						<div class="flex-1 min-w-0 space-y-2">
-							<div class="h-4 w-24 rounded bg-secondary animate-pulse" />
-							<div class="h-3 w-32 rounded bg-secondary animate-pulse" />
+							<div class="h-4 w-24 rounded skeleton" />
+							<div class="h-3 w-32 rounded skeleton" />
 						</div>
 						<div class="space-y-2 text-right shrink-0">
-							<div class="h-4 w-14 rounded bg-secondary animate-pulse ml-auto" />
-							<div class="h-3 w-8 rounded bg-secondary animate-pulse ml-auto" />
+							<div class="h-4 w-14 rounded skeleton ml-auto" />
+							<div class="h-3 w-8 rounded skeleton ml-auto" />
 						</div>
-						<div class="h-9 w-24 rounded-xl bg-secondary animate-pulse shrink-0" />
+						<div class="h-9 w-24 rounded-xl skeleton shrink-0" />
 					</div>
 				</div>
 

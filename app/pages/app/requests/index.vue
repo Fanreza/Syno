@@ -127,12 +127,12 @@ function fmtDate(iso: string) {
     <!-- Skeleton -->
     <div v-if="pending" class="space-y-2">
       <div v-for="i in 4" :key="i" class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4">
-        <div class="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-secondary" />
+        <div class="h-10 w-10 shrink-0 skeleton rounded-xl" />
         <div class="flex-1 space-y-2">
-          <div class="h-4 w-36 animate-pulse rounded bg-secondary" />
-          <div class="h-3 w-24 animate-pulse rounded bg-secondary" />
+          <div class="h-4 w-36 skeleton rounded" />
+          <div class="h-3 w-24 skeleton rounded" />
         </div>
-        <div class="h-4 w-16 animate-pulse rounded bg-secondary" />
+        <div class="h-4 w-16 skeleton rounded" />
       </div>
     </div>
 
@@ -162,7 +162,7 @@ function fmtDate(iso: string) {
     </div>
 
     <!-- BY ME list -->
-    <div v-else-if="tab === 'by_me'" class="space-y-2">
+    <div v-else-if="tab === 'by_me'" class="space-y-2 animate-card-in">
       <template v-for="item in byMe" :key="item.id">
 
         <!-- Payment link row -->
@@ -240,9 +240,10 @@ function fmtDate(iso: string) {
     </div>
 
     <!-- TO ME list -->
-    <div v-else class="space-y-2">
-      <div v-for="item in toMe" :key="item.participant_id"
-        class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4">
+    <div v-else class="space-y-2 animate-card-in">
+      <div v-for="(item, i) in toMe" :key="item.participant_id"
+        class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 animate-item-in"
+        :style="`animation-delay: ${i * 40}ms`">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
           :class="item.my_status === 'paid' ? 'bg-green-500/10' : 'bg-yellow-500/10'">
           <CheckCircle2 v-if="item.my_status === 'paid'" class="h-5 w-5 text-green-500" />

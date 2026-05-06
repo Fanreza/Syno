@@ -193,12 +193,23 @@ export function useAuth() {
     } catch {}
     // Reset the privy singleton so a fresh instance is created on next login
     resetPrivy()
+    // Clear all shared state so the next user starts fresh
     privyUser.value = null
     accessToken.value = null
     identityToken.value = null
     appUser.value = null
     isAuthenticated.value = false
     isReady.value = false
+    useState('wallet:balance').value = null
+    useState('wallet:balance:pending').value = false
+    useState('notif-unread').value = 0
+    useState('friends:list').value = []
+    useState('friends:loaded').value = false
+    // Clear useAsyncData caches
+    const nuxtApp = useNuxtApp()
+    for (const key of Object.keys(nuxtApp.payload.data ?? {})) {
+      delete nuxtApp.payload.data[key]
+    }
     await navigateTo('/login')
   }
 

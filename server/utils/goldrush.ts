@@ -69,21 +69,29 @@ export async function getWalletBalances(
 
 export interface RiskScore {
 	score: number; // 0-100, higher = riskier
-	level: "low" | "medium" | "high";
+	level: "low" | "medium" | "high" | "unknown";
 	flags: string[];
 	totalTokens: number;
 	spamTokens: number;
 	hasActivity: boolean;
 	totalUsd: number;
+	unavailable?: boolean;
 }
 
 export async function getWalletRiskScore(walletAddress: string): Promise<RiskScore> {
 	let data: GoldRushBalanceResponse;
 	try {
 		data = await getWalletBalances(walletAddress, { noSpam: false });
-	} catch {
-		// If we can't fetch, return neutral score
-		return { score: 50, level: "medium", flags: ["Could not verify wallet"], totalTokens: 0, spamTokens: 0, hasActivity: false, totalUsd: 0 };
+	} catch (e: any) {
+		const msg: string = e?.data?.error_message ?? e?.statusMessage ?? String(e);
+		const unavailable = msg.toLowerCase().includes('credit') || msg.toLowerCase().includes('limit') || msg.toLowerCase().includes('402');
+		return {
+			score: 0,
+			level: "unknown" as any,
+			flags: unavailable ? [] : ["Could not verify wallet"],
+			totalTokens: 0, spamTokens: 0, hasActivity: false, totalUsd: 0,
+			unavailable,
+		};
 	}
 
 	const items = data.items ?? [];

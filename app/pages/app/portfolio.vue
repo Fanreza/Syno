@@ -16,7 +16,7 @@ const { data, refresh, pending } = useAsyncData(
     pnlTotal: number | null
     pnlTotalPct: number | null
     history: { date: string; usd: number }[]
-    tokenPnl: { symbol: string; mint: string; usd: number; change24h: number; pnl24h: number }[]
+    tokenPnl: { symbol: string; mint: string; logoURI: string | null; usd: number; change24h: number; pnl24h: number }[]
   }>('/api/portfolio/history'),
   { lazy: true, server: false }
 )
@@ -88,9 +88,9 @@ function onChartMove(e: MouseEvent) {
 
     <!-- Skeleton -->
     <div v-if="pending" class="space-y-4">
-      <div class="h-40 animate-pulse rounded-2xl bg-secondary" />
+      <div class="h-40 skeleton rounded-2xl" />
       <div class="grid gap-4 md:grid-cols-3">
-        <div v-for="i in 3" :key="i" class="h-24 animate-pulse rounded-2xl bg-secondary" />
+        <div v-for="i in 3" :key="i" class="h-24 skeleton rounded-2xl" />
       </div>
     </div>
 
@@ -214,8 +214,15 @@ function onChartMove(e: MouseEvent) {
             :key="t.mint"
             class="flex items-center gap-4 px-6 py-4"
           >
-            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold">
-              {{ t.symbol.slice(0, 3) }}
+            <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
+              <img
+                v-if="t.logoURI"
+                :src="t.logoURI"
+                :alt="t.symbol"
+                class="h-full w-full object-cover"
+                @error="($event.target as HTMLImageElement).style.display='none'"
+              />
+              <span v-else>{{ t.symbol.slice(0, 3) }}</span>
             </div>
             <div class="min-w-0 flex-1">
               <p class="font-semibold">{{ t.symbol }}</p>

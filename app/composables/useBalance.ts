@@ -14,9 +14,10 @@ export function useBalance() {
     finally { pending.value = false }
   }
 
-  // Auto-fetch when wallet address becomes available
-  watch(() => user.value?.wallet_address, (addr) => {
-    if (addr && !balance.value) refresh()
+  // Clear stale balance when user changes, then fetch for new address
+  watch(() => user.value?.wallet_address, (addr, prev) => {
+    if (addr !== prev) balance.value = null
+    if (addr) refresh()
   }, { immediate: true })
 
   return { balance, pending, refresh }

@@ -116,7 +116,15 @@ html.dark {
   background: linear-gradient(135deg, hsl(252 90% 40%) 0%, hsl(270 80% 55%) 100%);
 }
 
-/* Landing page animations */
+/* ── Easing tokens ─────────────────────────────────────────────────────── */
+:root {
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-snappy:   cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-in-back:  cubic-bezier(0.36, 0, 0.66, -0.56);
+}
+
+/* ── Landing page animations ───────────────────────────────────────────── */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-12px); }
@@ -150,6 +158,55 @@ html.dark {
   to   { transform: translateX(-50%); }
 }
 
+/* ── App animations ────────────────────────────────────────────────────── */
+
+/* Skeleton shimmer — replaces boring pulse */
+@keyframes skeleton-sweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* List item stagger entrance */
+@keyframes item-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Balance counter pop */
+@keyframes balance-pop {
+  0%   { opacity: 0; transform: scale(0.92) translateY(8px); }
+  60%  { transform: scale(1.03) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* FAB entrance */
+@keyframes fab-in {
+  0%   { opacity: 0; transform: scale(0.5); }
+  70%  { transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Button press ripple */
+@keyframes press-ripple {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.93); }
+  70%  { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+/* Stat number pop-in */
+@keyframes stat-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Card entrance */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Animation classes ─────────────────────────────────────────────────── */
 .animate-float       { animation: float 4s ease-in-out infinite; }
 .animate-float-slow  { animation: float-slow 6s ease-in-out infinite; }
 .animate-pulse-glow  { animation: pulse-glow 3s ease-in-out infinite; }
@@ -157,11 +214,46 @@ html.dark {
 .animate-fade-in     { animation: fade-in 0.5s ease both; }
 .animate-ticker      { animation: ticker 30s linear infinite; }
 
+.animate-balance-pop { animation: balance-pop 0.5s var(--ease-spring) both; }
+.animate-fab-in      { animation: fab-in 0.45s var(--ease-spring) both; }
+.animate-item-in     { animation: item-in 0.35s var(--ease-out-expo) both; }
+.animate-stat-in     { animation: stat-in 0.3s var(--ease-out-expo) both; }
+.animate-card-in     { animation: card-in 0.4s var(--ease-out-expo) both; }
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-secondary) 0%,
+    color-mix(in oklch, var(--color-secondary) 60%, var(--color-background)) 50%,
+    var(--color-secondary) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.6s var(--ease-snappy) infinite;
+}
+
+/* ── Delay utilities ───────────────────────────────────────────────────── */
+.delay-50  { animation-delay: 0.05s; }
 .delay-100 { animation-delay: 0.1s; }
+.delay-150 { animation-delay: 0.15s; }
 .delay-200 { animation-delay: 0.2s; }
+.delay-250 { animation-delay: 0.25s; }
 .delay-300 { animation-delay: 0.3s; }
+.delay-350 { animation-delay: 0.35s; }
 .delay-400 { animation-delay: 0.4s; }
+.delay-450 { animation-delay: 0.45s; }
 .delay-500 { animation-delay: 0.5s; }
+
+/* ── Interactive element spring ────────────────────────────────────────── */
+.btn-spring {
+  transition: transform 0.2s var(--ease-spring), opacity 0.15s ease, box-shadow 0.2s ease;
+}
+.btn-spring:active {
+  transform: scale(0.93);
+}
+.btn-spring:hover {
+  transform: scale(1.02);
+}
 
 .text-shimmer {
   background: linear-gradient(90deg, hsl(222 55% 12%), hsl(222 40% 45%), hsl(222 55% 12%));

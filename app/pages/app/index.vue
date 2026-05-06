@@ -166,21 +166,23 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
 
         <!-- Balance -->
         <div data-tour="balance">
-        <div v-if="pendingBalance">
-          <div class="h-10 w-40 animate-pulse rounded-lg bg-white/10" />
-          <div class="mt-1.5 h-4 w-20 animate-pulse rounded bg-white/10" />
-        </div>
-        <div v-else>
-          <h2 class="text-4xl font-bold tracking-tight text-white">{{ formatDisplay(totalUsd) }}</h2>
-          <p class="mt-1 text-sm text-white/40">{{ formatAmount(balance?.sol || 0) }} SOL</p>
-        </div>
+          <div v-if="pendingBalance">
+            <div class="h-10 w-40 rounded-lg skeleton opacity-30" />
+            <div class="mt-1.5 h-4 w-20 rounded skeleton opacity-20" />
+          </div>
+          <Transition name="pop">
+            <div v-if="!pendingBalance" class="animate-balance-pop">
+              <h2 class="text-4xl font-bold tracking-tight text-white">{{ formatDisplay(totalUsd) }}</h2>
+              <p class="mt-1 text-sm text-white/40">{{ formatAmount(balance?.sol || 0) }} SOL</p>
+            </div>
+          </Transition>
         </div>
 
         <!-- Action buttons -->
         <div class="mt-6 grid grid-cols-3 gap-2">
           <button
             data-tour="send"
-            class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
+            class="animate-item-in delay-50 flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white btn-spring hover:bg-white/20 active:bg-white/25"
             @click="showSend = true"
           >
             <Send class="h-5 w-5" />
@@ -188,7 +190,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           </button>
           <button
             data-tour="request"
-            class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
+            class="animate-item-in delay-100 flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white btn-spring hover:bg-white/20 active:bg-white/25"
             @click="showRequest = true"
           >
             <QrCode class="h-5 w-5" />
@@ -196,7 +198,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           </button>
           <button
             data-tour="swap"
-            class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
+            class="animate-item-in delay-150 flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white btn-spring hover:bg-white/20 active:bg-white/25"
             @click="showSwap = true"
           >
             <ArrowLeftRight class="h-5 w-5" />
@@ -204,7 +206,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           </button>
           <button
             data-tour="split"
-            class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
+            class="animate-item-in delay-200 flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white btn-spring hover:bg-white/20 active:bg-white/25"
             @click="showSplit = true"
           >
             <Users class="h-5 w-5" />
@@ -212,7 +214,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           </button>
           <button
             data-tour="gift"
-            class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
+            class="animate-item-in delay-250 flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white btn-spring hover:bg-white/20 active:bg-white/25"
             @click="showGift = true"
           >
             <Gift class="h-5 w-5" />
@@ -220,7 +222,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           </button>
           <button
             data-tour="payroll"
-            class="flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white transition active:scale-95"
+            class="animate-item-in delay-300 flex flex-col items-center gap-1.5 rounded-2xl bg-white/15 py-3 text-white btn-spring hover:bg-white/20 active:bg-white/25"
             @click="showPayroll = true"
           >
             <Banknote class="h-5 w-5" />
@@ -234,29 +236,29 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
 
       <!-- Stats row -->
       <div class="grid grid-cols-3 gap-3">
-        <div class="rounded-2xl border border-border bg-card px-3 py-3 md:px-5 md:py-4">
+        <div class="animate-card-in delay-50 rounded-2xl border border-border bg-card px-3 py-3 md:px-5 md:py-4">
           <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Sent</p>
-          <div v-if="pendingStats" class="mt-1 h-6 w-14 animate-pulse rounded-md bg-secondary" />
-          <p v-else class="mt-1 text-base font-bold leading-tight">
+          <div v-if="pendingStats" class="mt-1 h-6 w-14 rounded-md skeleton" />
+          <p v-else class="mt-1 text-base font-bold leading-tight animate-stat-in">
             {{ formatAmount(stats?.sentSol ?? 0) }}
             <span class="text-xs font-medium text-muted-foreground">SOL</span>
           </p>
         </div>
-        <div class="rounded-2xl border border-border bg-card px-3 py-3 md:px-5 md:py-4">
+        <div class="animate-card-in delay-100 rounded-2xl border border-border bg-card px-3 py-3 md:px-5 md:py-4">
           <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Received</p>
-          <div v-if="pendingStats" class="mt-1 h-6 w-14 animate-pulse rounded-md bg-secondary" />
-          <p v-else class="mt-1 text-base font-bold leading-tight">
+          <div v-if="pendingStats" class="mt-1 h-6 w-14 rounded-md skeleton" />
+          <p v-else class="mt-1 text-base font-bold leading-tight animate-stat-in">
             {{ formatAmount(stats?.receivedSol ?? 0) }}
             <span class="text-xs font-medium text-muted-foreground">SOL</span>
           </p>
         </div>
         <div
-          class="rounded-2xl border border-border bg-card px-3 py-3 md:px-5 md:py-4 cursor-pointer transition hover:bg-accent active:scale-95"
+          class="animate-card-in delay-150 rounded-2xl border border-border bg-card px-3 py-3 md:px-5 md:py-4 cursor-pointer btn-spring hover:bg-accent"
           @click="navigateTo('/app/split')"
         >
           <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Splits</p>
-          <div v-if="pendingStats" class="mt-1 h-6 w-10 animate-pulse rounded-md bg-secondary" />
-          <p v-else class="mt-1 text-base font-bold leading-tight">
+          <div v-if="pendingStats" class="mt-1 h-6 w-10 rounded-md skeleton" />
+          <p v-else class="mt-1 text-base font-bold leading-tight animate-stat-in">
             {{ stats?.openSplits ?? 0 }}
             <span class="text-xs font-medium text-muted-foreground">open</span>
           </p>
@@ -264,26 +266,31 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
       </div>
 
       <!-- Holdings -->
-      <div data-tour="holdings" class="rounded-2xl border border-border bg-card">
+      <div data-tour="holdings" class="animate-card-in delay-200 rounded-2xl border border-border bg-card">
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
           <h3 class="text-sm font-semibold">Holdings</h3>
           <span class="text-xs text-muted-foreground">{{ formatDisplay(totalUsd) }}</span>
         </div>
         <div v-if="pendingBalance" class="px-4 pb-4 space-y-3">
           <div v-for="i in 2" :key="i" class="flex items-center gap-3">
-            <div class="h-9 w-9 shrink-0 animate-pulse rounded-full bg-secondary" />
+            <div class="h-9 w-9 shrink-0 rounded-full skeleton" />
             <div class="flex-1 space-y-1.5">
-              <div class="h-3.5 w-24 animate-pulse rounded bg-secondary" />
-              <div class="h-3 w-16 animate-pulse rounded bg-secondary" />
+              <div class="h-3.5 w-24 rounded skeleton" />
+              <div class="h-3 w-16 rounded skeleton" />
             </div>
-            <div class="h-3.5 w-14 animate-pulse rounded bg-secondary" />
+            <div class="h-3.5 w-14 rounded skeleton" />
           </div>
         </div>
         <div v-else-if="allTokens.length === 0" class="px-4 pb-5 pt-2 text-sm text-muted-foreground">
           No tokens found
         </div>
-        <div v-else class="divide-y divide-border px-4">
-          <div v-for="token in allTokens" :key="token.mint" class="flex items-center gap-3 py-3">
+        <TransitionGroup v-else tag="div" name="list" class="divide-y divide-border px-4">
+          <div
+            v-for="(token, i) in allTokens"
+            :key="token.mint"
+            class="flex items-center gap-3 py-3 animate-item-in"
+            :style="`animation-delay: ${i * 50}ms`"
+          >
             <div class="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-secondary">
               <img v-if="token.logoURI" :src="token.logoURI" :alt="token.symbol" class="h-full w-full object-cover" @error="($event.target as HTMLImageElement).style.display='none'" />
             </div>
@@ -296,11 +303,11 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
             </div>
             <p class="text-sm font-semibold">{{ formatDisplay(token.usd) }}</p>
           </div>
-        </div>
+        </TransitionGroup>
       </div>
 
       <!-- Recent Activity -->
-      <div class="rounded-2xl border border-border bg-card">
+      <div class="animate-card-in delay-300 rounded-2xl border border-border bg-card">
         <div class="flex items-center justify-between px-4 pt-4 pb-2">
           <h3 class="text-sm font-semibold">Recent Activity</h3>
           <button class="text-xs text-muted-foreground transition hover:text-foreground" @click="refreshActivity()">Refresh</button>
@@ -308,12 +315,12 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
 
         <div v-if="pendingActivity" class="divide-y divide-border px-4">
           <div v-for="i in 3" :key="i" class="flex items-center gap-3 py-3">
-            <div class="h-9 w-9 shrink-0 animate-pulse rounded-full bg-secondary" />
+            <div class="h-9 w-9 shrink-0 rounded-full skeleton" />
             <div class="flex-1 space-y-1.5">
-              <div class="h-3.5 w-28 animate-pulse rounded bg-secondary" />
-              <div class="h-3 w-16 animate-pulse rounded bg-secondary" />
+              <div class="h-3.5 w-28 rounded skeleton" />
+              <div class="h-3 w-16 rounded skeleton" />
             </div>
-            <div class="h-3.5 w-14 animate-pulse rounded bg-secondary" />
+            <div class="h-3.5 w-14 rounded skeleton" />
           </div>
         </div>
 
@@ -324,17 +331,22 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           <p class="text-sm font-medium">No activity yet</p>
           <p class="mt-1 text-xs text-muted-foreground">Your transactions will show up here.</p>
           <button
-            class="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+            class="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground btn-spring"
             @click="showSend = true"
           >
             <Send class="h-3.5 w-3.5" /> Send
           </button>
         </div>
 
-        <div v-else class="divide-y divide-border px-4">
-          <div v-for="item in activity" :key="item.id" class="flex items-center gap-3 py-3">
+        <TransitionGroup v-else tag="div" name="list" class="divide-y divide-border px-4">
+          <div
+            v-for="(item, i) in activity"
+            :key="item.id"
+            class="flex items-center gap-3 py-3 animate-item-in"
+            :style="`animation-delay: ${i * 40}ms`"
+          >
             <div
-              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform duration-200 hover:scale-110"
               :class="{
                 'bg-green-500/10': item.type === 'received' || item.type === 'gift_claim',
                 'bg-secondary': item.type === 'sent',
@@ -355,7 +367,7 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
 
             <div class="flex items-center gap-2 shrink-0">
               <p
-                class="text-sm font-semibold"
+                class="text-sm font-semibold tabular-nums"
                 :class="item.type === 'received' || item.type === 'gift_claim' ? 'text-green-500' : 'text-foreground'"
               >
                 {{ item.type === 'received' || item.type === 'gift_claim' ? '+' : item.type === 'sent' ? '-' : '' }}{{ formatAmount(item.amount) }} {{ item.token }}
@@ -364,13 +376,13 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
                 v-if="item.tx_signature"
                 :href="`https://solscan.io/tx/${item.tx_signature}`"
                 target="_blank"
-                class="text-muted-foreground transition hover:text-foreground"
+                class="text-muted-foreground transition-all duration-200 hover:text-foreground hover:scale-110"
               >
                 <ArrowDownRight class="h-3.5 w-3.5 -rotate-45" />
               </a>
             </div>
           </div>
-        </div>
+        </TransitionGroup>
       </div>
 
     </div>

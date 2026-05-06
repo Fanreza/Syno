@@ -47,8 +47,8 @@ function clearRecipient() {
 }
 
 // ── Risk score ─────────────────────────────────────────────────────────────
-type RiskLevel = 'low' | 'medium' | 'high'
-type RiskData = { score: number; level: RiskLevel; flags: string[]; totalTokens: number; spamTokens: number; hasActivity: boolean; totalUsd: number }
+type RiskLevel = 'low' | 'medium' | 'high' | 'unknown'
+type RiskData = { score: number; level: RiskLevel; flags: string[]; totalTokens: number; spamTokens: number; hasActivity: boolean; totalUsd: number; unavailable?: boolean }
 const riskScore = ref<RiskData | null>(null)
 const riskLoading = ref(false)
 
@@ -57,7 +57,7 @@ watch(recipientUser, async (u) => {
   if (!u?.wallet_address) return
   riskLoading.value = true
   try {
-    riskScore.value = await $fetch<RiskData>('/api/risk', { query: { address: u.wallet_address } })
+    riskScore.value = await apiFetch<RiskData>('/api/risk', { query: { address: u.wallet_address } })
   } catch { /* non-blocking */ } finally {
     riskLoading.value = false
   }
@@ -307,7 +307,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
               <span class="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" />
               Checking wallet risk…
             </div>
-            <div v-else-if="riskScore" class="rounded-xl border px-3.5 py-2.5 text-xs"
+            <div v-else-if="riskScore && !riskScore.unavailable" class="rounded-xl border px-3.5 py-2.5 text-xs"
               :class="{
                 'border-green-500/20 bg-green-500/5': riskScore.level === 'low',
                 'border-yellow-500/20 bg-yellow-500/5': riskScore.level === 'medium',

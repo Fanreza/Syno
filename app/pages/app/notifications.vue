@@ -72,12 +72,12 @@ const colorMap: Record<string, string> = {
     <!-- Skeleton -->
     <div v-if="pending" class="space-y-2">
       <div v-for="i in 5" :key="i" class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4">
-        <div class="h-10 w-10 shrink-0 animate-pulse rounded-xl bg-secondary" />
+        <div class="h-10 w-10 shrink-0 skeleton rounded-xl" />
         <div class="flex-1 space-y-2">
-          <div class="h-4 w-48 animate-pulse rounded bg-secondary" />
-          <div class="h-3 w-28 animate-pulse rounded bg-secondary" />
+          <div class="h-4 w-48 skeleton rounded" />
+          <div class="h-3 w-28 skeleton rounded" />
         </div>
-        <div class="h-3 w-12 animate-pulse rounded bg-secondary" />
+        <div class="h-3 w-12 skeleton rounded" />
       </div>
     </div>
 
@@ -93,9 +93,10 @@ const colorMap: Record<string, string> = {
     <!-- List -->
     <div v-else class="space-y-2">
       <div
-        v-for="n in data.notifications"
+        v-for="(n, i) in data.notifications"
         :key="n.id"
-        class="flex items-start gap-4 rounded-2xl border px-5 py-4 transition cursor-pointer"
+        class="flex items-start gap-4 rounded-2xl border px-5 py-4 transition cursor-pointer animate-item-in"
+        :style="`animation-delay: ${i * 40}ms`"
         :class="n.read ? 'border-border bg-card hover:bg-accent/50' : 'border-primary/20 bg-primary/5 hover:bg-primary/10'"
         @click="!n.read && markRead(n.id)"
       >

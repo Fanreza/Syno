@@ -1,28 +1,24 @@
 <script setup lang="ts">
 import {
   ArrowUpRight, ArrowDownRight, Scissors, Star, ExternalLink,
-  RefreshCw, Inbox, Filter, Download
+  RefreshCw, Inbox, Filter, Download, ChevronDown
 } from 'lucide-vue-next'
 import { formatAmount, shortAddr } from '~/utils'
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '~/components/ui/dropdown-menu'
 
 const { apiFetch } = useAuth()
 const { balance } = useBalance()
 const { formatDisplay } = useDisplayCurrency()
 
 // Export
-const showExport = ref(false)
-const exportFrom = ref('')
-const exportTo = ref('')
 const exporting = ref<'csv' | 'pdf' | null>(null)
 
 async function doExport(format: 'csv' | 'pdf') {
   exporting.value = format
   try {
-    const params = new URLSearchParams({ format })
-    if (exportFrom.value) params.set('from', exportFrom.value)
-    if (exportTo.value) params.set('to', exportTo.value)
-    // Fetch as arraybuffer so it works for both CSV and PDF
-    const data = await $fetch<ArrayBuffer>(`/api/export?${params}`, {
+    const data = await apiFetch<ArrayBuffer>(`/api/export?format=${format}`, {
       responseType: 'arrayBuffer',
     })
     const mime = format === 'pdf' ? 'application/pdf' : 'text/csv'
@@ -30,7 +26,7 @@ async function doExport(format: 'csv' | 'pdf') {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `syno-tax-export.${format}`
+    a.download = `syno-export.${format}`
     a.click()
     URL.revokeObjectURL(url)
   } finally {
@@ -140,12 +136,28 @@ function refresh() {
         <p class="mt-0.5 text-sm text-muted-foreground">Your full transaction history.</p>
       </div>
       <div class="flex items-center gap-2">
-        <button
-          class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent"
-          @click="showExport = !showExport"
-        >
-          <Download class="h-3.5 w-3.5" /> Export
-        </button>
+        <!-- Export dropdown -->
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <button
+              class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent disabled:opacity-50"
+              :disabled="exporting !== null"
+            >
+              <span v-if="exporting" class="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" />
+              <Download v-else class="h-3.5 w-3.5" />
+              {{ exporting ? 'Exporting…' : 'Export' }}
+              <ChevronDown class="h-3 w-3 opacity-50" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-36">
+            <DropdownMenuItem class="gap-2 cursor-pointer" @click="doExport('csv')">
+              <Download class="h-3.5 w-3.5 text-muted-foreground" /> Export CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem class="gap-2 cursor-pointer" @click="doExport('pdf')">
+              <Download class="h-3.5 w-3.5 text-muted-foreground" /> Export PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <button
           class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent"
           @click="refresh()"
@@ -153,50 +165,6 @@ function refresh() {
           <RefreshCw class="h-3.5 w-3.5" /> Refresh
         </button>
       </div>
-    </div>
-
-    <!-- Export panel -->
-    <div v-if="showExport" class="mb-6 rounded-2xl border border-border bg-card p-5">
-      <p class="mb-4 text-sm font-semibold">Export for taxes</p>
-      <div class="flex flex-wrap items-end gap-3">
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-muted-foreground">From</label>
-          <input
-            v-model="exportFrom"
-            type="date"
-            class="rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-muted-foreground">To</label>
-          <input
-            v-model="exportTo"
-            type="date"
-            class="rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <div class="flex gap-2">
-          <button
-            class="flex items-center gap-1.5 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium transition hover:bg-accent disabled:opacity-50"
-            :disabled="exporting !== null"
-            @click="doExport('csv')"
-          >
-            <span v-if="exporting === 'csv'" class="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" />
-            <Download v-else class="h-3.5 w-3.5" />
-            {{ exporting === 'csv' ? 'Exporting…' : 'CSV' }}
-          </button>
-          <button
-            class="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-            :disabled="exporting !== null"
-            @click="doExport('pdf')"
-          >
-            <span v-if="exporting === 'pdf'" class="h-3.5 w-3.5 animate-spin rounded-full border border-primary-foreground border-t-transparent" />
-            <Download v-else class="h-3.5 w-3.5" />
-            {{ exporting === 'pdf' ? 'Exporting…' : 'PDF' }}
-          </button>
-        </div>
-      </div>
-      <p class="mt-3 text-xs text-muted-foreground">Includes all payments, splits, and gifts. Leave dates empty to export everything.</p>
     </div>
 
     <!-- Tabs -->
@@ -236,14 +204,14 @@ function refresh() {
       <!-- Skeleton -->
       <div v-if="loadingActivity" class="rounded-2xl border border-border bg-card divide-y divide-border">
         <div v-for="i in 5" :key="i" class="flex items-center gap-4 px-5 py-4">
-          <div class="h-9 w-9 shrink-0 animate-pulse rounded-full bg-secondary" />
+          <div class="h-9 w-9 shrink-0 skeleton rounded-full" />
           <div class="flex-1 space-y-1.5">
-            <div class="h-3.5 w-28 animate-pulse rounded bg-secondary" />
-            <div class="h-3 w-16 animate-pulse rounded bg-secondary" />
+            <div class="h-3.5 w-28 skeleton rounded" />
+            <div class="h-3 w-16 skeleton rounded" />
           </div>
           <div class="space-y-1.5 text-right">
-            <div class="h-3.5 w-16 animate-pulse rounded bg-secondary ml-auto" />
-            <div class="h-3 w-10 animate-pulse rounded bg-secondary ml-auto" />
+            <div class="h-3.5 w-16 skeleton rounded ml-auto" />
+            <div class="h-3 w-10 skeleton rounded ml-auto" />
           </div>
         </div>
       </div>
@@ -262,9 +230,10 @@ function refresh() {
       <!-- List -->
       <div v-else class="rounded-2xl border border-border bg-card divide-y divide-border">
         <div
-          v-for="item in filtered"
+          v-for="(item, i) in filtered"
           :key="item.id"
-          class="flex items-center gap-3 px-4 py-3 overflow-hidden"
+          class="flex items-center gap-3 px-4 py-3 overflow-hidden animate-item-in"
+          :style="`animation-delay: ${Math.min(i * 30, 300)}ms`"
         >
           <!-- icon -->
           <div

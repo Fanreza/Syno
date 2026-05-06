@@ -6,6 +6,7 @@ import { X, Gift, AlertCircle, Copy, Check, Users, Coins, Share2, DollarSign } f
 import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
+const config = useRuntimeConfig()
 const { apiFetch } = useAuth()
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
@@ -101,7 +102,7 @@ async function onCreate() {
 }
 
 const giftLink = computed(() =>
-  created.value ? `${useRequestURL().origin}/gift/${created.value.id}` : ''
+  created.value ? `${config.public.appUrl}/gift/${created.value.id}` : ''
 )
 
 function copyLink() {

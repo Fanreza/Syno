@@ -121,12 +121,12 @@ function avatarColor(username: string) {
 
       <div v-if="pendingFriends" class="space-y-2">
         <div v-for="i in 3" :key="i" class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4">
-          <div class="h-10 w-10 shrink-0 animate-pulse rounded-full bg-secondary" />
+          <div class="h-10 w-10 shrink-0 skeleton rounded-full" />
           <div class="flex-1 space-y-2">
-            <div class="h-4 w-24 animate-pulse rounded bg-secondary" />
-            <div class="h-3 w-32 animate-pulse rounded bg-secondary" />
+            <div class="h-4 w-24 skeleton rounded" />
+            <div class="h-3 w-32 skeleton rounded" />
           </div>
-          <div class="h-8 w-20 animate-pulse rounded-xl bg-secondary" />
+          <div class="h-8 w-20 skeleton rounded-xl" />
         </div>
       </div>
 
@@ -140,9 +140,10 @@ function avatarColor(username: string) {
 
       <div v-else-if="friends?.length" class="space-y-2">
         <div
-          v-for="f in friends"
+          v-for="(f, i) in friends"
           :key="f.id"
-          class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 transition hover:bg-accent"
+          class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 transition hover:bg-accent animate-item-in"
+          :style="`animation-delay: ${i * 40}ms`"
         >
           <div :class="['flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white', avatarColor(f.friend.username)]">
             {{ (f.friend.username[0] ?? '?').toUpperCase() }}

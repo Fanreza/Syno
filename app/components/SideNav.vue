@@ -154,7 +154,7 @@ function isActive(to: string) {
       <!-- Center: Send FAB -->
       <div class="flex flex-col items-center flex-1 min-w-0 -mt-5">
         <button
-          class="flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all active:scale-95"
+          class="flex h-14 w-14 items-center justify-center rounded-full shadow-lg btn-spring animate-fab-in"
           style="background: linear-gradient(135deg, hsl(252 60% 38%) 0%, hsl(258 55% 50%) 100%); box-shadow: 0 4px 20px hsl(252 60% 38% / 0.5);"
           @click="showSendGlobal = true"
         >

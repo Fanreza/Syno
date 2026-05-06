@@ -196,7 +196,7 @@ async function collectRows(userId: string, db: any, from: string, to: string): P
 function buildCsv(rows: TxRow[], username: string, from: string, to: string): string {
 	const header = ["Date", "Type", "Direction", "Amount", "Token", "Counterparty", "Memo", "TX Signature"];
 	const csvRows = [
-		`# Syno Tax Export — @${username}`,
+		`# Syno Export — @${username}`,
 		`# Period: ${from || "all"} to ${to || "all"}`,
 		`# Generated: ${new Date().toISOString().slice(0, 10)}`,
 		"",
@@ -219,7 +219,7 @@ async function buildPdf(rows: TxRow[], username: string, from: string, to: strin
 		const W = doc.page.width - 64; // usable width
 
 		// Header
-		doc.fontSize(20).font("Helvetica-Bold").text("Syno — Tax Export Report", 32, 32);
+		doc.fontSize(20).font("Helvetica-Bold").text("Syno — Transaction Export", 32, 32);
 		doc.fontSize(10).font("Helvetica").fillColor("#6b7280");
 		doc.text(`@${username}`, 32, 58);
 		const dateLabel = from && to ? `${from} to ${to}` : from ? `From ${from}` : to ? `Up to ${to}` : "All time";
@@ -333,13 +333,13 @@ export default defineEventHandler(async (event) => {
 	if (format === "pdf") {
 		const pdf = await buildPdf(rows, me.username, from, to);
 		setHeader(event, "Content-Type", "application/pdf");
-		setHeader(event, "Content-Disposition", `attachment; filename="syno-tax-export-${slug}.pdf"`);
+		setHeader(event, "Content-Disposition", `attachment; filename="syno-export-${slug}.pdf"`);
 		return pdf;
 	}
 
 	// Default: CSV
 	const csv = buildCsv(rows, me.username, from, to);
 	setHeader(event, "Content-Type", "text/csv");
-	setHeader(event, "Content-Disposition", `attachment; filename="syno-tax-export-${slug}.csv"`);
+	setHeader(event, "Content-Disposition", `attachment; filename="syno-export-${slug}.csv"`);
 	return csv;
 });

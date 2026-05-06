@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Search, ChevronDown, Check } from 'lucide-vue-next'
+import { onClickOutside } from '@vueuse/core'
 import type { JupToken } from '~/utils/tokens'
 import { POPULAR_TOKENS } from '~/utils/tokens'
 import { useBalance } from '~/composables/useBalance'
+
 const { formatDisplay } = useDisplayCurrency()
 
 const props = defineProps<{ label?: string; filter?: string[]; exclude?: string[]; tokenLogos?: Record<string, string> }>()
@@ -77,15 +79,8 @@ function select(token: JupToken) {
   results.value = []
 }
 
-function close() { open.value = false; query.value = ''; results.value = [] }
-
-// Close on outside click
 const containerRef = ref<HTMLElement>()
-onMounted(() => {
-  document.addEventListener('click', (e) => {
-    if (containerRef.value && !containerRef.value.contains(e.target as Node)) close()
-  })
-})
+onClickOutside(containerRef, () => { open.value = false; query.value = ''; results.value = [] })
 </script>
 
 <template>
@@ -113,49 +108,55 @@ onMounted(() => {
     </button>
 
     <!-- Dropdown -->
-    <div v-if="open" class="absolute top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-card shadow-xl" :class="label ? 'left-0 right-0' : 'right-0 w-64'">
-      <!-- Search input -->
-      <div class="flex items-center gap-2 border-b border-border px-3 py-2.5">
-        <Search class="h-4 w-4 shrink-0 text-muted-foreground" />
-        <input
-          v-model="query"
-          placeholder="Search by name, symbol, or paste address..."
-          autofocus
-          class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-        />
-        <span v-if="searching" class="text-xs text-muted-foreground animate-pulse">...</span>
-      </div>
+    <Transition name="pop">
+      <div
+        v-if="open"
+        class="absolute top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+        :class="label ? 'left-0 right-0' : 'right-0 w-64'"
+      >
+        <!-- Search -->
+        <div class="flex items-center gap-2 border-b border-border px-3 py-2.5">
+          <Search class="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            v-model="query"
+            placeholder="Search token..."
+            autofocus
+            class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+          <span v-if="searching" class="h-3.5 w-3.5 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
+        </div>
 
-      <!-- Token list -->
-      <div class="max-h-52 overflow-y-auto">
-        <p v-if="!displayed.length && !searching" class="py-6 text-center text-sm text-muted-foreground">
-          {{ query ? 'No tokens found' : 'Start typing to search' }}
-        </p>
-        <button
-          v-for="token in displayed"
-          :key="token.address"
-          type="button"
-          class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-accent"
-          :class="modelValue.address === token.address ? 'bg-accent' : ''"
-          @click="select(token)"
-        >
-          <img v-if="token.logoURI" :src="token.logoURI" :alt="token.symbol" class="h-8 w-8 rounded-full object-cover" />
-          <div v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
-            {{ token.symbol[0] }}
-          </div>
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-semibold">{{ token.symbol }}</p>
-            <p class="truncate text-xs text-muted-foreground">{{ token.name }}</p>
-          </div>
-          <div class="shrink-0 text-right">
-            <template v-if="tokenBalance(token.address) > 0">
-              <p class="text-xs font-semibold">{{ tokenBalance(token.address).toFixed(4) }}</p>
-              <p class="text-[10px] text-muted-foreground">{{ formatDisplay(tokenUsd(token.address)) }}</p>
-            </template>
-            <Check v-else-if="modelValue.address === token.address" class="h-4 w-4 text-primary" />
-          </div>
-        </button>
+        <!-- List -->
+        <div class="max-h-52 overflow-y-auto">
+          <p v-if="!displayed.length && !searching" class="py-6 text-center text-sm text-muted-foreground">
+            {{ query ? 'No tokens found' : 'Start typing to search' }}
+          </p>
+          <button
+            v-for="token in displayed"
+            :key="token.address"
+            type="button"
+            class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-accent"
+            :class="modelValue.address === token.address ? 'bg-accent' : ''"
+            @click="select(token)"
+          >
+            <img v-if="token.logoURI" :src="token.logoURI" :alt="token.symbol" class="h-8 w-8 rounded-full object-cover shrink-0" />
+            <div v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">
+              {{ token.symbol[0] }}
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold">{{ token.symbol }}</p>
+              <p class="truncate text-xs text-muted-foreground">{{ token.name }}</p>
+            </div>
+            <div class="shrink-0 text-right">
+              <template v-if="tokenBalance(token.address) > 0">
+                <p class="text-xs font-semibold">{{ tokenBalance(token.address).toFixed(4) }}</p>
+                <p class="text-[10px] text-muted-foreground">{{ formatDisplay(tokenUsd(token.address)) }}</p>
+              </template>
+              <Check v-else-if="modelValue.address === token.address" class="h-4 w-4 text-primary" />
+            </div>
+          </button>
+        </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>

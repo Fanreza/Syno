@@ -42,29 +42,60 @@ const showPayrollGlobal = useState<boolean>('global-show-payroll', () => false)
 </template>
 
 <style>
-.page-enter-active,
+/* Page transitions — snappy enter, quick leave */
+.page-enter-active {
+  transition: opacity 0.25s cubic-bezier(0.19, 1, 0.22, 1),
+              transform 0.25s cubic-bezier(0.19, 1, 0.22, 1);
+}
 .page-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 .page-enter-from {
   opacity: 0;
-  transform: translateY(6px);
+  transform: translateY(10px) scale(0.99);
 }
 .page-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(-4px) scale(0.99);
 }
 
-.sheet-enter-active,
+/* Sheet transitions — spring slide up */
+.sheet-enter-active {
+  transition: opacity 0.25s ease;
+}
 .sheet-leave-active {
   transition: opacity 0.2s ease;
 }
-.sheet-enter-active > div,
+.sheet-enter-active > div {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 .sheet-leave-active > div {
-  transition: transform 0.2s ease;
+  transition: transform 0.22s cubic-bezier(0.36, 0, 0.66, -0.2);
 }
 .sheet-enter-from { opacity: 0; }
 .sheet-leave-to { opacity: 0; }
 .sheet-enter-from > div { transform: translateY(100%); }
 .sheet-leave-to > div { transform: translateY(100%); }
+
+/* Fade-scale — for cards and modals appearing */
+.pop-enter-active {
+  transition: opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pop-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.pop-enter-from { opacity: 0; transform: scale(0.95); }
+.pop-leave-to   { opacity: 0; transform: scale(0.97); }
+
+/* Stagger list — for v-for lists */
+.list-enter-active {
+  transition: opacity 0.3s cubic-bezier(0.19, 1, 0.22, 1),
+              transform 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+}
+.list-leave-active {
+  transition: opacity 0.15s ease;
+  position: absolute;
+}
+.list-enter-from { opacity: 0; transform: translateY(8px); }
+.list-leave-to   { opacity: 0; }
 </style>

@@ -7,6 +7,7 @@ import { shortAddr } from '~/utils'
 import type { Contact } from '~/components/ContactPicker.vue'
 
 const open = defineModel<boolean>('open', { required: true })
+const config = useRuntimeConfig()
 const { apiFetch } = useAuth()
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
@@ -190,14 +191,14 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
           </p>
           <div class="mt-4 flex gap-2">
             <a
-              :href="`https://wa.me/?text=${encodeURIComponent('Pay your share: ' + useRequestURL().origin + '/app/split/' + createdId)}`"
+              :href="`https://wa.me/?text=${encodeURIComponent('Pay your share: ' + config.public.appUrl + '/app/split/' + createdId)}`"
               target="_blank"
               class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-green-50 py-2 text-xs font-semibold text-green-700 transition hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20"
             >
               <Share2 class="h-3.5 w-3.5" /> WhatsApp
             </a>
             <a
-              :href="`https://t.me/share/url?url=${encodeURIComponent(useRequestURL().origin + '/app/split/' + createdId)}&text=${encodeURIComponent('Pay your share!')}`"
+              :href="`https://t.me/share/url?url=${encodeURIComponent(config.public.appUrl + '/app/split/' + createdId)}&text=${encodeURIComponent('Pay your share!')}`"
               target="_blank"
               class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-blue-50 py-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20"
             >
