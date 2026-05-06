@@ -24,7 +24,7 @@ function makeRow(): Row {
   return { contact: null, amount: '', pickerOpen: false, registered: undefined }
 }
 
-const rows = ref<Row[]>([makeRow()])
+const rows = ref<Row[]>([makeRow(), makeRow()])
 
 async function selectContact(i: number, c: Contact) {
   const row = rows.value[i]
@@ -129,7 +129,7 @@ const exceedsTotal = computed(() =>
 const canCreate = computed(() =>
   title.value.trim() &&
   totalInToken.value > 0 &&
-  rows.value.length >= 1 &&
+  rows.value.length >= 2 &&
   rows.value.every(r => r.contact !== null && parseFloat(r.amount) > 0) &&
   !exceedsTotal.value &&
   !loading.value
@@ -164,7 +164,7 @@ function goToSplit() {
 
 function reset() {
   title.value = ''; totalRaw.value = ''
-  rows.value = [makeRow()]
+  rows.value = [makeRow(), makeRow()]
   error.value = ''; createdId.value = ''; outputToken.value = SOL_TOKEN; currency.value = 'TOKEN'
 }
 
@@ -348,7 +348,10 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Error -->
-            <div v-if="exceedsTotal" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+            <div v-if="rows.length < 2" class="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2.5 text-sm text-yellow-700 dark:text-yellow-400">
+              <AlertCircle class="h-4 w-4 shrink-0" />Add at least 2 participants to split a bill.
+            </div>
+            <div v-else-if="exceedsTotal" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
               <AlertCircle class="h-4 w-4 shrink-0" />Participant amounts exceed the total ({{ totalInToken.toFixed(4) }} {{ outputToken.symbol }}).
             </div>
             <div v-else-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">

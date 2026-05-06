@@ -92,10 +92,26 @@ export function useOnboarding() {
           },
         },
         {
+          element: '[data-tour="nav-split"]',
+          popover: {
+            title: '✂️ Splits',
+            description: 'View all split bills you created or owe. Track who has paid and who hasn\'t.',
+            side: 'right',
+          },
+        },
+        {
           element: '[data-tour="nav-earn"]',
           popover: {
             title: '📈 Earn',
             description: 'Deposit tokens and earn yield via Jupiter Lend. Withdraw anytime.',
+            side: 'right',
+          },
+        },
+        {
+          element: '[data-tour="nav-portfolio"]',
+          popover: {
+            title: '📊 Portfolio',
+            description: 'Track your net worth, P&L over time, and top movers across all your tokens.',
             side: 'right',
           },
         },

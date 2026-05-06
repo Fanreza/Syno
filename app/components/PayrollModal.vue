@@ -349,7 +349,10 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Errors -->
-            <div v-if="exceedsBalance" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+            <div v-if="validRows.length === 0 && rows.some(r => r.username.trim())" class="flex items-center gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2.5 text-sm text-yellow-700 dark:text-yellow-400">
+              <AlertCircle class="h-4 w-4 shrink-0" />Fill in both a recipient and amount for each row.
+            </div>
+            <div v-else-if="exceedsBalance" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
               <AlertCircle class="h-4 w-4 shrink-0" />Not enough balance. You have {{ selectedBalance?.amount.toFixed(4) }} {{ token.symbol }}.
             </div>
             <div v-else-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
