@@ -45,7 +45,6 @@ const sections: NavSection[] = [
     label: 'Finance',
     items: [
       { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
-      { to: '/app/analytics', icon: BarChart2, label: 'Analytics' },
       { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
       { to: '/app/activity', icon: Activity, label: 'Activity' },
     ],
@@ -82,7 +81,6 @@ const moreItems = [
   { to: '/app/gifts', icon: Gift, label: 'Gifts' },
   { to: '/app/recurring', icon: Calendar, label: 'Transfers' },
   { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
-  { to: '/app/analytics', icon: BarChart2, label: 'Analytics' },
   { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
   { to: '/app/people', icon: Users, label: 'People' },
   { to: '/app/profile', icon: User, label: 'Profile' },
