@@ -12,7 +12,7 @@ const { startTour, resetTour } = useOnboarding()
 
 function replayTour() {
   resetTour()
-  startTour()
+  startTour('dashboard')
 }
 
 onMounted(() => fetchUnread())

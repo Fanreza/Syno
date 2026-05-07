@@ -35,6 +35,8 @@ const showPayrollGlobal = useState<boolean>('global-show-payroll', () => false)
     <SplitModal v-model:open="showSplitGlobal" />
     <GiftModal v-model:open="showGiftGlobal" />
     <PayrollModal v-model:open="showPayrollGlobal" />
+    <ConfirmModal />
+    <Toaster position="top-center" rich-colors />
   </div>
   <div v-else class="min-h-screen bg-background text-foreground">
     <NuxtPage />

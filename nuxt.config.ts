@@ -54,12 +54,14 @@ export default defineNuxtConfig({
     solanaCaip2: process.env.SOLANA_CAIP2 || 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
     jupiterApiKey: process.env.JUPITER_API_KEY || '',
     goldrushApiKey: process.env.GOLDRUSH_API_KEY || '',
+    firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT || '',
     public: {
       privyAppId: process.env.NUXT_PUBLIC_PRIVY_APP_ID || process.env.PRIVY_APP_ID || '',
       privyClientId: process.env.NUXT_PUBLIC_PRIVY_CLIENT_ID || '',
       solanaCluster: process.env.NUXT_PUBLIC_SOLANA_CLUSTER || 'mainnet-beta',
       solanaRpcUrl: process.env.NUXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
-      appUrl: process.env.NUXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      appUrl: process.env.NUXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      firebaseVapidKey: process.env.NUXT_PUBLIC_FIREBASE_VAPID_KEY || '',
     }
   },
 
@@ -107,8 +109,7 @@ export default defineNuxtConfig({
       installPrompt: true,
     },
     devOptions: {
-      enabled: true,
-      type: 'module',
+      enabled: false,
     },
   },
 

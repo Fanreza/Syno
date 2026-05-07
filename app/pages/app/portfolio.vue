@@ -4,7 +4,8 @@ import { TrendingUp, TrendingDown, Minus, RefreshCw, BarChart2, ArrowUpRight, Ar
 const { apiFetch } = useAuth()
 const { formatDisplay, fetchRates } = useDisplayCurrency()
 const { isDark } = useTheme()
-onMounted(() => fetchRates())
+const { startTourIfNew } = useOnboarding()
+onMounted(() => { fetchRates(); setTimeout(() => startTourIfNew('portfolio'), 600) })
 
 // ── Portfolio data ───────────────────────────────────────────────────────────
 const { data: portfolio, refresh: refreshPortfolio, pending: pendingPortfolio } = useAsyncData(

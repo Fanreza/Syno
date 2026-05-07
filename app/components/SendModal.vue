@@ -16,6 +16,8 @@ import type { Contact } from '~/components/ContactPicker.vue'
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
 const { balance, refresh: refreshBalance } = useBalance()
+const { startTourIfNew } = useOnboarding()
+watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('send-modal'), 400) })
 
 // ── Contact picker ─────────────────────────────────────────────────────────
 const showContactPicker = ref(false)
@@ -265,7 +267,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
           <div class="space-y-4 p-6">
 
             <!-- Recipient -->
-            <div>
+            <div data-tour="send-to">
               <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">To</label>
 
               <!-- No recipient selected yet -->
@@ -341,7 +343,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Amount -->
-            <div>
+            <div data-tour="send-token">
               <div class="mb-1 flex items-center justify-between">
                 <TokenPicker v-model="inputToken" label="Pay with" class="flex-1" :filter="isPrivate ? ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'] : undefined" />
               </div>
@@ -355,7 +357,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
                   <span class="text-muted-foreground/60"> · {{ formatDisplay(selectedTokenBalance.usd) }}</span>
                 </span>
               </div>
-              <div class="flex gap-2">
+              <div class="flex gap-2" data-tour="send-amount">
                 <button
                   class="flex h-11 items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 text-sm font-semibold transition hover:bg-accent"
                   @click="toggleCurrency"

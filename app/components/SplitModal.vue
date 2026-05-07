@@ -9,6 +9,8 @@ import type { Contact } from '~/components/ContactPicker.vue'
 const open = defineModel<boolean>('open', { required: true })
 const config = useRuntimeConfig()
 const { apiFetch } = useAuth()
+const { startTourIfNew } = useOnboarding()
+watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('split-modal'), 400) })
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 
@@ -226,7 +228,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
           <div class="space-y-4 p-6">
 
             <!-- Title -->
-            <div>
+            <div data-tour="split-title">
               <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Title</label>
               <Input v-model="title" placeholder="Dinner at Sushi Tei, Bali trip…" />
             </div>
@@ -240,7 +242,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Total -->
-            <div>
+            <div data-tour="split-amount">
               <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total</label>
               <div class="flex gap-2">
                 <button
@@ -270,7 +272,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Participants -->
-            <div>
+            <div data-tour="split-participants">
               <div class="mb-2 flex items-center justify-between">
                 <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Participants</label>
                 <button

@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { UserPlus, Trash2, Search, AlertCircle, Users, UserCheck, Loader2, Plus, Edit2, Save, X, BookUser } from 'lucide-vue-next'
 import { watchDebounced } from '@vueuse/core'
+import { toast } from 'vue-sonner'
 
 const { apiFetch, user } = useAuth()
+const { confirm } = useConfirm()
+const { startTourIfNew } = useOnboarding()
+onMounted(() => setTimeout(() => startTourIfNew('people'), 600))
 
 const tab = ref<'friends' | 'contacts'>('friends')
 
@@ -39,18 +43,25 @@ async function addFriend(username: string) {
   try {
     await apiFetch('/api/friends/add', { method: 'POST', body: { username } })
     addSuccess.value = `@${username} added`
+    toast.success(`@${username} added as a friend`)
     query.value = ''; searchResults.value = []
     await refreshFriends()
   } catch (e: any) {
     addError.value = e?.data?.statusMessage || 'Failed to add'
+    toast.error(addError.value)
   } finally { addLoading.value = false }
 }
 
 async function removeFriend(friendId: string) {
+  const ok = await confirm({ title: 'Remove friend', message: 'They will be removed from your friends list.', confirmLabel: 'Remove', destructive: true })
+  if (!ok) return
   removingId.value = friendId
   try {
     await apiFetch('/api/friends/remove', { method: 'POST', body: { friendId } })
+    toast.success('Friend removed')
     await refreshFriends()
+  } catch (e: any) {
+    toast.error(e?.data?.statusMessage || 'Failed to remove friend')
   } finally { removingId.value = null }
 }
 
@@ -90,9 +101,11 @@ async function onSaveContact() {
     })
     showContactForm.value = false
     newAddress.value = ''; newLabel.value = ''; newNote.value = ''
+    toast.success('Contact saved')
     refreshContacts()
   } catch (e: any) {
     contactSaveError.value = e?.data?.message ?? 'Could not save contact.'
+    toast.error(contactSaveError.value)
   } finally { contactSaving.value = false }
 }
 
@@ -112,16 +125,25 @@ async function saveEditContact(c: Contact) {
       body: { walletAddress: c.wallet_address, label: editLabel.value.trim(), note: editNote.value.trim() || undefined },
     })
     editingContactId.value = null
+    toast.success('Contact updated')
     refreshContacts()
+  } catch (e: any) {
+    toast.error(e?.data?.message ?? 'Could not update contact.')
   } finally { editSaving.value = false }
 }
 
 const deletingContactId = ref<string | null>(null)
 async function onDeleteContact(c: Contact) {
-  if (!confirm(`Delete contact "${c.label}"?`)) return
+  const ok = await confirm({ title: `Delete "${c.label}"?`, message: 'This contact will be removed permanently.', confirmLabel: 'Delete', destructive: true })
+  if (!ok) return
   deletingContactId.value = c.id
-  try { await apiFetch(`/api/contacts/${c.id}`, { method: 'DELETE' }); refreshContacts() }
-  finally { deletingContactId.value = null }
+  try {
+    await apiFetch(`/api/contacts/${c.id}`, { method: 'DELETE' })
+    toast.success('Contact deleted')
+    refreshContacts()
+  } catch (e: any) {
+    toast.error(e?.data?.message ?? 'Could not delete contact.')
+  } finally { deletingContactId.value = null }
 }
 </script>
 

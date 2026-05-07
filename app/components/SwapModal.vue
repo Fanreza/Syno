@@ -7,6 +7,8 @@ import { formatAmount } from '~/utils'
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
 const { balance, refresh: refreshBalance } = useBalance()
+const { startTourIfNew } = useOnboarding()
+watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('swap-modal'), 400) })
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112'
 
@@ -174,7 +176,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
           <div class="space-y-3 p-6">
 
             <!-- From -->
-            <div class="rounded-2xl border border-border bg-secondary/40 p-4">
+            <div class="rounded-2xl border border-border bg-secondary/40 p-4" data-tour="swap-from">
               <div class="mb-2 flex items-center justify-between">
                 <span class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">You pay</span>
                 <button
@@ -206,7 +208,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- To -->
-            <div class="rounded-2xl border border-border bg-secondary/40 p-4">
+            <div class="rounded-2xl border border-border bg-secondary/40 p-4" data-tour="swap-to">
               <div class="mb-2 flex items-center justify-between">
                 <span class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">You receive</span>
               </div>
@@ -255,7 +257,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
               <AlertCircle class="h-4 w-4 shrink-0" />{{ error }}
             </div>
 
-            <Button class="w-full" size="lg" :disabled="!canSwap || loading" @click="onSwap">
+            <Button class="w-full" size="lg" :disabled="!canSwap || loading" @click="onSwap" data-tour="swap-quote">
               <RefreshCw v-if="!loading" class="h-4 w-4" />
               {{ loading ? 'Swapping…' : `Swap ${fromToken.symbol} → ${toToken.symbol}` }}
             </Button>

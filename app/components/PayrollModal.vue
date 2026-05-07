@@ -7,6 +7,8 @@ import { formatAmount } from '~/utils'
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
+const { startTourIfNew } = useOnboarding()
+watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('payroll-modal'), 400) })
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 const { balance, refresh: refreshBalance } = useBalance()
 
@@ -244,7 +246,9 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Token -->
-            <TokenPicker v-model="token" label="Token" />
+            <div data-tour="payroll-token">
+              <TokenPicker v-model="token" label="Token" />
+            </div>
 
             <!-- Currency + balance summary -->
             <div class="flex items-center justify-between">
@@ -265,7 +269,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Recipients -->
-            <div class="max-h-64 overflow-y-auto space-y-3 pr-1">
+            <div class="max-h-64 overflow-y-auto space-y-3 pr-1" data-tour="payroll-rows">
               <div
                 v-for="(row, i) in rows"
                 :key="i"

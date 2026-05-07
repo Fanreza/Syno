@@ -8,8 +8,8 @@ const { isReady, isAuthenticated, user } = useAuth()
 const showModal = ref(false)
 
 watchEffect(() => {
-  if (isReady.value && isAuthenticated.value) {
-    navigateTo(user.value ? '/app' : '/onboarding')
+  if (isReady.value && isAuthenticated.value && user.value) {
+    navigateTo('/app')
   }
 })
 </script>

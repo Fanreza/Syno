@@ -90,7 +90,8 @@ export default defineEventHandler(async (event) => {
     await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed')
 
     await db.from('gift_claims').insert({ gift_id: body.giftId, user_id: claimer.id, amount: amountPerClaim, tx_signature: signature })
-    await db.from('gifts').update({ claimed_count: gift.claimed_count + 1 }).eq('id', body.giftId)
+    const newCount = gift.claimed_count + 1
+    await db.from('gifts').update({ claimed_count: newCount }).eq('id', body.giftId)
     const { data: claimerUser } = await db.from('users').select('username').eq('id', claimer.id).maybeSingle()
     await createNotification({
       userId: gift.creator_id,
@@ -99,6 +100,15 @@ export default defineEventHandler(async (event) => {
       body: `@${claimerUser?.username ?? 'someone'} claimed ${amountPerClaim.toFixed(4)} from your gift`,
       data: { gift_id: body.giftId, tx_signature: signature },
     })
+    if (newCount >= gift.total_slots) {
+      await createNotification({
+        userId: gift.creator_id,
+        type: 'gift_fully_claimed',
+        title: 'Gift fully claimed',
+        body: `All ${gift.total_slots} slots of your gift have been claimed`,
+        data: { gift_id: body.giftId },
+      })
+    }
     return { signature, amount: amountPerClaim, token: gift.token }
 
   } else {
@@ -145,7 +155,8 @@ export default defineEventHandler(async (event) => {
     await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'confirmed')
 
     await db.from('gift_claims').insert({ gift_id: body.giftId, user_id: claimer.id, amount: amountPerClaim, tx_signature: signature })
-    await db.from('gifts').update({ claimed_count: gift.claimed_count + 1 }).eq('id', body.giftId)
+    const newCountSpl = gift.claimed_count + 1
+    await db.from('gifts').update({ claimed_count: newCountSpl }).eq('id', body.giftId)
     const { data: claimerUser2 } = await db.from('users').select('username').eq('id', claimer.id).maybeSingle()
     await createNotification({
       userId: gift.creator_id,
@@ -154,6 +165,15 @@ export default defineEventHandler(async (event) => {
       body: `@${claimerUser2?.username ?? 'someone'} claimed ${amountPerClaim.toFixed(4)} from your gift`,
       data: { gift_id: body.giftId, tx_signature: signature },
     })
+    if (newCountSpl >= gift.total_slots) {
+      await createNotification({
+        userId: gift.creator_id,
+        type: 'gift_fully_claimed',
+        title: 'Gift fully claimed',
+        body: `All ${gift.total_slots} slots of your gift have been claimed`,
+        data: { gift_id: body.giftId },
+      })
+    }
     return { signature, amount: amountPerClaim, token: gift.token }
   }
 })

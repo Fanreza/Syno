@@ -179,21 +179,21 @@ export function useAuth() {
     return me
   }
 
-  async function logout() {
-    try { await privy().auth.logout() } catch {}
-    // Clear all privy keys from localStorage so no session bleeds into next login
+  function clearAllStorage() {
+    try { sessionStorage.clear() } catch {}
+    // Only clear our own keys — Privy manages its own localStorage entries.
+    // Nuking all localStorage breaks Privy's session restoration on next load.
     try {
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('privy'))
-      keys.forEach(k => localStorage.removeItem(k))
+      const toRemove = Object.keys(localStorage).filter(k =>
+        k.startsWith('syno_') || k.startsWith('syno:')
+      )
+      toRemove.forEach(k => localStorage.removeItem(k))
     } catch {}
-    // Remove the privy iframe so the old session cannot be restored
-    try {
-      const iframe = document.getElementById('privy-iframe')
-      if (iframe) iframe.remove()
-    } catch {}
-    // Reset the privy singleton so a fresh instance is created on next login
-    resetPrivy()
-    // Clear all shared state so the next user starts fresh
+    // Don't remove the Privy iframe — it's needed for Privy to communicate.
+    // privy().auth.logout() above already invalidates the session server-side.
+  }
+
+  function clearVueState() {
     privyUser.value = null
     accessToken.value = null
     identityToken.value = null
@@ -205,11 +205,27 @@ export function useAuth() {
     useState('notif-unread').value = 0
     useState('friends:list').value = []
     useState('friends:loaded').value = false
-    // Clear useAsyncData caches
-    const nuxtApp = useNuxtApp()
-    for (const key of Object.keys(nuxtApp.payload.data ?? {})) {
-      delete nuxtApp.payload.data[key]
-    }
+    try {
+      const nuxtApp = useNuxtApp()
+      for (const key of Object.keys(nuxtApp.payload.data ?? {})) {
+        delete nuxtApp.payload.data[key]
+      }
+    } catch {}
+  }
+
+  async function logout() {
+    try { await privy().auth.logout() } catch {}
+    resetPrivy()
+    clearAllStorage()
+    clearVueState()
+    await navigateTo('/login')
+  }
+
+  async function forceLogout() {
+    try { await privy().auth.logout() } catch {}
+    resetPrivy()
+    clearAllStorage()
+    clearVueState()
     await navigateTo('/login')
   }
 
@@ -230,6 +246,7 @@ export function useAuth() {
     registerUsername,
     refreshAppUser,
     loginWithSolanaWallet,
-    logout
+    logout,
+    forceLogout,
   }
 }

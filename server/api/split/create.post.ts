@@ -54,16 +54,26 @@ export default defineEventHandler(async (event) => {
   await db.from('split_participants').insert(insertRows)
 
   // Notify participants
-  const notifPromises = rows
-    .filter(r => r._userId && r._userId !== me?.id)
-    .map(r => createNotification({
-      userId: r._userId!,
-      type: 'split_created',
-      title: 'You were added to a split',
-      body: `@${creatorUsername} added you to "${body.title || 'a split bill'}" — ${r.amount} due`,
-      data: { bill_id: bill.id },
-    }))
-  await Promise.allSettled(notifPromises)
+  const toNotify = rows.filter(r => r._userId && r._userId !== me?.id)
+  for (const r of toNotify) {
+    try {
+      await createNotification({
+        userId: r._userId!,
+        type: 'split_created',
+        title: 'You were added to a split',
+        body: `@${creatorUsername} added you to "${body.title || 'a split bill'}" — ${r.amount} due`,
+        data: { bill_id: bill.id },
+      })
+    } catch (err) {
+      console.error('[split/create] notification failed for', r.username, err)
+    }
+  }
+
+  // Log participants without a matched user account
+  const unmatched = rows.filter(r => !r._userId)
+  if (unmatched.length) {
+    console.warn('[split/create] participants not found in DB:', unmatched.map(r => r.username))
+  }
 
   return { id: bill.id }
 })

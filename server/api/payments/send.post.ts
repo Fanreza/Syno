@@ -190,8 +190,20 @@ export default defineEventHandler(async (event) => {
       .update({ sender_id: sender.id, status: 'confirmed', tx_signature: signature })
       .eq('id', body.paymentLinkId)
       .eq('status', 'pending')
-      .select('split_participant_id')
+      .select('split_participant_id, receiver_id, amount, token')
       .maybeSingle()
+
+    // Notify payment link creator (regular request, not split)
+    if (link?.receiver_id && !link.split_participant_id && link.receiver_id !== sender.id) {
+      const tokenSymbol = (link.token === SOL_MINT ? 'SOL' : link.token?.slice(0, 6)) ?? ''
+      await createNotification({
+        userId: link.receiver_id,
+        type: 'payment_received',
+        title: 'Payment request fulfilled',
+        body: `@${senderUsername} paid your request — ${Number(link.amount).toFixed(4)} ${tokenSymbol}`,
+        data: { tx_signature: signature, amount: link.amount, token: link.token },
+      })
+    }
 
     if (link?.split_participant_id) {
       await db.from('split_participants')
@@ -222,6 +234,15 @@ export default defineEventHandler(async (event) => {
             body: `@${senderUsername} paid their share of "${bill.title ?? 'split bill'}"`,
             data: { bill_id: participant.bill_id, tx_signature: signature },
           })
+          if (allPaid) {
+            await createNotification({
+              userId: bill.creator_id,
+              type: 'split_settled',
+              title: 'Split fully settled',
+              body: `All participants have paid for "${bill.title ?? 'split bill'}"`,
+              data: { bill_id: participant.bill_id },
+            })
+          }
         }
       }
     }

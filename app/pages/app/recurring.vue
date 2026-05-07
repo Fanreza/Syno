@@ -4,8 +4,10 @@ import { Button } from '~/components/ui/button'
 import Input from '~/components/ui/input/Input.vue'
 import { formatAmount, shortAddr } from '~/utils'
 import type { Contact } from '~/components/ContactPicker.vue'
+import { toast } from 'vue-sonner'
 
 const { apiFetch } = useAuth()
+const { confirm } = useConfirm()
 const tab = ref<'recurring' | 'payroll'>('recurring')
 
 // ── RECURRING ────────────────────────────────────────────────────────────────
@@ -83,25 +85,39 @@ async function onCreate() {
     recurringMemo.value = ''
     recurringFrequency.value = 'monthly'
     recurringToken.value = SOL_TOKEN
+    toast.success('Recurring payment scheduled')
     refreshRecurring()
   } catch (e: any) {
     createError.value = e?.data?.message ?? 'Could not create.'
+    toast.error(createError.value)
   } finally { creating.value = false }
 }
 
 const toggling = ref<string | null>(null)
 async function onToggle(p: RecurringPayment) {
   toggling.value = p.id
-  try { await apiFetch(`/api/recurring/${p.id}/toggle`, { method: 'POST' }); refreshRecurring() }
-  finally { toggling.value = null }
+  try {
+    await apiFetch(`/api/recurring/${p.id}/toggle`, { method: 'POST' })
+    refreshRecurring()
+    toast.info(p.active ? 'Payment paused' : 'Payment resumed')
+  } catch (e: any) {
+    toast.error(e?.data?.message ?? 'Could not update payment.')
+  } finally { toggling.value = null }
 }
 
 const deleting = ref<string | null>(null)
 async function onDelete(p: RecurringPayment) {
-  if (!confirm(`Delete recurring payment to ${p.recipient_username ? '@' + p.recipient_username : p.recipient_address?.slice(0, 8)}?`)) return
+  const label = p.recipient_username ? `@${p.recipient_username}` : p.recipient_address?.slice(0, 8)
+  const ok = await confirm({ title: 'Delete recurring payment', message: `Stop recurring payments to ${label}?`, confirmLabel: 'Delete', destructive: true })
+  if (!ok) return
   deleting.value = p.id
-  try { await apiFetch(`/api/recurring/${p.id}`, { method: 'DELETE' }); refreshRecurring() }
-  finally { deleting.value = null }
+  try {
+    await apiFetch(`/api/recurring/${p.id}`, { method: 'DELETE' })
+    toast.success('Recurring payment deleted')
+    refreshRecurring()
+  } catch (e: any) {
+    toast.error(e?.data?.message ?? 'Could not delete payment.')
+  } finally { deleting.value = null }
 }
 
 function fmtDate(s: string) {
@@ -230,10 +246,12 @@ async function onSend() {
       },
     })
     payrollResult.value = res
+    toast.success(`Payroll sent — ${res.succeeded} of ${res.results.length} succeeded`)
     await refreshBalance()
     setTimeout(() => refreshBalance(), 3000)
   } catch (e: any) {
     payrollError.value = e?.data?.statusMessage || e?.message || 'Failed to send'
+    toast.error(payrollError.value)
   } finally { payrollLoading.value = false }
 }
 

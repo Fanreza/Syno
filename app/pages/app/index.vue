@@ -91,8 +91,8 @@ const showGift = ref(false)
 const showRequest = ref(false)
 const showPayroll = ref(false)
 
-const { startTour, shouldShow } = useOnboarding()
-onMounted(() => { if (shouldShow()) setTimeout(startTour, 800) })
+const { startTourIfNew } = useOnboarding()
+onMounted(() => setTimeout(() => startTourIfNew('dashboard'), 800))
 
 const copied = ref(false)
 function copyAddr() {

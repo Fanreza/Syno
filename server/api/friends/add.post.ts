@@ -29,5 +29,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: error.message })
   }
 
+  const { data: adder } = await db.from('users').select('username').eq('id', me.id).maybeSingle()
+  await createNotification({
+    userId: friend.id,
+    type: 'friend_added',
+    title: 'New friend',
+    body: `@${adder?.username ?? 'someone'} added you as a friend`,
+    data: { username: adder?.username ?? '' },
+  }).catch(() => {})
+
   return { username: friend.username, wallet_address: friend.wallet_address }
 })

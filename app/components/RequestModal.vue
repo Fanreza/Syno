@@ -7,6 +7,8 @@ import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch, user } = useAuth()
+const { startTourIfNew } = useOnboarding()
+watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('request-modal'), 400) })
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 
@@ -211,7 +213,7 @@ const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
           </div>
 
           <!-- Receive as token -->
-          <div>
+          <div data-tour="request-token">
             <TokenPicker v-model="outputToken" label="Receive as" />
             <p v-if="isNonSOL" class="mt-1.5 pl-1 text-xs text-muted-foreground">
               They can pay with any token — auto-converted
@@ -219,7 +221,7 @@ const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
           </div>
 
           <!-- Amount -->
-          <div>
+          <div data-tour="request-amount">
             <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Amount</label>
             <div class="flex gap-2">
               <button
@@ -261,7 +263,7 @@ const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
             {{ error }}
           </div>
 
-          <Button class="w-full" size="lg" :disabled="!canCreate" @click="onCreate">
+          <Button class="w-full" size="lg" :disabled="!canCreate" @click="onCreate" data-tour="request-share">
             <QrCode v-if="!loading" class="h-4 w-4" />
             {{ loading ? 'Creating...' : 'Generate link & QR' }}
           </Button>

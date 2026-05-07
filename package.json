@@ -32,6 +32,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "driver.js": "^1.4.0",
+    "firebase": "^12.12.1",
+    "firebase-admin": "^13.8.0",
     "lucide-vue-next": "^1.0.0",
     "nuxt": "^4.4.2",
     "party-js": "^2.2.0",
@@ -46,6 +48,7 @@
     "viem": "^2.48.4",
     "vue": "^3.5.33",
     "vue-router": "^4.5.0",
+    "vue-sonner": "^2.0.9",
     "vue3-apexcharts": "^1.11.1"
   },
   "devDependencies": {

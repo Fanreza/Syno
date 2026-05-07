@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Copy, Check, ExternalLink, LogOut, Shield, Mail, KeyRound, Eye, EyeOff, AlertTriangle, Globe } from 'lucide-vue-next'
+import { Copy, Check, ExternalLink, LogOut, Shield, Mail, KeyRound, Eye, EyeOff, AlertTriangle, Globe, Bell, BellOff } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '~/components/ui/select'
 import { createAvatar } from '@dicebear/core'
 import { bottts } from '@dicebear/collection'
@@ -7,6 +8,73 @@ import { bottts } from '@dicebear/collection'
 const { user, apiFetch, logout } = useAuth()
 const { selectedCurrency, SUPPORTED_CURRENCIES, setCurrency, formatDisplay, fetchRates } = useDisplayCurrency()
 onMounted(() => fetchRates())
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+const notifPermission = ref<NotificationPermission>('default')
+const notifLoading = ref(false)
+const notifBlocked = ref(false)
+
+onMounted(() => {
+  if ('Notification' in window) notifPermission.value = Notification.permission
+})
+
+async function enableNotifications() {
+  notifLoading.value = true
+  notifBlocked.value = false
+  try {
+    const perm = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission()
+
+    notifPermission.value = perm
+
+    if (perm === 'denied') {
+      notifBlocked.value = true
+      return
+    }
+    if (perm !== 'granted') return
+
+    const { initializeApp, getApps } = await import('firebase/app')
+    const { getMessaging, getToken } = await import('firebase/messaging')
+
+    const FIREBASE_CONFIG = {
+      apiKey: 'AIzaSyCXYm8OrQ6N3o8GDP35jH72IevzLgjfErM',
+      authDomain: 'syno-f8455.firebaseapp.com',
+      projectId: 'syno-f8455',
+      storageBucket: 'syno-f8455.firebasestorage.app',
+      messagingSenderId: '53376678294',
+      appId: '1:53376678294:web:48347c81c77964a74e05b7',
+    }
+
+    const app = getApps().length ? getApps()[0]! : initializeApp(FIREBASE_CONFIG)
+    const messaging = getMessaging(app)
+    const config = useRuntimeConfig()
+    const vapidKey = config.public.firebaseVapidKey as string
+
+    if (!vapidKey) {
+      toast.error('VAPID key not configured')
+      return
+    }
+
+    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    await navigator.serviceWorker.ready
+
+    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration })
+
+    if (!token) {
+      toast.error('Could not get notification token')
+      return
+    }
+
+    await apiFetch('/api/users/fcm-token', { method: 'POST', body: { token } })
+    toast.success('Notifications enabled')
+  } catch (e: any) {
+    console.error('[FCM] enable failed:', e)
+    toast.error(e?.message ?? 'Failed to enable notifications')
+  } finally {
+    notifLoading.value = false
+  }
+}
 
 const exportLoading = ref(false)
 const exportError = ref('')
@@ -166,6 +234,38 @@ const bannerColors = computed(() => {
               <Shield class="h-3.5 w-3.5" /> Self-custody
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <div class="rounded-2xl border border-border bg-card p-5">
+        <div class="mb-4 flex items-center gap-2">
+          <Bell class="h-4 w-4 text-muted-foreground" />
+          <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Push Notifications</p>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-sm" :class="notifPermission === 'granted' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'">
+            <Bell v-if="notifPermission === 'granted'" class="h-4 w-4" />
+            <BellOff v-else class="h-4 w-4" />
+            {{ notifPermission === 'granted' ? 'Notifications on' : 'Notifications off' }}
+          </div>
+          <button
+            v-if="notifPermission !== 'granted'"
+            class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40"
+            :disabled="notifLoading"
+            @click="enableNotifications"
+          >
+            <span v-if="notifLoading" class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <Bell v-else class="h-4 w-4" />
+            Enable
+          </button>
+          <span v-else class="rounded-full bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-600 dark:text-green-400">Active</span>
+        </div>
+
+        <!-- Shown after clicking Enable when blocked -->
+        <div v-if="notifBlocked" class="mt-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2.5 text-xs text-yellow-700 dark:text-yellow-400">
+          Browser is blocking notifications. Go to <strong>browser settings → Site permissions → Notifications</strong> → allow for this site, then come back and click Enable.
         </div>
       </div>
 

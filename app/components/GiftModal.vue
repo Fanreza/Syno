@@ -8,6 +8,8 @@ import { formatAmount } from '~/utils'
 const open = defineModel<boolean>('open', { required: true })
 const config = useRuntimeConfig()
 const { apiFetch } = useAuth()
+const { startTourIfNew } = useOnboarding()
+watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('gift-modal'), 400) })
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 const { balance, refresh: refreshBalance } = useBalance()
@@ -195,7 +197,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             <TokenPicker v-model="giftToken" label="Token" />
 
             <!-- Total amount -->
-            <div>
+            <div data-tour="gift-amount">
               <div class="mb-2 flex items-center justify-between">
                 <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total amount</label>
                 <span v-if="balance" class="text-xs text-muted-foreground">
@@ -233,7 +235,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <!-- Slots -->
-            <div>
+            <div data-tour="gift-slots">
               <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                 Number of slots
               </label>
@@ -271,7 +273,7 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
               <AlertCircle class="h-4 w-4 shrink-0" />{{ error }}
             </div>
 
-            <Button class="w-full" size="lg" :disabled="!canCreate || loading" @click="onCreate">
+            <Button class="w-full" size="lg" :disabled="!canCreate || loading" @click="onCreate" data-tour="gift-share">
               <Gift v-if="!loading" class="h-4 w-4" />
               {{ loading ? 'Creating gift…' : 'Create gift' }}
             </Button>
