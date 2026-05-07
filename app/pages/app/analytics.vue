@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, RefreshCw, ArrowUpRight, ArrowDownRight, BarC
 
 const { apiFetch } = useAuth()
 const { isDark } = useTheme()
+const { formatDisplay } = useDisplayCurrency()
 
 const KNOWN_TOKENS: Record<string, string> = {
   'So11111111111111111111111111111111111111112': 'SOL',
@@ -78,7 +79,7 @@ const barOptions = computed(() => ({
   yaxis: {
     labels: {
       style: { colors: labelColor.value, fontSize: '11px' },
-      formatter: (v: number) => formatAmt(v),
+      formatter: (v: number) => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0)),
     },
   },
   grid: {
@@ -88,7 +89,7 @@ const barOptions = computed(() => ({
   },
   tooltip: {
     theme: chartTheme.value,
-    y: { formatter: (v: number) => formatAmt(v) },
+    y: { formatter: (v: number) => formatDisplay(v) },
   },
 }))
 
@@ -190,14 +191,14 @@ const hasBarData = computed(() => barSeries.value[0]?.data.some(v => v > 0) || b
       <div class="mb-4 grid gap-3 sm:grid-cols-3">
         <div class="rounded-2xl border border-border bg-card p-5">
           <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total sent</p>
-          <p class="mt-2 text-2xl font-bold text-red-500">{{ formatAmt(data.summary.totalSent) }}</p>
+          <p class="mt-2 text-2xl font-bold text-red-500">{{ formatDisplay(data.summary.totalSent) }}</p>
           <p class="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
             <ArrowUpRight class="h-3 w-3" /> {{ data.summary.txCount }} transactions
           </p>
         </div>
         <div class="rounded-2xl border border-border bg-card p-5">
           <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total received</p>
-          <p class="mt-2 text-2xl font-bold text-green-500">{{ formatAmt(data.summary.totalReceived) }}</p>
+          <p class="mt-2 text-2xl font-bold text-green-500">{{ formatDisplay(data.summary.totalReceived) }}</p>
           <p class="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
             <ArrowDownRight class="h-3 w-3" /> last 6 months
           </p>
@@ -208,7 +209,7 @@ const hasBarData = computed(() => barSeries.value[0]?.data.some(v => v > 0) || b
             class="mt-2 text-2xl font-bold"
             :class="data.summary.totalReceived >= data.summary.totalSent ? 'text-green-500' : 'text-red-500'"
           >
-            {{ data.summary.totalReceived >= data.summary.totalSent ? '+' : '-' }}{{ formatAmt(Math.abs(data.summary.totalReceived - data.summary.totalSent)) }}
+            {{ data.summary.totalReceived >= data.summary.totalSent ? '+' : '-' }}{{ formatDisplay(Math.abs(data.summary.totalReceived - data.summary.totalSent)) }}
           </p>
           <p class="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
             <TrendingUp v-if="data.summary.totalReceived >= data.summary.totalSent" class="h-3 w-3 text-green-500" />
@@ -253,7 +254,7 @@ const hasBarData = computed(() => barSeries.value[0]?.data.some(v => v > 0) || b
                 <p class="truncate text-sm font-medium">{{ r.username ? '@' + r.username : r.address.slice(0, 8) + '…' }}</p>
                 <p class="text-xs text-muted-foreground">{{ r.count }} tx</p>
               </div>
-              <p class="shrink-0 text-sm font-semibold">{{ formatAmt(r.totalSent) }}</p>
+              <p class="shrink-0 text-sm font-semibold">{{ formatDisplay(r.totalSent) }}</p>
             </div>
           </div>
           <p v-else class="py-4 text-center text-sm text-muted-foreground">No outgoing payments yet.</p>

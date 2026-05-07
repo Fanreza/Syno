@@ -2,6 +2,23 @@ function monthKey(dateStr: string): string {
   return dateStr.slice(0, 7) // 'YYYY-MM'
 }
 
+async function fetchPrices(mints: string[]): Promise<Record<string, number>> {
+  const real = mints.filter(m => m !== 'PRIVATE' && m !== 'unknown')
+  if (!real.length) return {}
+  try {
+    const url = `https://api.jup.ag/price/v2?ids=${real.join(',')}`
+    const res = await fetch(url).then(r => r.json())
+    const out: Record<string, number> = {}
+    for (const mint of real) {
+      const price = parseFloat(res?.data?.[mint]?.price ?? '0')
+      if (price > 0) out[mint] = price
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
   const db = adminDb()
@@ -24,17 +41,28 @@ export default defineEventHandler(async (event) => {
       .select('created_at, amount, token, receiver_id, receiver_address, users!payments_receiver_id_fkey(username)')
       .eq('sender_id', me.id)
       .is('split_participant_id', null)
+      .neq('token', 'PRIVATE')
       .gte('created_at', since),
     db
       .from('payments')
       .select('created_at, amount, token, sender_id, users!payments_sender_id_fkey(username)')
       .eq('receiver_id', me.id)
       .is('split_participant_id', null)
+      .neq('token', 'PRIVATE')
       .gte('created_at', since),
   ])
 
   const sent: any[] = sentResult.data ?? []
   const received: any[] = receivedResult.data ?? []
+
+  // Fetch USD prices for all unique tokens
+  const uniqueMints = [...new Set([...sent, ...received].map(tx => tx.token).filter(Boolean))]
+  const prices = await fetchPrices(uniqueMints)
+
+  function toUsd(amount: number, token: string): number {
+    const price = prices[token] ?? 0
+    return amount * price
+  }
 
   // Build last 6 months keys
   const monthKeys: string[] = []
@@ -44,7 +72,7 @@ export default defineEventHandler(async (event) => {
     monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   }
 
-  // Monthly aggregation
+  // Monthly aggregation in USD
   const monthlySentMap: Record<string, number> = {}
   const monthlyReceivedMap: Record<string, number> = {}
   for (const mk of monthKeys) {
@@ -54,11 +82,11 @@ export default defineEventHandler(async (event) => {
 
   for (const tx of sent) {
     const mk = monthKey(tx.created_at)
-    if (mk in monthlySentMap) monthlySentMap[mk] += Number(tx.amount)
+    if (mk in monthlySentMap) monthlySentMap[mk] += toUsd(Number(tx.amount), tx.token)
   }
   for (const tx of received) {
     const mk = monthKey(tx.created_at)
-    if (mk in monthlyReceivedMap) monthlyReceivedMap[mk] += Number(tx.amount)
+    if (mk in monthlyReceivedMap) monthlyReceivedMap[mk] += toUsd(Number(tx.amount), tx.token)
   }
 
   const monthly = monthKeys.map(mk => ({
@@ -67,7 +95,7 @@ export default defineEventHandler(async (event) => {
     received: monthlyReceivedMap[mk],
   }))
 
-  // Top recipients (by total amount sent)
+  // Top recipients (by USD sent)
   const recipientMap: Record<string, { username: string | null; address: string; totalSent: number; count: number }> = {}
   for (const tx of sent) {
     const addr: string = tx.receiver_address ?? ''
@@ -75,14 +103,14 @@ export default defineEventHandler(async (event) => {
     if (!recipientMap[addr]) {
       recipientMap[addr] = { username, address: addr, totalSent: 0, count: 0 }
     }
-    recipientMap[addr].totalSent += Number(tx.amount)
+    recipientMap[addr].totalSent += toUsd(Number(tx.amount), tx.token)
     recipientMap[addr].count += 1
   }
   const topRecipients = Object.values(recipientMap)
     .sort((a, b) => b.totalSent - a.totalSent)
     .slice(0, 5)
 
-  // Token breakdown
+  // Token breakdown (raw amounts per token, not USD — useful as-is for donut)
   const tokenMap: Record<string, { sent: number; received: number }> = {}
   for (const tx of sent) {
     const t: string = tx.token ?? 'unknown'
@@ -96,9 +124,9 @@ export default defineEventHandler(async (event) => {
   }
   const tokenBreakdown = Object.entries(tokenMap).map(([token, v]) => ({ token, ...v }))
 
-  // Summary
-  const totalSent = sent.reduce((s, tx) => s + Number(tx.amount), 0)
-  const totalReceived = received.reduce((s, tx) => s + Number(tx.amount), 0)
+  // Summary in USD
+  const totalSent = sent.reduce((s, tx) => s + toUsd(Number(tx.amount), tx.token), 0)
+  const totalReceived = received.reduce((s, tx) => s + toUsd(Number(tx.amount), tx.token), 0)
   const txCount = sent.length + received.length
 
   return {
