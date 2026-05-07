@@ -25,6 +25,7 @@
     "@vueuse/core": "^14.3.0",
     "@wallet-standard/app": "^1.1.0",
     "@wallet-standard/wallet": "^1.1.0",
+    "apexcharts": "^5.10.6",
     "bn.js": "^5.2.3",
     "bs58": "^6.0.0",
     "buffer": "^6.0.3",
@@ -44,7 +45,8 @@
     "tw-animate-css": "^1.2.0",
     "viem": "^2.48.4",
     "vue": "^3.5.33",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.0",
+    "vue3-apexcharts": "^1.11.1"
   },
   "devDependencies": {
     "@types/bn.js": "^5.2.0",

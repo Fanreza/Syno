@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { BarChart2, TrendingUp, TrendingDown, RefreshCw, ArrowUpRight, ArrowDownRight } from 'lucide-vue-next'
+import { TrendingUp, TrendingDown, RefreshCw, ArrowUpRight, ArrowDownRight, BarChart2 } from 'lucide-vue-next'
 
 const { apiFetch } = useAuth()
-const { formatDisplay } = useDisplayCurrency()
+const { isDark } = useTheme()
 
 const KNOWN_TOKENS: Record<string, string> = {
   'So11111111111111111111111111111111111111112': 'SOL',
@@ -26,33 +26,6 @@ const { data, pending, refresh } = useAsyncData<Analytics>(
   { lazy: true, server: false }
 )
 
-// Bar chart SVG — sent vs received per month
-const BAR_W = 100
-const BAR_H = 80
-const barChart = computed(() => {
-  const months = data.value?.monthly ?? []
-  if (!months.length) return null
-  const maxVal = Math.max(...months.flatMap(m => [m.sent, m.received]), 0.001)
-  const slotW = BAR_W / months.length
-  const barW = (slotW * 0.35)
-  return months.map((m, i) => {
-    const x = i * slotW + slotW * 0.1
-    const sentH = (m.sent / maxVal) * (BAR_H - 8)
-    const recH = (m.received / maxVal) * (BAR_H - 8)
-    const label = m.month.slice(5) // 'MM'
-    return {
-      label,
-      sentX: x,
-      sentY: BAR_H - sentH,
-      sentH,
-      recX: x + barW + 1,
-      recY: BAR_H - recH,
-      recH,
-      barW,
-    }
-  })
-})
-
 function monthName(yyyymm: string) {
   const [y, m] = yyyymm.split('-')
   return new Date(Number(y), Number(m) - 1).toLocaleString('en-US', { month: 'short', year: '2-digit' })
@@ -63,6 +36,124 @@ function formatAmt(n: number) {
   if (n >= 1) return n.toFixed(2)
   return n.toFixed(4)
 }
+
+// ── ApexCharts theme base ────────────────────────────────────────────────────
+const chartTheme = computed(() => isDark.value ? 'dark' : 'light')
+const gridColor = computed(() => isDark.value ? '#ffffff10' : '#00000010')
+const labelColor = computed(() => isDark.value ? '#94a3b8' : '#64748b')
+const bgColor = computed(() => isDark.value ? 'transparent' : 'transparent')
+
+// ── Bar chart — monthly sent vs received ────────────────────────────────────
+const barOptions = computed(() => ({
+  chart: {
+    type: 'bar',
+    background: bgColor.value,
+    toolbar: { show: false },
+    animations: { enabled: true, speed: 500 },
+    fontFamily: 'inherit',
+  },
+  theme: { mode: chartTheme.value },
+  plotOptions: {
+    bar: {
+      columnWidth: '55%',
+      borderRadius: 4,
+      borderRadiusApplication: 'end',
+    },
+  },
+  colors: ['#f87171', '#4ade80'],
+  dataLabels: { enabled: false },
+  legend: {
+    position: 'top',
+    horizontalAlign: 'left',
+    labels: { colors: labelColor.value },
+    markers: { size: 6, shape: 'circle' },
+    itemMargin: { horizontal: 12 },
+  },
+  xaxis: {
+    categories: data.value?.monthly.map(m => monthName(m.month)) ?? [],
+    axisBorder: { show: false },
+    axisTicks: { show: false },
+    labels: { style: { colors: labelColor.value, fontSize: '12px' } },
+  },
+  yaxis: {
+    labels: {
+      style: { colors: labelColor.value, fontSize: '11px' },
+      formatter: (v: number) => formatAmt(v),
+    },
+  },
+  grid: {
+    borderColor: gridColor.value,
+    strokeDashArray: 4,
+    xaxis: { lines: { show: false } },
+  },
+  tooltip: {
+    theme: chartTheme.value,
+    y: { formatter: (v: number) => formatAmt(v) },
+  },
+}))
+
+const barSeries = computed(() => [
+  { name: 'Sent', data: data.value?.monthly.map(m => parseFloat(m.sent.toFixed(4))) ?? [] },
+  { name: 'Received', data: data.value?.monthly.map(m => parseFloat(m.received.toFixed(4))) ?? [] },
+])
+
+// ── Donut chart — token breakdown ────────────────────────────────────────────
+const donutOptions = computed(() => ({
+  chart: {
+    type: 'donut',
+    background: bgColor.value,
+    toolbar: { show: false },
+    fontFamily: 'inherit',
+    animations: { enabled: true, speed: 500 },
+  },
+  theme: { mode: chartTheme.value },
+  colors: ['#818cf8', '#f87171', '#4ade80', '#fb923c', '#38bdf8', '#a78bfa', '#f472b6'],
+  labels: data.value?.tokenBreakdown.map(t => tokenLabel(t.token)) ?? [],
+  legend: {
+    position: 'bottom',
+    labels: { colors: labelColor.value },
+    markers: { size: 6, shape: 'circle' },
+    itemMargin: { horizontal: 8, vertical: 4 },
+  },
+  dataLabels: {
+    enabled: true,
+    formatter: (val: number) => val.toFixed(1) + '%',
+    style: { fontSize: '11px', fontWeight: 600 },
+    dropShadow: { enabled: false },
+  },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '65%',
+        labels: {
+          show: true,
+          total: {
+            show: true,
+            label: 'Total sent',
+            color: labelColor.value,
+            fontSize: '12px',
+            formatter: (w: any) => {
+              const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0)
+              return formatAmt(total)
+            },
+          },
+        },
+      },
+    },
+  },
+  tooltip: {
+    theme: chartTheme.value,
+    y: { formatter: (v: number) => formatAmt(v) },
+  },
+  stroke: { width: 0 },
+}))
+
+const donutSeries = computed(() =>
+  data.value?.tokenBreakdown.map(t => parseFloat((t.sent + t.received).toFixed(4))) ?? []
+)
+
+const hasDonutData = computed(() => donutSeries.value.length > 0 && donutSeries.value.some(v => v > 0))
+const hasBarData = computed(() => barSeries.value[0]?.data.some(v => v > 0) || barSeries.value[1]?.data.some(v => v > 0))
 </script>
 
 <template>
@@ -86,10 +177,10 @@ function formatAmt(n: number) {
       <div class="grid gap-4 sm:grid-cols-3">
         <div v-for="i in 3" :key="i" class="h-24 skeleton rounded-2xl" />
       </div>
-      <div class="h-48 skeleton rounded-2xl" />
+      <div class="h-72 skeleton rounded-2xl" />
       <div class="grid gap-4 md:grid-cols-2">
-        <div class="h-40 skeleton rounded-2xl" />
-        <div class="h-40 skeleton rounded-2xl" />
+        <div class="h-64 skeleton rounded-2xl" />
+        <div class="h-64 skeleton rounded-2xl" />
       </div>
     </div>
 
@@ -128,50 +219,17 @@ function formatAmt(n: number) {
       </div>
 
       <!-- Monthly bar chart -->
-      <div class="mb-4 overflow-hidden rounded-2xl border border-border bg-card p-6">
-        <p class="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Monthly activity</p>
-
-        <div v-if="barChart && barChart.length" class="relative">
-          <!-- Legend -->
-          <div class="mb-3 flex items-center gap-4 text-xs text-muted-foreground">
-            <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-2.5 rounded-sm bg-red-400/70" />Sent</span>
-            <span class="flex items-center gap-1.5"><span class="inline-block h-2.5 w-2.5 rounded-sm bg-green-400/70" />Received</span>
-          </div>
-          <svg :viewBox="`0 0 ${BAR_W} ${BAR_H + 14}`" class="h-40 w-full" preserveAspectRatio="none">
-            <g v-for="bar in barChart" :key="bar.label">
-              <!-- Sent bar -->
-              <rect
-                :x="bar.sentX" :y="bar.sentY"
-                :width="bar.barW" :height="bar.sentH"
-                rx="1" fill="rgb(248 113 113 / 0.7)"
-              />
-              <!-- Received bar -->
-              <rect
-                :x="bar.recX" :y="bar.recY"
-                :width="bar.barW" :height="bar.recH"
-                rx="1" fill="rgb(74 222 128 / 0.7)"
-              />
-              <!-- Month label -->
-              <text
-                :x="bar.sentX + bar.barW"
-                :y="BAR_H + 10"
-                text-anchor="middle"
-                font-size="4"
-                fill="currentColor"
-                class="text-muted-foreground"
-                opacity="0.6"
-              >{{ bar.label }}</text>
-            </g>
-          </svg>
-          <!-- Month labels below -->
-          <div class="mt-1 flex text-[10px] text-muted-foreground">
-            <div v-for="m in data.monthly" :key="m.month" class="flex-1 text-center">
-              {{ monthName(m.month) }}
-            </div>
-          </div>
+      <div class="mb-4 rounded-2xl border border-border bg-card p-5">
+        <p class="mb-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Monthly activity</p>
+        <div v-if="hasBarData">
+          <apexchart
+            type="bar"
+            height="260"
+            :options="barOptions"
+            :series="barSeries"
+          />
         </div>
-
-        <div v-else class="flex flex-col items-center py-8 text-center text-sm text-muted-foreground">
+        <div v-else class="flex flex-col items-center py-16 text-center text-sm text-muted-foreground">
           <BarChart2 class="mb-2 h-8 w-8 opacity-30" />
           No transactions in the last 6 months.
         </div>
@@ -201,32 +259,18 @@ function formatAmt(n: number) {
           <p v-else class="py-4 text-center text-sm text-muted-foreground">No outgoing payments yet.</p>
         </div>
 
-        <!-- Token breakdown -->
+        <!-- Token breakdown donut -->
         <div class="rounded-2xl border border-border bg-card p-5">
-          <p class="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">By token</p>
-          <div v-if="data.tokenBreakdown.length" class="space-y-3">
-            <div
-              v-for="t in data.tokenBreakdown"
-              :key="t.token"
-              class="space-y-1.5"
-            >
-              <div class="flex items-center justify-between text-xs">
-                <span class="font-semibold">{{ tokenLabel(t.token) }}</span>
-                <span class="text-muted-foreground">{{ formatAmt(t.sent) }} sent · {{ formatAmt(t.received) }} received</span>
-              </div>
-              <div class="flex h-1.5 overflow-hidden rounded-full bg-secondary">
-                <div
-                  class="h-full rounded-full bg-red-400/70"
-                  :style="`width: ${t.sent / (t.sent + t.received + 0.0001) * 100}%`"
-                />
-                <div
-                  class="h-full rounded-full bg-green-400/70"
-                  :style="`width: ${t.received / (t.sent + t.received + 0.0001) * 100}%`"
-                />
-              </div>
-            </div>
+          <p class="mb-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">By token</p>
+          <div v-if="hasDonutData">
+            <apexchart
+              type="donut"
+              height="260"
+              :options="donutOptions"
+              :series="donutSeries"
+            />
           </div>
-          <p v-else class="py-4 text-center text-sm text-muted-foreground">No token data yet.</p>
+          <p v-else class="py-16 text-center text-sm text-muted-foreground">No token data yet.</p>
         </div>
 
       </div>
