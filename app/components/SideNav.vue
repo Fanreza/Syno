@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, User, LogOut, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, Link, Gift, Bell, Send, ArrowLeftRight, QrCode, Banknote, Scissors, HelpCircle, BarChart2, PieChart, Calendar, BookUser } from 'lucide-vue-next'
+import { Home, User, LogOut, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, Link, Gift, Bell, Send, QrCode, Scissors, HelpCircle, BarChart2, Calendar, BookUser } from 'lucide-vue-next'
 import { useNotifications } from '~/composables/useNotifications'
 import { createAvatar } from '@dicebear/core'
 import { bottts } from '@dicebear/collection'
@@ -23,21 +23,45 @@ const avatarDataUrl = computed(() => {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 })
 
-const items = [
-  { to: '/app', icon: Home, label: 'Home' },
-  { to: '/app/notifications', icon: Bell, label: 'Notifications' },
-  { to: '/app/requests', icon: Link, label: 'Requests' },
-  { to: '/app/split', icon: Scissors, label: 'Splits' },
-  { to: '/app/gifts', icon: Gift, label: 'Gifts' },
-  { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
-  { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
-  { to: '/app/friends', icon: Users, label: 'Friends' },
-  { to: '/app/contacts', icon: BookUser, label: 'Contacts' },
-  { to: '/app/analytics', icon: BarChart2, label: 'Analytics' },
-  { to: '/app/recurring', icon: Calendar, label: 'Recurring' },
-  { to: '/app/activity', icon: Activity, label: 'Activity' },
-  { to: '/app/profile', icon: User, label: 'Profile' },
+type NavItem = { to: string; icon: any; label: string; badge?: boolean }
+type NavSection = { label?: string; items: NavItem[] }
+
+const sections: NavSection[] = [
+  {
+    items: [
+      { to: '/app', icon: Home, label: 'Home' },
+      { to: '/app/notifications', icon: Bell, label: 'Notifications', badge: true },
+    ],
+  },
+  {
+    label: 'Payments',
+    items: [
+      { to: '/app/requests', icon: Link, label: 'Requests' },
+      { to: '/app/split', icon: Scissors, label: 'Splits' },
+      { to: '/app/gifts', icon: Gift, label: 'Gifts' },
+      { to: '/app/recurring', icon: Calendar, label: 'Recurring' },
+    ],
+  },
+  {
+    label: 'Finance',
+    items: [
+      { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
+      { to: '/app/analytics', icon: BarChart2, label: 'Analytics' },
+      { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
+      { to: '/app/activity', icon: Activity, label: 'Activity' },
+    ],
+  },
+  {
+    label: 'People',
+    items: [
+      { to: '/app/people', icon: Users, label: 'People' },
+      { to: '/app/profile', icon: User, label: 'Profile' },
+    ],
+  },
 ]
+
+// flat list kept for data-tour attribute resolution
+const items = sections.flatMap(s => s.items)
 
 // Bottom bar: Home | Activity | [Send FAB] | Request | More
 const bottomItems = [
@@ -55,14 +79,14 @@ const showPayrollGlobal = useState<boolean>('global-show-payroll', () => false)
 
 const moreItems = [
   { to: '/app/notifications', icon: Bell, label: 'Notifications', badge: true },
+  { to: '/app/requests', icon: Link, label: 'Requests' },
   { to: '/app/split', icon: Scissors, label: 'Splits' },
   { to: '/app/gifts', icon: Gift, label: 'Gifts' },
-  { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
-  { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
-  { to: '/app/friends', icon: Users, label: 'Friends' },
-  { to: '/app/contacts', icon: BookUser, label: 'Contacts' },
-  { to: '/app/analytics', icon: BarChart2, label: 'Analytics' },
   { to: '/app/recurring', icon: Calendar, label: 'Recurring' },
+  { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
+  { to: '/app/analytics', icon: BarChart2, label: 'Analytics' },
+  { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
+  { to: '/app/people', icon: Users, label: 'People' },
   { to: '/app/profile', icon: User, label: 'Profile' },
 ]
 
@@ -93,26 +117,33 @@ function isActive(to: string) {
     </div>
 
     <!-- Nav items -->
-    <nav class="mt-4 flex-1 space-y-1 px-3">
-      <NuxtLink
-        v-for="item in items"
-        :key="item.to"
-        :to="item.to"
-        :data-tour="`nav-${item.to.split('/').pop()}`"
-        class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all"
-        :class="isActive(item.to)
-          ? 'bg-primary text-primary-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-accent hover:text-foreground'"
-      >
-        <div class="relative shrink-0">
-          <component :is="item.icon" class="h-4 w-4" />
-          <span
-            v-if="item.to === '/app/notifications' && unread > 0"
-            class="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white"
-          >{{ unread > 9 ? '9+' : unread }}</span>
+    <nav class="mt-3 flex-1 overflow-y-auto px-3 space-y-3">
+      <div v-for="section in sections" :key="section.label ?? '__top'">
+        <p v-if="section.label" class="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          {{ section.label }}
+        </p>
+        <div class="space-y-0.5">
+          <NuxtLink
+            v-for="item in section.items"
+            :key="item.to"
+            :to="item.to"
+            :data-tour="`nav-${item.to.split('/').pop()}`"
+            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all"
+            :class="isActive(item.to)
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground'"
+          >
+            <div class="relative shrink-0">
+              <component :is="item.icon" class="h-4 w-4" />
+              <span
+                v-if="item.badge && unread > 0"
+                class="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white"
+              >{{ unread > 9 ? '9+' : unread }}</span>
+            </div>
+            {{ item.label }}
+          </NuxtLink>
         </div>
-        {{ item.label }}
-      </NuxtLink>
+      </div>
     </nav>
 
     <!-- Bottom actions -->
