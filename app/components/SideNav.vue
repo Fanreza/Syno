@@ -37,9 +37,8 @@ const sections: NavSection[] = [
     label: 'Payments',
     items: [
       { to: '/app/requests', icon: Link, label: 'Requests' },
-      { to: '/app/split', icon: Scissors, label: 'Splits' },
       { to: '/app/gifts', icon: Gift, label: 'Gifts' },
-      { to: '/app/recurring', icon: Calendar, label: 'Recurring' },
+      { to: '/app/recurring', icon: Calendar, label: 'Transfers' },
     ],
   },
   {
@@ -80,9 +79,8 @@ const showPayrollGlobal = useState<boolean>('global-show-payroll', () => false)
 const moreItems = [
   { to: '/app/notifications', icon: Bell, label: 'Notifications', badge: true },
   { to: '/app/requests', icon: Link, label: 'Requests' },
-  { to: '/app/split', icon: Scissors, label: 'Splits' },
   { to: '/app/gifts', icon: Gift, label: 'Gifts' },
-  { to: '/app/recurring', icon: Calendar, label: 'Recurring' },
+  { to: '/app/recurring', icon: Calendar, label: 'Transfers' },
   { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
   { to: '/app/analytics', icon: BarChart2, label: 'Analytics' },
   { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
