@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Home, User, LogOut, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, Link, Gift, Bell, Send, ArrowLeftRight, QrCode, Banknote, Scissors, HelpCircle, BarChart2, PieChart } from 'lucide-vue-next'
+import { Home, User, LogOut, Activity, Sun, Moon, Users, TrendingUp, MoreHorizontal, X, Link, Gift, Bell, Send, ArrowLeftRight, QrCode, Banknote, Scissors, HelpCircle, BarChart2, PieChart, Calendar, BookUser } from 'lucide-vue-next'
 import { useNotifications } from '~/composables/useNotifications'
 import { createAvatar } from '@dicebear/core'
 import { bottts } from '@dicebear/collection'
@@ -32,6 +32,9 @@ const items = [
   { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
   { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
   { to: '/app/friends', icon: Users, label: 'Friends' },
+  { to: '/app/contacts', icon: BookUser, label: 'Contacts' },
+  { to: '/app/analytics', icon: BarChart2, label: 'Analytics' },
+  { to: '/app/recurring', icon: Calendar, label: 'Recurring' },
   { to: '/app/activity', icon: Activity, label: 'Activity' },
   { to: '/app/profile', icon: User, label: 'Profile' },
 ]
@@ -57,6 +60,9 @@ const moreItems = [
   { to: '/app/earn', icon: TrendingUp, label: 'Earn' },
   { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
   { to: '/app/friends', icon: Users, label: 'Friends' },
+  { to: '/app/contacts', icon: BookUser, label: 'Contacts' },
+  { to: '/app/analytics', icon: BarChart2, label: 'Analytics' },
+  { to: '/app/recurring', icon: Calendar, label: 'Recurring' },
   { to: '/app/profile', icon: User, label: 'Profile' },
 ]
 

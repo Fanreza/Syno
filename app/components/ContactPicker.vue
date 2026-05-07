@@ -1,19 +1,32 @@
 <script setup lang="ts">
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
-import { X, Search, Loader2, User, Users } from 'lucide-vue-next'
+import { X, Search, Loader2, User, Users, BookUser } from 'lucide-vue-next'
 import { watchDebounced } from '@vueuse/core'
 import { shortAddr } from '~/utils'
 
 export interface Contact {
   username: string | null
   wallet_address: string
+  label?: string
 }
+
+type SavedContact = { id: string; wallet_address: string; label: string; note: string | null }
 
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ select: [contact: Contact] }>()
 
+const { apiFetch } = useAuth()
 const { friends, load: loadFriends } = useFriends()
-watch(open, (v) => { if (v) { loadFriends(); query.value = ''; results.value = [] } })
+const savedContacts = ref<SavedContact[]>([])
+
+watch(open, async (v) => {
+  if (v) {
+    loadFriends()
+    query.value = ''
+    results.value = []
+    try { savedContacts.value = await apiFetch('/api/contacts') } catch { savedContacts.value = [] }
+  }
+})
 
 const query = ref('')
 const results = ref<Contact[]>([])
@@ -62,6 +75,13 @@ function pick(contact: Contact) {
 const displayList = computed<Contact[]>(() =>
   query.value.trim() ? results.value : friends.value.map(f => ({ username: f.username, wallet_address: f.wallet_address }))
 )
+
+// Saved contacts not already in friends list
+const filteredSavedContacts = computed(() => {
+  if (query.value.trim()) return []
+  const friendAddrs = new Set(friends.value.map(f => f.wallet_address))
+  return savedContacts.value.filter(c => !friendAddrs.has(c.wallet_address))
+})
 </script>
 
 <template>
@@ -125,9 +145,30 @@ const displayList = computed<Contact[]>(() =>
             </div>
           </button>
 
+          <!-- Saved contacts section -->
+          <template v-if="filteredSavedContacts.length">
+            <p class="px-4 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <BookUser class="mr-1 inline h-3 w-3" />Contacts
+            </p>
+            <button
+              v-for="c in filteredSavedContacts"
+              :key="c.wallet_address"
+              class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-accent"
+              @click="pick({ username: null, wallet_address: c.wallet_address, label: c.label })"
+            >
+              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold">
+                {{ c.label[0]?.toUpperCase() }}
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold">{{ c.label }}</p>
+                <p class="font-mono text-xs text-muted-foreground truncate">{{ shortAddr(c.wallet_address, 8) }}</p>
+              </div>
+            </button>
+          </template>
+
           <!-- Empty friends state -->
-          <div v-if="!query.trim() && !friends.length" class="px-4 py-8 text-center text-sm text-muted-foreground">
-            No contacts yet. Add friends first.
+          <div v-if="!query.trim() && !friends.length && !savedContacts.length" class="px-4 py-8 text-center text-sm text-muted-foreground">
+            No contacts yet. Add friends or contacts first.
           </div>
         </div>
 
