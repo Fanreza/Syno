@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { RefreshCw, Plus, Trash2, ToggleLeft, ToggleRight, Calendar, X, Send, AlertCircle, CheckCircle2, Users, DollarSign, Coins, BookUser } from 'lucide-vue-next'
+import { RefreshCw, Plus, Trash2, ToggleLeft, ToggleRight, Calendar, X, Send, AlertCircle, CheckCircle2, Users, DollarSign, Coins, User, ChevronDown } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
-import { formatAmount } from '~/utils'
+import Input from '~/components/ui/input/Input.vue'
+import { formatAmount, shortAddr } from '~/utils'
+import type { Contact } from '~/components/ContactPicker.vue'
 
 const { apiFetch } = useAuth()
 const tab = ref<'recurring' | 'payroll'>('recurring')
@@ -36,47 +38,55 @@ const { data: recurringList, pending: recurringPending, refresh: refreshRecurrin
   'recurring', () => apiFetch('/api/recurring'), { lazy: true, server: false, default: () => [] }
 )
 
+// Form state
 const showForm = ref(false)
-const form = reactive({
-  recipient: '',
-  amount: '',
-  token: SOL_MINT,
-  memo: '',
-  frequency: 'monthly' as 'weekly' | 'monthly',
-})
+const recurringRecipient = ref<Contact | null>(null)
+const recurringToken = ref<JupToken>(SOL_TOKEN)
+const recurringAmount = ref('')
+const recurringMemo = ref('')
+const recurringFrequency = ref<'weekly' | 'monthly'>('monthly')
+const recurringPickerOpen = ref(false)
 const creating = ref(false)
 const createError = ref('')
 
-const canCreate = computed(() => form.recipient.trim().length >= 2 && parseFloat(form.amount) > 0)
+function selectRecurringContact(c: Contact) {
+  recurringRecipient.value = c
+}
+function clearRecurringRecipient() {
+  recurringRecipient.value = null
+}
+
+const canCreate = computed(() =>
+  recurringRecipient.value !== null && parseFloat(recurringAmount.value) > 0
+)
 
 async function onCreate() {
   createError.value = ''
   creating.value = true
   try {
-    const body: Record<string, unknown> = {
-      amount: parseFloat(form.amount),
-      token: form.token,
-      frequency: form.frequency,
-      memo: form.memo.trim() || undefined,
-    }
-    const r = form.recipient.trim()
-    if (r.startsWith('@') || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(r)) {
-      body.recipientUsername = r.replace(/^@/, '')
-    } else {
-      body.recipientAddress = r
-    }
-    await apiFetch('/api/recurring/create', { method: 'POST', body })
+    const c = recurringRecipient.value!
+    await apiFetch('/api/recurring/create', {
+      method: 'POST',
+      body: {
+        recipientUsername: c.username ?? undefined,
+        recipientAddress: c.username ? undefined : c.wallet_address,
+        amount: parseFloat(recurringAmount.value),
+        token: recurringToken.value.address,
+        decimals: recurringToken.value.decimals,
+        frequency: recurringFrequency.value,
+        memo: recurringMemo.value.trim() || undefined,
+      },
+    })
     showForm.value = false
-    form.recipient = ''; form.amount = ''; form.memo = ''; form.frequency = 'monthly'
+    recurringRecipient.value = null
+    recurringAmount.value = ''
+    recurringMemo.value = ''
+    recurringFrequency.value = 'monthly'
+    recurringToken.value = SOL_TOKEN
     refreshRecurring()
   } catch (e: any) {
     createError.value = e?.data?.message ?? 'Could not create.'
   } finally { creating.value = false }
-}
-
-const recurringPickerOpen = ref(false)
-function selectRecurringContact(c: { username: string | null; wallet_address: string }) {
-  form.recipient = c.username ? `@${c.username}` : c.wallet_address
 }
 
 const toggling = ref<string | null>(null)
@@ -282,49 +292,75 @@ function resetPayroll() {
     <!-- ── RECURRING TAB ── -->
     <template v-if="tab === 'recurring'">
       <Transition name="fade-slide">
-        <div v-if="showForm" class="mb-5 rounded-2xl border border-border bg-card p-5 space-y-3">
-          <div class="flex items-center justify-between mb-1">
-            <p class="text-sm font-semibold">New recurring payment</p>
-            <button class="text-muted-foreground hover:text-foreground" @click="showForm = false"><X class="h-4 w-4" /></button>
+        <div v-if="showForm" class="mb-5 rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-bold">New recurring payment</p>
+            <button class="rounded-lg p-1.5 text-muted-foreground transition hover:bg-accent hover:text-foreground" @click="showForm = false"><X class="h-4 w-4" /></button>
           </div>
+
+          <!-- Recipient — same pattern as SendModal -->
           <div>
-            <label class="mb-1 block text-xs text-muted-foreground">Recipient (@username or address)</label>
-            <div class="relative">
-              <input v-model="form.recipient" placeholder="@username or wallet address" class="w-full rounded-xl border border-border bg-background py-2 pl-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
-              <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground" @click="recurringPickerOpen = true">
-                <Users class="h-4 w-4" />
-              </button>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">To</label>
+            <button
+              v-if="!recurringRecipient"
+              class="flex w-full items-center gap-3 rounded-xl border border-dashed border-border bg-secondary px-4 py-3 transition hover:bg-accent"
+              @click="recurringPickerOpen = true"
+            >
+              <User class="h-4 w-4 text-muted-foreground" />
+              <span class="text-sm text-muted-foreground">Select contact or address…</span>
+              <ChevronDown class="ml-auto h-4 w-4 text-muted-foreground" />
+            </button>
+            <div v-else class="rounded-xl border border-green-500/20 bg-green-500/5 px-3 py-2.5">
+              <div class="flex items-center gap-3">
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  <span v-if="recurringRecipient.username">{{ recurringRecipient.username[0]?.toUpperCase() }}</span>
+                  <User v-else class="h-4 w-4" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold">{{ recurringRecipient.username ? '@' + recurringRecipient.username : 'Wallet address' }}</p>
+                  <p class="font-mono text-xs text-muted-foreground">{{ shortAddr(recurringRecipient.wallet_address, 8) }}</p>
+                </div>
+                <button class="shrink-0 rounded-lg p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground" @click="clearRecurringRecipient">
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="mb-1 block text-xs text-muted-foreground">Amount</label>
-              <input v-model="form.amount" type="number" min="0" step="any" placeholder="0.00" class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
-            </div>
-            <div>
-              <label class="mb-1 block text-xs text-muted-foreground">Token</label>
-              <select v-model="form.token" class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
-                <option :value="SOL_MINT">SOL</option>
-                <option value="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v">USDC</option>
-                <option value="Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB">USDT</option>
-              </select>
-            </div>
-          </div>
+
+          <!-- Token -->
+          <TokenPicker v-model="recurringToken" label="Token" />
+
+          <!-- Amount -->
           <div>
-            <label class="mb-1 block text-xs text-muted-foreground">Frequency</label>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Amount</label>
+            <Input v-model="recurringAmount" type="number" inputmode="decimal" placeholder="0.00" />
+          </div>
+
+          <!-- Frequency -->
+          <div>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Frequency</label>
             <div class="flex gap-2">
-              <button class="flex-1 rounded-xl border py-2 text-sm font-medium transition" :class="form.frequency === 'weekly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent'" @click="form.frequency = 'weekly'">Weekly</button>
-              <button class="flex-1 rounded-xl border py-2 text-sm font-medium transition" :class="form.frequency === 'monthly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent'" @click="form.frequency = 'monthly'">Monthly</button>
+              <button class="flex-1 rounded-xl border py-2 text-sm font-medium transition" :class="recurringFrequency === 'weekly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent'" @click="recurringFrequency = 'weekly'">Weekly</button>
+              <button class="flex-1 rounded-xl border py-2 text-sm font-medium transition" :class="recurringFrequency === 'monthly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent'" @click="recurringFrequency = 'monthly'">Monthly</button>
             </div>
           </div>
+
+          <!-- Memo -->
           <div>
-            <label class="mb-1 block text-xs text-muted-foreground">Memo (optional)</label>
-            <input v-model="form.memo" placeholder="e.g. Rent, subscription…" class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Memo <span class="font-normal normal-case text-muted-foreground/50">(optional)</span>
+            </label>
+            <Input v-model="recurringMemo" placeholder="Rent, subscription…" />
           </div>
-          <p v-if="createError" class="text-xs text-destructive">{{ createError }}</p>
-          <button class="w-full rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40" :disabled="!canCreate || creating" @click="onCreate">
+
+          <div v-if="createError" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+            <AlertCircle class="h-4 w-4 shrink-0" /> {{ createError }}
+          </div>
+
+          <Button class="w-full" size="lg" :disabled="!canCreate || creating" @click="onCreate">
+            <Calendar v-if="!creating" class="mr-2 h-4 w-4" />
             {{ creating ? 'Scheduling…' : 'Schedule payment' }}
-          </button>
+          </Button>
         </div>
       </Transition>
 
