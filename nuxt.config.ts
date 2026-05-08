@@ -55,6 +55,7 @@ export default defineNuxtConfig({
     jupiterApiKey: process.env.JUPITER_API_KEY || '',
     goldrushApiKey: process.env.GOLDRUSH_API_KEY || '',
     firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT || '',
+    cronSecret: process.env.CRON_SECRET || '',
     public: {
       privyAppId: process.env.NUXT_PUBLIC_PRIVY_APP_ID || process.env.PRIVY_APP_ID || '',
       privyClientId: process.env.NUXT_PUBLIC_PRIVY_CLIENT_ID || '',

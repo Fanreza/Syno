@@ -51,7 +51,7 @@ const allTokens = computed<TokenRow[]>(() => {
 
 const { data: stats, refresh: refreshStats, pending: pendingStats } = useAsyncData(
   'dashboard-stats',
-  () => apiFetch<{ sentSol: number; receivedSol: number; openSplits: number }>('/api/stats'),
+  () => apiFetch<{ sentUsd: number; receivedUsd: number; openSplits: number }>('/api/stats'),
   { lazy: true, immediate: false }
 )
 
@@ -240,16 +240,14 @@ watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
           <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Sent</p>
           <div v-if="pendingStats" class="mt-1 h-6 w-14 rounded-md skeleton" />
           <p v-else class="mt-1 text-base font-bold leading-tight animate-stat-in">
-            {{ formatAmount(stats?.sentSol ?? 0) }}
-            <span class="text-xs font-medium text-muted-foreground">SOL</span>
+            {{ formatDisplay(stats?.sentUsd ?? 0) }}
           </p>
         </div>
         <div class="animate-card-in delay-100 rounded-2xl border border-border bg-card px-3 py-3 md:px-5 md:py-4">
           <p class="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Received</p>
           <div v-if="pendingStats" class="mt-1 h-6 w-14 rounded-md skeleton" />
           <p v-else class="mt-1 text-base font-bold leading-tight animate-stat-in">
-            {{ formatAmount(stats?.receivedSol ?? 0) }}
-            <span class="text-xs font-medium text-muted-foreground">SOL</span>
+            {{ formatDisplay(stats?.receivedUsd ?? 0) }}
           </p>
         </div>
         <div

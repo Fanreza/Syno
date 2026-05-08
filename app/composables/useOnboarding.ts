@@ -341,6 +341,9 @@ export function useOnboarding() {
     const steps = TOURS[key]?.()
     if (!steps?.length) return
 
+    const firstEl = steps[0]?.element as string | undefined
+    if (firstEl && !document.querySelector(firstEl)) return
+
     const { driver } = await import('driver.js')
     await import('driver.js/dist/driver.css')
 

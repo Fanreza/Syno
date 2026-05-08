@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RefreshCw, Plus, Trash2, ToggleLeft, ToggleRight, Calendar, X, Send, AlertCircle, CheckCircle2, Users, DollarSign, Coins, User, ChevronDown } from 'lucide-vue-next'
+import DatePicker from '~/components/ui/date-picker/DatePicker.vue'
 import { Button } from '~/components/ui/button'
 import Input from '~/components/ui/input/Input.vue'
 import { formatAmount, shortAddr } from '~/utils'
@@ -47,6 +48,7 @@ const recurringToken = ref<JupToken>(SOL_TOKEN)
 const recurringAmount = ref('')
 const recurringMemo = ref('')
 const recurringFrequency = ref<'weekly' | 'monthly'>('monthly')
+const recurringStartDate = ref('')
 const recurringPickerOpen = ref(false)
 const creating = ref(false)
 const createError = ref('')
@@ -76,6 +78,7 @@ async function onCreate() {
         token: recurringToken.value.address,
         decimals: recurringToken.value.decimals,
         frequency: recurringFrequency.value,
+        startDate: recurringStartDate.value || undefined,
         memo: recurringMemo.value.trim() || undefined,
       },
     })
@@ -84,6 +87,7 @@ async function onCreate() {
     recurringAmount.value = ''
     recurringMemo.value = ''
     recurringFrequency.value = 'monthly'
+    recurringStartDate.value = ''
     recurringToken.value = SOL_TOKEN
     toast.success('Recurring payment scheduled')
     refreshRecurring()
@@ -354,13 +358,21 @@ function resetPayroll() {
             <Input v-model="recurringAmount" type="number" inputmode="decimal" placeholder="0.00" />
           </div>
 
-          <!-- Frequency -->
+          <!-- Frequency + Start date -->
           <div>
-            <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Frequency</label>
-            <div class="flex gap-2">
-              <button class="flex-1 rounded-xl border py-2 text-sm font-medium transition" :class="recurringFrequency === 'weekly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent'" @click="recurringFrequency = 'weekly'">Weekly</button>
-              <button class="flex-1 rounded-xl border py-2 text-sm font-medium transition" :class="recurringFrequency === 'monthly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent'" @click="recurringFrequency = 'monthly'">Monthly</button>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Repeat</label>
+            <div class="flex gap-2 mb-3">
+              <button class="flex-1 rounded-xl border py-2 text-sm font-medium transition" :class="recurringFrequency === 'weekly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent'" @click="recurringFrequency = 'weekly'">Every week</button>
+              <button class="flex-1 rounded-xl border py-2 text-sm font-medium transition" :class="recurringFrequency === 'monthly' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent'" @click="recurringFrequency = 'monthly'">Every month</button>
             </div>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Starting on <span class="font-normal normal-case text-muted-foreground/50">(optional)</span>
+            </label>
+            <DatePicker
+              v-model="recurringStartDate"
+              :min="new Date().toISOString().slice(0, 10)"
+              placeholder="Pick a start date…"
+            />
           </div>
 
           <!-- Memo -->
@@ -540,17 +552,16 @@ function resetPayroll() {
       </div>
     </template>
 
+    <ContactPicker
+      :open="pickerOpenIndex !== null"
+      @update:open="onPickerOpen"
+      @select="selectContact"
+    />
+    <ContactPicker
+      v-model:open="recurringPickerOpen"
+      @select="selectRecurringContact"
+    />
   </div>
-
-  <ContactPicker
-    :open="pickerOpenIndex !== null"
-    @update:open="onPickerOpen"
-    @select="selectContact"
-  />
-  <ContactPicker
-    v-model:open="recurringPickerOpen"
-    @select="selectRecurringContact"
-  />
 </template>
 
 <style scoped>

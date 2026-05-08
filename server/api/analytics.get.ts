@@ -1,20 +1,36 @@
+const SOL_MINT = 'So11111111111111111111111111111111111111112'
+
 function monthKey(dateStr: string): string {
-  return dateStr.slice(0, 7) // 'YYYY-MM'
+  return dateStr.slice(0, 7)
+}
+
+function normalizeMint(token: string | null): string {
+  if (!token || token === 'SOL') return SOL_MINT
+  return token
 }
 
 async function fetchPrices(mints: string[]): Promise<Record<string, number>> {
-  const real = mints.filter(m => m !== 'PRIVATE' && m !== 'unknown')
+  const real = [...new Set(mints.map(normalizeMint).filter(m => m !== 'PRIVATE' && m !== 'unknown'))]
   if (!real.length) return {}
   try {
-    const url = `https://api.jup.ag/price/v2?ids=${real.join(',')}`
-    const res = await fetch(url).then(r => r.json())
+    const res = await $fetch<any>(`https://api.jup.ag/price/v3?ids=${real.join(',')}`)
     const out: Record<string, number> = {}
     for (const mint of real) {
       const price = parseFloat(res?.data?.[mint]?.price ?? '0')
       if (price > 0) out[mint] = price
     }
+    if (!out[SOL_MINT]) {
+      try {
+        const sol = await $fetch<any>('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
+        if (sol?.solana?.usd) out[SOL_MINT] = sol.solana.usd
+      } catch {}
+    }
     return out
   } catch {
+    try {
+      const sol = await $fetch<any>('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd')
+      if (sol?.solana?.usd) return { [SOL_MINT]: sol.solana.usd }
+    } catch {}
     return {}
   }
 }
@@ -60,7 +76,7 @@ export default defineEventHandler(async (event) => {
   const prices = await fetchPrices(uniqueMints)
 
   function toUsd(amount: number, token: string): number {
-    const price = prices[token] ?? 0
+    const price = prices[normalizeMint(token)] ?? 0
     return amount * price
   }
 

@@ -215,7 +215,6 @@ function copyLink(id: string) {
       </div>
     </template>
 
+    <GiftModal v-model:open="showGift" />
   </div>
-
-  <GiftModal v-model:open="showGift" />
 </template>

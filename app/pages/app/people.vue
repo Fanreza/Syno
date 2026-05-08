@@ -6,7 +6,7 @@ import { toast } from 'vue-sonner'
 const { apiFetch, user } = useAuth()
 const { confirm } = useConfirm()
 const { startTourIfNew } = useOnboarding()
-onMounted(() => setTimeout(() => startTourIfNew('people'), 600))
+onMounted(() => setTimeout(() => startTourIfNew('people'), 1200))
 
 const tab = ref<'friends' | 'contacts'>('friends')
 
@@ -168,6 +168,7 @@ async function onDeleteContact(c: Contact) {
     <!-- Tabs -->
     <div class="mb-5 flex gap-1 rounded-xl border border-border bg-secondary p-1">
       <button
+        data-tour="people-friends"
         class="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition"
         :class="tab === 'friends' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
         @click="tab = 'friends'"
@@ -176,6 +177,7 @@ async function onDeleteContact(c: Contact) {
         <span v-if="friends?.length" class="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">{{ friends.length }}</span>
       </button>
       <button
+        data-tour="people-contacts"
         class="flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition"
         :class="tab === 'contacts' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'"
         @click="tab = 'contacts'"

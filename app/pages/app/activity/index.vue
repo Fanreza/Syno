@@ -12,7 +12,7 @@ const { apiFetch } = useAuth()
 const { balance } = useBalance()
 const { formatDisplay } = useDisplayCurrency()
 const { startTourIfNew } = useOnboarding()
-onMounted(() => setTimeout(() => startTourIfNew('activity'), 600))
+onMounted(() => setTimeout(() => startTourIfNew('activity'), 1200))
 
 // Export
 const exporting = ref<'csv' | 'pdf' | null>(null)
@@ -174,6 +174,7 @@ function refresh() {
       <button
         v-for="t in [{ key: 'syno', label: 'Syno' }, { key: 'onchain', label: 'On-chain' }]"
         :key="t.key"
+        :data-tour="t.key === 'syno' ? 'activity-inapp' : 'activity-onchain'"
         class="rounded-lg px-4 py-1.5 text-sm font-medium transition"
         :class="tab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
         @click="tab = t.key as any"

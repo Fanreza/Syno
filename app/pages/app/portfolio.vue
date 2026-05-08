@@ -5,7 +5,7 @@ const { apiFetch } = useAuth()
 const { formatDisplay, fetchRates } = useDisplayCurrency()
 const { isDark } = useTheme()
 const { startTourIfNew } = useOnboarding()
-onMounted(() => { fetchRates(); setTimeout(() => startTourIfNew('portfolio'), 600) })
+onMounted(() => { fetchRates(); setTimeout(() => startTourIfNew('portfolio'), 1200) })
 
 // ── Portfolio data ───────────────────────────────────────────────────────────
 const { data: portfolio, refresh: refreshPortfolio, pending: pendingPortfolio } = useAsyncData(
@@ -211,7 +211,7 @@ const pendingAny = computed(() => pendingPortfolio.value || pendingAnalytics.val
       <template v-if="portfolio">
 
         <!-- Net worth + area chart -->
-        <div class="mb-4 overflow-hidden rounded-2xl border border-border bg-card">
+        <div data-tour="portfolio-networth" class="mb-4 overflow-hidden rounded-2xl border border-border bg-card">
           <div class="p-6">
             <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total net worth</p>
             <p class="mt-2 text-4xl font-bold tracking-tight">{{ formatDisplay(portfolio.currentUsd) }}</p>
@@ -225,7 +225,7 @@ const pendingAny = computed(() => pendingPortfolio.value || pendingAnalytics.val
               <span class="text-sm text-muted-foreground">{{ pct(portfolio.pnl24hPct) }} today</span>
             </div>
           </div>
-          <div v-if="portfolio.history.length >= 2" class="border-t border-border px-2 pb-2 pt-0">
+          <div v-if="portfolio.history.length >= 2" data-tour="portfolio-chart" class="border-t border-border px-2 pb-2 pt-0">
             <apexchart type="area" height="180" :options="areaOptions" :series="areaSeries" />
           </div>
           <div v-else class="border-t border-border px-6 py-8 text-center text-sm text-muted-foreground">
@@ -294,7 +294,7 @@ const pendingAny = computed(() => pendingPortfolio.value || pendingAnalytics.val
         </div>
 
         <!-- Summary cards -->
-        <div class="mb-4 grid gap-3 sm:grid-cols-3">
+        <div data-tour="analytics-summary" class="mb-4 grid gap-3 sm:grid-cols-3">
           <div class="rounded-2xl border border-border bg-card p-5">
             <p class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Total sent</p>
             <p class="mt-2 text-2xl font-bold text-red-500">{{ formatDisplay(analytics.summary.totalSent) }}</p>
