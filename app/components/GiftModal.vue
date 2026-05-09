@@ -274,7 +274,8 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <Button class="w-full" size="lg" :disabled="!canCreate || loading" @click="onCreate" data-tour="gift-share">
-              <Gift v-if="!loading" class="h-4 w-4" />
+              <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <Gift v-else class="h-4 w-4" />
               {{ loading ? 'Creating gift…' : 'Create gift' }}
             </Button>
           </div>

@@ -145,8 +145,8 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
           </div>
           <DialogTitle class="text-xl font-bold">Swap complete</DialogTitle>
           <p class="mt-2 text-sm text-muted-foreground">
-            {{ formatAmount(amountNum) }} {{ fromToken.symbol }}
-            → {{ formatAmount(Number(result.outAmount) / Math.pow(10, toToken.decimals)) }} {{ toToken.symbol }}
+            {{ formatAmount(amountNum, fromToken.decimals) }} {{ fromToken.symbol }}
+            → {{ formatAmount(Number(result.outAmount) / Math.pow(10, toToken.decimals), toToken.decimals) }} {{ toToken.symbol }}
           </p>
           <a
             :href="`https://solscan.io/tx/${result.signature}`"
@@ -258,7 +258,8 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <Button class="w-full" size="lg" :disabled="!canSwap || loading" @click="onSwap" data-tour="swap-quote">
-              <RefreshCw v-if="!loading" class="h-4 w-4" />
+              <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <RefreshCw v-else class="h-4 w-4" />
               {{ loading ? 'Swapping…' : `Swap ${fromToken.symbol} → ${toToken.symbol}` }}
             </Button>
 

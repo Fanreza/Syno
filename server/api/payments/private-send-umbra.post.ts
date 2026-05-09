@@ -70,8 +70,12 @@ export default defineEventHandler(async (event) => {
     const acct = await connection.getTokenAccountBalance(ata)
     const senderBalance = acct.value.uiAmount ?? 0
     console.log(`[private-send] token balance=${senderBalance}`)
-    if (senderBalance < body.amount)
-      throw createError({ statusCode: 400, statusMessage: `Insufficient balance. You have ${senderBalance} but tried to send ${body.amount}.` })
+    // MagicBlock charges a protocol fee in the same token on top of the transfer amount.
+    // Reserve 1% (min 0.01) so the transaction doesn't fail on-chain.
+    const feeBuffer = Math.max(senderBalance * 0.01, 0.000001)
+    const maxSendable = senderBalance - feeBuffer
+    if (body.amount > maxSendable)
+      throw createError({ statusCode: 400, statusMessage: `Insufficient balance. Max sendable via private send: ${maxSendable.toFixed(6)} (protocol fee reserved).` })
   } catch (e: any) {
     if (e.statusCode) throw e
     throw createError({ statusCode: 400, statusMessage: `Token account not found. You don't have this token in your wallet.` })
@@ -84,8 +88,6 @@ export default defineEventHandler(async (event) => {
   })
 
   const rawAmount = toRawAmount(body.amount, decimals)
-  const split = Math.floor(Math.random() * 5) + 1
-  const maxDelayMs = Math.floor(Math.random() * 300_000)
 
   console.log(`[private-send] sending privately...`)
   const result = await privateSend({
@@ -94,12 +96,15 @@ export default defineEventHandler(async (event) => {
     rawAmount,
     mint: mintAddress,
     rpcUrl,
-    split,
+    split: 1,
     minDelayMs: 0,
-    maxDelayMs,
+    maxDelayMs: 0,
   })
 
   console.log(`[private-send] done — signature=${result.signature} provider=${result.provider}`)
+
+  const { data: senderUser } = await db.from('users').select('username').eq('id', sender.id).maybeSingle()
+  const senderUsername = senderUser?.username ?? 'someone'
 
   await db.from('payments').insert({
     sender_id: sender.id,
@@ -111,6 +116,16 @@ export default defineEventHandler(async (event) => {
     status: 'confirmed',
     memo: body.memo ?? null,
   })
+
+  if (recipientId && recipientId !== sender.id) {
+    await createNotification({
+      userId: recipientId,
+      type: 'payment_received',
+      title: 'Private payment received',
+      body: `@${senderUsername} sent you ${body.amount.toFixed(4)} ${mintAddress === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' ? 'USDC' : 'USDT'} privately${body.memo ? ` · ${body.memo}` : ''}`,
+      data: { tx_signature: result.signature },
+    })
+  }
 
   return { signature: result.signature, provider: result.provider }
 })

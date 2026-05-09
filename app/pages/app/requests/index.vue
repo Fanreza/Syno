@@ -38,6 +38,26 @@ const toMeCount = computed(() => toMe.value.filter(r => r.my_status === 'pending
 
 watch([showRequest, showSplit], ([r, s]) => { if (!r && !s) setTimeout(refresh, 400) })
 
+const paying = ref<string | null>(null)
+async function payNow(item: any) {
+  if (item.payment_id) {
+    await navigateTo(`/pay/${item.payment_id}`)
+    return
+  }
+  paying.value = item.participant_id
+  try {
+    const res = await apiFetch<{ id: string }>('/api/split/pay-link', {
+      method: 'POST',
+      body: { participantId: item.participant_id },
+    })
+    await navigateTo(`/pay/${res.id}`)
+  } catch (e: any) {
+    alert(e?.data?.statusMessage || 'Failed to load payment page')
+  } finally {
+    paying.value = null
+  }
+}
+
 const copied = ref<string | null>(null)
 function copyLink(id: string) {
   navigator.clipboard.writeText(`${config.public.appUrl}/pay/${id}`)
@@ -241,8 +261,9 @@ function fmtDate(iso: string) {
 
     <!-- TO ME list -->
     <div v-else class="space-y-2 animate-card-in">
-      <div v-for="(item, i) in toMe" :key="item.participant_id"
-        class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 animate-item-in"
+      <NuxtLink v-for="(item, i) in toMe" :key="item.participant_id"
+        :to="`/app/split/${item.bill_id}`"
+        class="flex items-center gap-4 rounded-2xl border border-border bg-card px-5 py-4 animate-item-in transition hover:bg-accent"
         :style="`animation-delay: ${i * 40}ms`">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
           :class="item.my_status === 'paid' ? 'bg-green-500/10' : 'bg-yellow-500/10'">
@@ -269,20 +290,23 @@ function fmtDate(iso: string) {
             :href="`https://solscan.io/tx/${item.tx_signature}`"
             target="_blank"
             class="mt-1 flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-primary transition"
+            @click.stop
           >
             <ArrowUpRight class="h-3 w-3" />
             {{ item.tx_signature.slice(0, 16) }}…
           </a>
         </div>
-        <NuxtLink v-if="item.my_status !== 'paid' && item.payment_id" :to="`/pay/${item.payment_id}`"
-          class="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90">
-          Pay
-        </NuxtLink>
-        <NuxtLink v-else :to="`/app/split/${item.bill_id}`"
-          class="shrink-0 flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground">
+        <button v-if="item.my_status !== 'paid'"
+          class="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
+          :disabled="paying === item.participant_id"
+          @click.stop="payNow(item)">
+          <span v-if="paying === item.participant_id" class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          Pay now
+        </button>
+        <span v-else class="shrink-0 flex items-center gap-1 text-sm text-muted-foreground">
           View <ChevronRight class="h-4 w-4" />
-        </NuxtLink>
-      </div>
+        </span>
+      </NuxtLink>
     </div>
 
   </div>

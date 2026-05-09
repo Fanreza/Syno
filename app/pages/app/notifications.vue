@@ -9,14 +9,23 @@ const { data, refresh, pending } = useAsyncData(
   { lazy: true }
 )
 
+const markingAll = ref(false)
+const markingId = ref<string | null>(null)
+
 async function markAllRead() {
-  await apiFetch('/api/notifications/read', { method: 'POST', body: {} })
-  refresh()
+  markingAll.value = true
+  try {
+    await apiFetch('/api/notifications/read', { method: 'POST', body: {} })
+    await refresh()
+  } finally { markingAll.value = false }
 }
 
 async function markRead(id: string) {
-  await apiFetch('/api/notifications/read', { method: 'POST', body: { id } })
-  refresh()
+  markingId.value = id
+  try {
+    await apiFetch('/api/notifications/read', { method: 'POST', body: { id } })
+    await refresh()
+  } finally { markingId.value = null }
 }
 
 function fmtDate(iso: string) {
@@ -61,10 +70,12 @@ const colorMap: Record<string, string> = {
       </div>
       <button
         v-if="data?.unread"
-        class="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium transition hover:bg-accent"
+        class="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium transition hover:bg-accent disabled:opacity-50"
+        :disabled="markingAll"
         @click="markAllRead"
       >
-        <CheckCheck class="h-4 w-4" />
+        <span v-if="markingAll" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <CheckCheck v-else class="h-4 w-4" />
         Mark all read
       </button>
     </div>

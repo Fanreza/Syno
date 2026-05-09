@@ -14,10 +14,12 @@ export function useBalance() {
     finally { pending.value = false }
   }
 
-  // Clear stale balance when user changes, then fetch for new address
+  // Clear stale balance when user changes, then fetch for new address.
+  // Only fetch on initial mount if balance isn't cached yet — prevents
+  // multiple components calling useBalance() from each triggering a refresh.
   watch(() => user.value?.wallet_address, (addr, prev) => {
-    if (addr !== prev) balance.value = null
-    if (addr) refresh()
+    if (addr !== prev) { balance.value = null; refresh() }
+    else if (addr && !balance.value) refresh()
   }, { immediate: true })
 
   return { balance, pending, refresh }

@@ -69,8 +69,16 @@ async function copyLink(participant: any) {
 }
 
 async function payNow(participant: any) {
-  const linkId = await generateLink(participant)
-  await navigateTo(`/pay/${linkId}`)
+  generating.value[participant.id] = true
+  try {
+    const res = await apiFetch<{ id: string }>('/api/split/pay-link', {
+      method: 'POST',
+      body: { participantId: participant.id },
+    })
+    await navigateTo(`/pay/${res.id}`)
+  } finally {
+    generating.value[participant.id] = false
+  }
 }
 
 const paid = computed(() => bill.value?.participants?.filter((p: any) => p.status === 'paid').length || 0)

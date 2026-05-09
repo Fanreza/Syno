@@ -410,12 +410,14 @@ function resetPayroll() {
             <p v-if="p.memo" class="mt-0.5 text-[11px] text-muted-foreground italic truncate">{{ p.memo }}</p>
           </div>
           <div class="flex items-center gap-1 shrink-0">
-            <button class="rounded-lg p-1.5 transition hover:bg-accent" :disabled="toggling === p.id" @click="onToggle(p)">
-              <ToggleRight v-if="p.active" class="h-5 w-5 text-primary" />
+            <button class="rounded-lg p-1.5 transition hover:bg-accent disabled:opacity-40" :disabled="toggling === p.id || deleting === p.id" @click="onToggle(p)">
+              <span v-if="toggling === p.id" class="block h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <ToggleRight v-else-if="p.active" class="h-5 w-5 text-primary" />
               <ToggleLeft v-else class="h-5 w-5 text-muted-foreground" />
             </button>
-            <button class="rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive" :disabled="deleting === p.id" @click="onDelete(p)">
-              <Trash2 class="h-4 w-4" />
+            <button class="rounded-lg p-1.5 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-40" :disabled="deleting === p.id || toggling === p.id" @click="onDelete(p)">
+              <span v-if="deleting === p.id" class="block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <Trash2 v-else class="h-4 w-4" />
             </button>
           </div>
         </div>

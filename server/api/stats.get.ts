@@ -1,4 +1,16 @@
 const SOL_MINT = 'So11111111111111111111111111111111111111112'
+const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
+
+const STABLECOIN_PRICE: Record<string, number> = {
+  [USDC_MINT]: 1,
+  [USDT_MINT]: 1,
+}
+
+// Price cache shared across all requests — refreshes every 90 seconds
+let priceCache: Record<string, number> = {}
+let priceCacheAt = 0
+const PRICE_TTL = 90_000
 
 function normalizeMint(token: string | null): string {
   if (!token || token === 'SOL') return SOL_MINT
@@ -8,32 +20,52 @@ function normalizeMint(token: string | null): string {
 async function fetchPrices(mints: string[]): Promise<Record<string, number>> {
   const real = [...new Set(mints.map(normalizeMint).filter(m => m !== 'PRIVATE' && m !== 'unknown'))]
   if (!real.length) return {}
-  try {
-    const res = await $fetch<any>(`https://api.jup.ag/price/v3?ids=${real.join(',')}`)
-    const out: Record<string, number> = {}
-    for (const mint of real) {
-      const price = parseFloat(res?.data?.[mint]?.price ?? '0')
-      if (price > 0) out[mint] = price
-    }
-    // fallback: if SOL price not returned, fetch separately
-    if (!out[SOL_MINT]) {
-      try {
-        const sol = await $fetch<any>(`https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd`)
-        const solPrice = sol?.solana?.usd
-        if (solPrice) out[SOL_MINT] = solPrice
-      } catch {}
-    }
-    return out
-  } catch (e: any) {
-    console.error('[stats] fetchPrices failed:', e?.message)
-    // last resort: try coingecko for SOL
+
+  // Return from cache if still fresh and covers all requested mints
+  const now = Date.now()
+  if (now - priceCacheAt < PRICE_TTL && real.every(m => priceCache[m] !== undefined || STABLECOIN_PRICE[m])) {
+    return priceCache
+  }
+
+  const out: Record<string, number> = {}
+
+  // Stablecoins: always $1 — no API call needed
+  for (const m of real) {
+    if (STABLECOIN_PRICE[m]) out[m] = STABLECOIN_PRICE[m]
+  }
+
+  // SOL: CoinGecko
+  if (real.includes(SOL_MINT)) {
     try {
       const sol = await $fetch<any>(`https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd`)
       const solPrice = sol?.solana?.usd
-      if (solPrice) return { [SOL_MINT]: solPrice }
+      if (solPrice) out[SOL_MINT] = solPrice
     } catch {}
-    return {}
   }
+
+  // Other tokens: Jupiter v3 with API key
+  const remaining = real.filter(m => !out[m])
+  if (remaining.length) {
+    try {
+      const config = useRuntimeConfig()
+      const headers: Record<string, string> = {}
+      if ((config as any).jupiterApiKey) headers['x-api-key'] = (config as any).jupiterApiKey
+      const res = await $fetch<Record<string, { usdPrice: number }>>(
+        `https://api.jup.ag/price/v3?ids=${remaining.join(',')}`,
+        { headers, retry: 0 },
+      )
+      for (const m of remaining) {
+        const price = res?.[m]?.usdPrice
+        if (price) out[m] = price
+      }
+    } catch (e: any) {
+      console.error('[stats] Jupiter price fetch failed:', e?.message)
+    }
+  }
+
+  priceCache = out
+  priceCacheAt = now
+  return out
 }
 
 export default defineEventHandler(async (event) => {

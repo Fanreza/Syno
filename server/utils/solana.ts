@@ -60,9 +60,17 @@ export async function refreshBlockhash(base64Tx: string, blockhash?: string): Pr
   }
 }
 
-async function getTokenProgramId(connection: Connection, mintPk: PublicKey): Promise<PublicKey> {
-  const info = await connection.getAccountInfo(mintPk)
-  if (info?.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID
+async function detectTokenProgramId(connection: Connection, mintPk: PublicKey, ownerPk: PublicKey): Promise<PublicKey> {
+  // Primary: check the mint account's owner
+  // Secondary: check if the owner already holds a Token-2022 ATA for this mint.
+  // The secondary check handles cases where getAccountInfo on the mint times out or returns null.
+  const t22Ata = getAssociatedTokenAddressSync(mintPk, ownerPk, false, TOKEN_2022_PROGRAM_ID)
+  const [mintInfo, t22Info] = await Promise.all([
+    connection.getAccountInfo(mintPk),
+    connection.getAccountInfo(t22Ata),
+  ])
+  if (mintInfo?.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID
+  if (t22Info?.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID
   return TOKEN_PROGRAM_ID
 }
 
@@ -76,7 +84,7 @@ export async function buildTransferSplTx(
 
   const [hash, tokenProgramId] = await Promise.all([
     blockhash ?? connection.getLatestBlockhash('confirmed').then(r => r.blockhash),
-    getTokenProgramId(connection, mintPk),
+    detectTokenProgramId(connection, mintPk, fromPk),
   ])
 
   const fromAta = getAssociatedTokenAddressSync(mintPk, fromPk, false, tokenProgramId)

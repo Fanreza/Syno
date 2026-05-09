@@ -117,7 +117,8 @@ function onTotalInput(e: Event) {
 
 function splitEvenly() {
   if (!totalInToken.value || !rows.value.length) return
-  const each = (totalInToken.value / rows.value.length).toFixed(4)
+  const decimals = Math.min(outputToken.value.decimals, 9)
+  const each = (totalInToken.value / rows.value.length).toFixed(decimals)
   rows.value = rows.value.map(r => ({ ...r, amount: each }))
 }
 
@@ -354,14 +355,15 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
               <AlertCircle class="h-4 w-4 shrink-0" />Add at least 2 participants to split a bill.
             </div>
             <div v-else-if="exceedsTotal" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-              <AlertCircle class="h-4 w-4 shrink-0" />Participant amounts exceed the total ({{ totalInToken.toFixed(4) }} {{ outputToken.symbol }}).
+              <AlertCircle class="h-4 w-4 shrink-0" />Participant amounts exceed the total ({{ totalInToken.toFixed(Math.min(outputToken.decimals, 9)) }} {{ outputToken.symbol }}).
             </div>
             <div v-else-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
               <AlertCircle class="h-4 w-4 shrink-0" />{{ error }}
             </div>
 
             <Button class="w-full" size="lg" :disabled="!canCreate || loading" @click="onCreate">
-              Create split
+              <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              {{ loading ? 'Creating…' : 'Create split' }}
             </Button>
           </div>
         </template>

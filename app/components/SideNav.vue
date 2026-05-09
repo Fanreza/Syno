@@ -152,13 +152,7 @@ function isActive(to: string) {
         <Moon v-else class="h-4 w-4 shrink-0" />
         {{ isDark ? 'Light mode' : 'Dark mode' }}
       </button>
-      <button
-        class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
-        @click="replayTour"
-      >
-        <HelpCircle class="h-4 w-4 shrink-0" />
-        Tour guide
-      </button>
+
       <button
         class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
         @click="logout"

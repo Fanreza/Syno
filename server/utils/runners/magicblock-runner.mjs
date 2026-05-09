@@ -35,9 +35,6 @@ async function main() {
         toBalance: 'base',
         initIfMissing: true,
         initAtasIfMissing: true,
-        ...(opts.split != null && { split: opts.split }),
-        ...(opts.minDelayMs != null && { minDelayMs: String(opts.minDelayMs) }),
-        ...(opts.maxDelayMs != null && { maxDelayMs: String(opts.maxDelayMs) }),
       }),
     })
 
@@ -50,17 +47,19 @@ async function main() {
     const txBase64 = data.transactionBase64 ?? data.transaction
     if (!txBase64) throw new Error(`Unexpected MagicBlock response: ${JSON.stringify(data)}`)
 
-    const broadcastConnection = new Connection(opts.rpcUrl, 'confirmed')
+    // MagicBlock tells us where to broadcast — "base" = Solana RPC, "ephemeral" = their validator
+    const sendTo = data.sendTo ?? 'base'
+    const validatorUrl = data.validator ?? opts.rpcUrl
+    const broadcastRpc = sendTo === 'ephemeral' ? validatorUrl : opts.rpcUrl
+    const broadcastConnection = new Connection(broadcastRpc, 'confirmed')
 
     // Deserialize, sign, broadcast
+    // skipPreflight: true — Solana simulation doesn't have visibility into MagicBlock's
+    // ephemeral state, so preflight always fails even when the tx would succeed on-chain.
     const txBytes = Buffer.from(txBase64, 'base64')
-
     let signature
     let isVersioned = false
-    try {
-      VersionedTransaction.deserialize(txBytes)
-      isVersioned = true
-    } catch {}
+    try { VersionedTransaction.deserialize(txBytes); isVersioned = true } catch {}
 
     if (isVersioned) {
       const vtx = VersionedTransaction.deserialize(txBytes)
@@ -68,15 +67,21 @@ async function main() {
       signature = await broadcastConnection.sendRawTransaction(vtx.serialize(), { skipPreflight: false })
     } else {
       const tx = Transaction.from(txBytes)
-      const { blockhash } = await connection.getLatestBlockhash()
-      tx.recentBlockhash = blockhash
+      // Keep MagicBlock's blockhash — don't replace it
       tx.feePayer = senderKeypair.publicKey
       tx.sign(senderKeypair)
       signature = await broadcastConnection.sendRawTransaction(tx.serialize(), { skipPreflight: false })
     }
 
+    // Confirm on the appropriate network
     const { blockhash: confirmBlockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
     await connection.confirmTransaction({ signature, blockhash: confirmBlockhash, lastValidBlockHeight }, 'confirmed')
+
+    // Verify on-chain success — a confirmed tx can still have a failed status
+    const txResult = await connection.getTransaction(signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })
+    if (txResult?.meta?.err) {
+      throw new Error(`Transaction failed on-chain: ${JSON.stringify(txResult.meta.err)}`)
+    }
 
     process.stdout.write(JSON.stringify({ signature }))
     process.exit(0)

@@ -14,7 +14,7 @@ onMounted(() => fetchRates())
 import type { Contact } from '~/components/ContactPicker.vue'
 
 const open = defineModel<boolean>('open', { required: true })
-const { apiFetch } = useAuth()
+const { apiFetch, user } = useAuth()
 const { balance, refresh: refreshBalance } = useBalance()
 const { startTourIfNew } = useOnboarding()
 watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('send-modal'), 400) })
@@ -147,6 +147,18 @@ const maxSendable = computed(() => {
   return selectedTokenBalance.value.amount
 })
 
+const missingToken = computed(() => {
+  if (inputToken.value.address === SOL_MINT) return false
+  const bal = selectedTokenBalance.value
+  return bal === null || bal.amount === 0
+})
+
+const convertFromToken = ref<JupToken>(SOL_TOKEN)
+
+watch(missingToken, (v) => {
+  if (!v) convertFromToken.value = SOL_TOKEN
+})
+
 // ── Submit ─────────────────────────────────────────────────────────────────
 const loading = ref(false)
 const error = ref('')
@@ -157,8 +169,13 @@ const exceedsBalance = computed(() => {
   return amountInToken.value > maxSendable.value + 0.000001
 })
 
+const isSelf = computed(() =>
+  !!recipientUser.value && recipientUser.value.wallet_address === user.value?.wallet_address
+)
+
 const canSend = computed(() =>
   recipientUser.value !== null &&
+  !isSelf.value &&
   amountInToken.value > 0 && !loading.value && !exceedsBalance.value
 )
 
@@ -178,6 +195,11 @@ async function onSend() {
     if (isPrivate.value) {
       body.mint = inputToken.value.address
       body.decimals = inputToken.value.decimals
+    } else if (missingToken.value) {
+      // user doesn't have inputToken — use convertFromToken, Jupiter swaps to inputToken
+      body.outputToken = inputToken.value.address
+      body.inputToken = convertFromToken.value.address
+      body.decimals = inputToken.value.decimals  // output token decimals, not input
     } else if (inputToken.value.address !== SOL_TOKEN.address) {
       body.inputToken = inputToken.value.address
       body.decimals = inputToken.value.decimals
@@ -336,6 +358,12 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
               </ul>
             </div>
 
+            <!-- Self-send warning -->
+            <div v-if="isSelf" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3.5 py-2.5 text-xs text-destructive">
+              <AlertCircle class="h-4 w-4 shrink-0" />
+              You can't send to yourself.
+            </div>
+
             <!-- Private mode banner -->
             <div v-if="isPrivate" class="flex items-start gap-2.5 rounded-xl border border-violet-500/20 bg-violet-500/5 px-3.5 py-2.5 text-xs text-violet-400">
               <ShieldCheck class="h-4 w-4 shrink-0 mt-0.5" />
@@ -345,7 +373,18 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             <!-- Amount -->
             <div data-tour="send-token">
               <div class="mb-1 flex items-center justify-between">
-                <TokenPicker v-model="inputToken" label="Pay with" class="flex-1" :filter="isPrivate ? ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'] : undefined" />
+                <TokenPicker v-model="inputToken" label="Send" class="flex-1" :filter="isPrivate ? ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'] : undefined" />
+              </div>
+
+              <!-- Auto-convert prompt — shown immediately when user doesn't have the token -->
+              <div v-if="missingToken" class="mt-2 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                <p class="text-xs font-medium text-amber-500 mb-1">You don't have {{ inputToken.symbol }}.</p>
+                <p class="text-xs text-muted-foreground mb-2.5">Choose a token you own — Jupiter swaps it to {{ inputToken.symbol }} before sending.</p>
+                <TokenPicker
+                  :model-value="convertFromToken"
+                  label="Pay with"
+                  @update:model-value="convertFromToken = $event"
+                />
               </div>
               <div class="mt-3 mb-2 flex items-center justify-between">
                 <label class="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Amount</label>
@@ -404,7 +443,8 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
 
             <!-- Submit -->
             <Button class="w-full" size="lg" :disabled="!canSend || loading" @click="onSend">
-              <Send v-if="!loading" class="h-4 w-4" />
+              <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <Send v-else class="h-4 w-4" />
               {{ loading ? 'Sending…' : `Send${amountInToken > 0 ? ' ' + amountInToken.toFixed(4) + ' ' + inputToken.symbol : ''}` }}
             </Button>
           </div>

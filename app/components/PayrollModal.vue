@@ -364,7 +364,8 @@ watch(open, (v) => { if (!v) setTimeout(reset, 300) })
             </div>
 
             <Button class="w-full" size="lg" :disabled="!canSend || loading" @click="onSend">
-              <Send v-if="!loading" class="h-4 w-4" />
+              <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <Send v-else class="h-4 w-4" />
               {{ loading ? `Sending to ${validRows.length} recipients…` : `Send to ${validRows.length} recipient${validRows.length !== 1 ? 's' : ''}` }}
             </Button>
           </div>

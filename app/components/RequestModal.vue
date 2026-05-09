@@ -264,7 +264,8 @@ const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
           </div>
 
           <Button class="w-full" size="lg" :disabled="!canCreate" @click="onCreate" data-tour="request-share">
-            <QrCode v-if="!loading" class="h-4 w-4" />
+            <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            <QrCode v-else class="h-4 w-4" />
             {{ loading ? 'Creating...' : 'Generate link & QR' }}
           </Button>
         </div>

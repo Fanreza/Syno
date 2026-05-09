@@ -15,7 +15,7 @@ type SavedContact = { id: string; wallet_address: string; label: string; note: s
 const open = defineModel<boolean>('open', { required: true })
 const emit = defineEmits<{ select: [contact: Contact] }>()
 
-const { apiFetch } = useAuth()
+const { apiFetch, user } = useAuth()
 const { friends, load: loadFriends } = useFriends()
 const savedContacts = ref<SavedContact[]>([])
 
@@ -72,9 +72,14 @@ function pick(contact: Contact) {
   open.value = false
 }
 
-const displayList = computed<Contact[]>(() =>
-  query.value.trim() ? results.value : friends.value.map(f => ({ username: f.username, wallet_address: f.wallet_address }))
-)
+const selfAddress = computed(() => user.value?.wallet_address)
+
+const displayList = computed<Contact[]>(() => {
+  const list = query.value.trim()
+    ? results.value
+    : friends.value.map(f => ({ username: f.username, wallet_address: f.wallet_address }))
+  return list.filter(c => c.wallet_address !== selfAddress.value)
+})
 
 // Saved contacts not already in friends list
 const filteredSavedContacts = computed(() => {

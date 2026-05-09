@@ -11,14 +11,26 @@ const KNOWN_DECIMALS: Record<string, number> = {
   'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 6, // USDT
 }
 
-async function getTokenDecimals(mint: string): Promise<number> {
-  if (KNOWN_DECIMALS[mint] !== undefined) return KNOWN_DECIMALS[mint]
+const KNOWN_SYMBOLS: Record<string, string> = {
+  'So11111111111111111111111111111111111111112': 'SOL',
+  'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 'USDC',
+  'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 'USDT',
+}
+
+async function getTokenMeta(mint: string): Promise<{ decimals: number; symbol: string }> {
+  const knownDecimals = KNOWN_DECIMALS[mint]
+  const knownSymbol = KNOWN_SYMBOLS[mint]
+  if (knownDecimals !== undefined && knownSymbol) return { decimals: knownDecimals, symbol: knownSymbol }
   try {
     const res = await $fetch<any>(`https://tokens.jup.ag/token/${mint}`)
-    return res?.decimals ?? 6
+    return { decimals: res?.decimals ?? 6, symbol: res?.symbol ?? mint.slice(0, 6) }
   } catch {
-    return 6
+    return { decimals: knownDecimals ?? 6, symbol: knownSymbol ?? mint.slice(0, 6) }
   }
+}
+
+async function getTokenDecimals(mint: string): Promise<number> {
+  return (await getTokenMeta(mint)).decimals
 }
 
 async function signAndBroadcast(
@@ -147,15 +159,17 @@ export default defineEventHandler(async (event) => {
     }
 
     // Step 1: execute swap (output lands in sender's wallet)
+    const connection = new Connection(config.solanaRpcUrl as string, 'confirmed')
     const swapResult = await (privy.wallets() as any).solana().signAndSendTransaction(
       sender.privy_wallet_id,
       { caip2: config.solanaCaip2, transaction: swapTxBase64, ...authCtx }
     )
     const swapSig = swapResult.signature ?? swapResult.hash ?? swapResult
+    // Wait for swap to land before transferring — tokens don't exist in sender's wallet until confirmed
+    await connection.confirmTransaction(swapSig as string, 'confirmed')
     actualAmount = Number(quote.outAmount) / Math.pow(10, outDecimals)
 
     // Step 2: transfer swapped tokens from sender to receiver
-    const connection = new Connection(config.solanaRpcUrl as string, 'confirmed')
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
     let transferTxBase64: string
     if (outputMint === SOL_MINT) {
@@ -195,7 +209,7 @@ export default defineEventHandler(async (event) => {
 
     // Notify payment link creator (regular request, not split)
     if (link?.receiver_id && !link.split_participant_id && link.receiver_id !== sender.id) {
-      const tokenSymbol = (link.token === SOL_MINT ? 'SOL' : link.token?.slice(0, 6)) ?? ''
+      const tokenSymbol = link.token ? (await getTokenMeta(link.token)).symbol : 'SOL'
       await createNotification({
         userId: link.receiver_id,
         type: 'payment_received',
@@ -260,7 +274,7 @@ export default defineEventHandler(async (event) => {
 
     // Notify receiver
     if (receiverId && receiverId !== sender.id) {
-      const tokenSymbol = actualToken === SOL_MINT ? 'SOL' : actualToken.slice(0, 6)
+      const tokenSymbol = (await getTokenMeta(actualToken)).symbol
       await createNotification({
         userId: receiverId,
         type: 'payment_received',
