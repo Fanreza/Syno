@@ -41,23 +41,11 @@ export default defineNuxtPlugin({
           })
         })
 
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
-
-        // Wait for THIS registration to activate, not any SW on the page.
-        // navigator.serviceWorker.ready waits for the controlling SW which may
-        // never resolve if vite-pwa SW is waiting with skipWaiting:false.
-        if (!registration.active) {
-          await new Promise<void>(resolve => {
-            const sw = registration.installing ?? registration.waiting
-            if (!sw) { resolve(); return }
-            sw.addEventListener('statechange', function handler() {
-              if ((this as ServiceWorker).state === 'activated') {
-                sw.removeEventListener('statechange', handler)
-                resolve()
-              }
-            })
-          })
-        }
+        // Use the vite-pwa SW (which already includes firebase-messaging-sw-core.js).
+        // Do NOT register a separate /firebase-messaging-sw.js — that would create a
+        // second SW at the same scope and they would keep replacing each other.
+        const registration = await navigator.serviceWorker.getRegistration('/')
+        if (!registration) return
 
         const fcmToken = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration })
         if (!fcmToken) return

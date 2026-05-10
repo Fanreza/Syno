@@ -86,6 +86,8 @@ export default defineNuxtConfig({
     },
     workbox: {
       navigateFallback: null,
+      // Merge Firebase messaging into the vite-pwa SW so only one SW runs at scope /
+      importScripts: ['/firebase-messaging-sw-core.js'],
       // Don't cache HTML — always fetch from network so stale pages never cause issues
       globPatterns: ['**/*.{js,css,ico,png,jpeg,jpg,svg,woff2}'],
       runtimeCaching: [
