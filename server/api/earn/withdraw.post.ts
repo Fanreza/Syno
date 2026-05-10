@@ -91,15 +91,25 @@ export default defineEventHandler(async (event) => {
 
 	// Cross-token swap: if withdrawing different token than earning
 	if (outputMint !== body.mint) {
-		// Use actual on-chain balance after redeem to avoid slippage mismatch
-		const actualBalance = await getTokenBalance(me.wallet_address, body.mint);
-		const withdrawnRaw = actualBalance > BigInt(0) ? Number(actualBalance) : Math.round(body.amount * Math.pow(10, body.decimals));
+		// Read post-redeem balance from tx metadata to avoid RPC lag returning stale data
+		const connection = getConnection();
+		const { PublicKey } = await import("@solana/web3.js");
+		const { getAssociatedTokenAddressSync } = await import("@solana/spl-token");
+		const redeemTxResult = await connection.getTransaction(withdrawSignature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+		const ata = getAssociatedTokenAddressSync(new PublicKey(body.mint), new PublicKey(me.wallet_address));
+		const ataStr = ata.toBase58();
+		const postBalances = redeemTxResult?.meta?.postTokenBalances ?? [];
+		const ataEntry = postBalances.find((b: any) => b.mint === body.mint && b.owner === me.wallet_address)
+			?? postBalances.find((b: any) => redeemTxResult?.transaction?.message?.staticAccountKeys?.[b.accountIndex]?.toBase58() === ataStr);
+		const redeemBalance = ataEntry ? BigInt(ataEntry.uiTokenAmount.amount) : await getTokenBalance(me.wallet_address, body.mint);
+		const withdrawnRaw = redeemBalance > BigInt(0) ? Number(redeemBalance) : Math.round(body.amount * Math.pow(10, body.decimals));
 
 		const quote = await getJupiterQuote({
 			inputMint: body.mint,
 			outputMint,
 			amount: withdrawnRaw,
 			swapMode: "ExactIn",
+			slippageBps: 100,
 		});
 		const swapTx = await buildJupiterSwapTx({ quote, userPublicKey: me.wallet_address });
 		const swapSignature = await signAndBroadcastTx(privy, me.privy_wallet_id, swapTx);
