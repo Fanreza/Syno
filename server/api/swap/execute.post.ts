@@ -31,9 +31,11 @@ export default defineEventHandler(async (event) => {
     amount: rawAmount,
     slippageBps: body.slippageBps ?? 50,
     swapMode: 'ExactIn',
+    platformFeeBps: 10,
   })
 
-  const swapTx = await buildJupiterSwapTx({ quote, userPublicKey: user.wallet_address })
+  const feeAccount = getJupiterFeeAccount(body.outputMint)
+  const swapTx = await buildJupiterSwapTx({ quote, userPublicKey: user.wallet_address, feeAccount })
 
   const config = useRuntimeConfig()
   const privy = getPrivy()

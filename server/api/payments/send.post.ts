@@ -147,6 +147,7 @@ export default defineEventHandler(async (event) => {
         amount: outUnits,
         swapMode: 'ExactOut',
         slippageBps: 100,
+        platformFeeBps: 10,
       })
     } catch (e: any) {
       throw createError({ statusCode: 502, statusMessage: `Jupiter quote failed: ${e.message}` })
@@ -154,8 +155,9 @@ export default defineEventHandler(async (event) => {
 
     let swapTxBase64: string
     try {
+      const feeAccount = getJupiterFeeAccount(outputMint)
       // destinationWallet omitted — swap settles to sender's own wallet
-      swapTxBase64 = await buildJupiterSwapTx({ quote, userPublicKey: sender.wallet_address })
+      swapTxBase64 = await buildJupiterSwapTx({ quote, userPublicKey: sender.wallet_address, feeAccount })
     } catch (e: any) {
       throw createError({ statusCode: 502, statusMessage: `Jupiter swap build failed: ${e.message}` })
     }

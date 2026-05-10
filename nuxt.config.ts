@@ -53,6 +53,7 @@ export default defineNuxtConfig({
     solanaRpcUrl: process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
     solanaCaip2: process.env.SOLANA_CAIP2 || 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
     jupiterApiKey: process.env.JUPITER_API_KEY || '',
+    jupiterReferralKey: process.env.JUPITER_REFERRAL_KEY || '',
     goldrushApiKey: process.env.GOLDRUSH_API_KEY || '',
     firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT || '',
     cronSecret: process.env.CRON_SECRET || '',

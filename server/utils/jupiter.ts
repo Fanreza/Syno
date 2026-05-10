@@ -25,6 +25,7 @@ export async function getJupiterQuote(params: {
   amount: number
   slippageBps?: number
   swapMode?: 'ExactIn' | 'ExactOut'
+  platformFeeBps?: number
 }): Promise<JupQuote> {
   const qs = new URLSearchParams({
     inputMint: params.inputMint,
@@ -33,10 +34,18 @@ export async function getJupiterQuote(params: {
     slippageBps: String(params.slippageBps ?? 50),
     swapMode: params.swapMode ?? 'ExactIn',
   })
+  if (params.platformFeeBps) qs.set('platformFeeBps', String(params.platformFeeBps))
   return await $fetch<JupQuote>(`${JUP}/quote?${qs.toString()}`, {
     headers: jupHeaders(),
     retry: 0,
   })
+}
+
+// Returns the fee token account (ATA of referral key for the given mint), or null if not configured.
+export function getJupiterFeeAccount(outputMint: string): string | null {
+  const referralKey = useRuntimeConfig().jupiterReferralKey as string | undefined
+  if (!referralKey) return null
+  return getAta(referralKey, outputMint)
 }
 
 // Derive the Associated Token Account address for a wallet + mint.
@@ -56,6 +65,7 @@ export async function buildJupiterSwapTx(params: {
   quote: JupQuote
   userPublicKey: string
   destinationWallet?: string
+  feeAccount?: string | null
 }): Promise<string> {
   const SOL_MINT = 'So11111111111111111111111111111111111111112'
   const outputMint = params.quote.outputMint
@@ -85,6 +95,7 @@ export async function buildJupiterSwapTx(params: {
       wrapAndUnwrapSol: true,
       dynamicComputeUnitLimit: true,
       ...(destinationTokenAccount ? { destinationTokenAccount } : {}),
+      ...(params.feeAccount ? { feeAccount: params.feeAccount } : {}),
     }
   })
   return res.swapTransaction
