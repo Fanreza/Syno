@@ -116,13 +116,30 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Syno',
+      title: 'Syno — Crypto Payments on Solana',
+      titleTemplate: '%s',
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover' },
         { name: 'theme-color', content: '#182440' },
-        { name: 'description', content: 'Syno — send crypto on Solana like sending a DM.' }
+        { name: 'description', content: 'Send crypto on Solana like sending a DM. Payment links, split bills, gift envelopes, payroll, and private transfers — all in one app.' },
+        // Open Graph
+        { property: 'og:type', content: 'website' },
+        { property: 'og:site_name', content: 'Syno' },
+        { property: 'og:title', content: 'Syno — Crypto Payments on Solana' },
+        { property: 'og:description', content: 'Send crypto on Solana like sending a DM. Payment links, split bills, gift envelopes, payroll, and private transfers — all in one app.' },
+        { property: 'og:url', content: 'https://syno.aethereal.top/' },
+        { property: 'og:image', content: 'https://syno.aethereal.top/og-image.png' },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '630' },
+        { property: 'og:image:alt', content: 'Syno — Crypto Payments on Solana' },
+        // Twitter Card
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: 'Syno — Crypto Payments on Solana' },
+        { name: 'twitter:description', content: 'Send crypto on Solana like sending a DM. Payment links, split bills, gift envelopes, payroll, and private transfers — all in one app.' },
+        { name: 'twitter:image', content: 'https://syno.aethereal.top/og-image.png' },
       ],
       link: [
+        { rel: 'canonical', href: 'https://syno.aethereal.top/' },
         { rel: 'manifest', href: '/manifest.webmanifest' },
         { rel: 'icon', type: 'image/jpeg', href: '/syno-logo.jpeg' },
         { rel: 'apple-touch-icon', href: '/icon-192.png' },

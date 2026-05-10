@@ -77,7 +77,6 @@ const showPayrollGlobal = useState<boolean>('global-show-payroll', () => false)
 
 const moreItems = [
   { to: '/app/notifications', icon: Bell, label: 'Notifications', badge: true },
-  { to: '/app/requests', icon: Link, label: 'Requests' },
   { to: '/app/gifts', icon: Gift, label: 'Gifts' },
   { to: '/app/recurring', icon: Calendar, label: 'Transfers' },
   { to: '/app/portfolio', icon: BarChart2, label: 'Portfolio' },
