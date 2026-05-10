@@ -38,12 +38,12 @@ async function enableNotifications() {
     const { getMessaging, getToken } = await import('firebase/messaging')
 
     const FIREBASE_CONFIG = {
-      apiKey: 'AIzaSyCXYm8OrQ6N3o8GDP35jH72IevzLgjfErM',
-      authDomain: 'syno-f8455.firebaseapp.com',
-      projectId: 'syno-f8455',
-      storageBucket: 'syno-f8455.firebasestorage.app',
-      messagingSenderId: '53376678294',
-      appId: '1:53376678294:web:48347c81c77964a74e05b7',
+      apiKey: config.public.firebaseApiKey as string,
+      authDomain: config.public.firebaseAuthDomain as string,
+      projectId: config.public.firebaseProjectId as string,
+      storageBucket: config.public.firebaseStorageBucket as string,
+      messagingSenderId: config.public.firebaseMessagingSenderId as string,
+      appId: config.public.firebaseAppId as string,
     }
 
     const app = getApps().length ? getApps()[0]! : initializeApp(FIREBASE_CONFIG)

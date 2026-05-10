@@ -111,6 +111,8 @@ export default defineEventHandler(async (event) => {
       .eq('username', body.toUsername.replace(/^@/, '').toLowerCase())
       .maybeSingle()
     if (!recipient) throw createError({ statusCode: 404, statusMessage: 'User not found' })
+    if (recipient.wallet_address === sender.wallet_address)
+      throw createError({ statusCode: 400, statusMessage: 'Cannot send to yourself' })
     toAddress = recipient.wallet_address
     receiverId = recipient.id
   } else if (body.toAddress) {
