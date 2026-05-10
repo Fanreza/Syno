@@ -83,7 +83,24 @@ export default defineEventHandler(async (event) => {
     const swapSig = await swapConnection.sendRawTransaction(swapSigned, { skipPreflight: false })
     await swapConnection.confirmTransaction({ signature: swapSig, blockhash: swapBlockhash, lastValidBlockHeight: swapLastValid }, 'confirmed')
 
-    const depositRaw = await getTokenBalance(me.wallet_address, vaultMint)
+    // Read post-swap balance from tx metadata to avoid RPC lag on a separate getTokenAccountBalance call
+    const { PublicKey } = await import('@solana/web3.js')
+    const { getAssociatedTokenAddressSync } = await import('@solana/spl-token')
+    const swapTxResult = await swapConnection.getTransaction(swapSig, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })
+    const ata = getAssociatedTokenAddressSync(new PublicKey(vaultMint), new PublicKey(me.wallet_address))
+    const ataStr = ata.toBase58()
+    const postBalances = swapTxResult?.meta?.postTokenBalances ?? []
+    const ataEntry = postBalances.find((b: any) => b.mint === vaultMint && b.owner === me.wallet_address)
+      ?? postBalances.find((b: any) => swapTxResult?.transaction?.message?.staticAccountKeys?.[b.accountIndex]?.toBase58() === ataStr)
+    const depositRaw = ataEntry ? BigInt(ataEntry.uiTokenAmount.amount) : await getTokenBalance(me.wallet_address, vaultMint)
+
+    const vaultDecimals = ataEntry ? (ataEntry.uiTokenAmount.decimals ?? 6) : 6
+    const MIN_DEPOSIT_RAW = BigInt(Math.pow(10, Math.max(vaultDecimals - 1, 0))) // 0.1 vault tokens minimum
+    if (depositRaw < MIN_DEPOSIT_RAW) {
+      const minHuman = (Number(MIN_DEPOSIT_RAW) / Math.pow(10, vaultDecimals)).toFixed(1)
+      throw createError({ statusCode: 400, statusMessage: `Swap output too small to deposit. Minimum is ${minHuman} tokens — try a larger amount.` })
+    }
+
     const depositTx = await buildEarnDepositTx(me.wallet_address, vaultMint, new BN(depositRaw.toString()))
     const signature = await signAndBroadcastLendTx(privy, me.privy_wallet_id, depositTx)
     return { signature }
