@@ -42,7 +42,22 @@ export default defineNuxtPlugin({
         })
 
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        await navigator.serviceWorker.ready
+
+        // Wait for THIS registration to activate, not any SW on the page.
+        // navigator.serviceWorker.ready waits for the controlling SW which may
+        // never resolve if vite-pwa SW is waiting with skipWaiting:false.
+        if (!registration.active) {
+          await new Promise<void>(resolve => {
+            const sw = registration.installing ?? registration.waiting
+            if (!sw) { resolve(); return }
+            sw.addEventListener('statechange', function handler() {
+              if ((this as ServiceWorker).state === 'activated') {
+                sw.removeEventListener('statechange', handler)
+                resolve()
+              }
+            })
+          })
+        }
 
         const fcmToken = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration })
         if (!fcmToken) return
