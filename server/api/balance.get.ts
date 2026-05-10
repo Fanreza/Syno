@@ -19,14 +19,24 @@ async function getCachedSolPrice(): Promise<number> {
     if (price) { _solPriceCache = price; _solPriceFetchedAt = now; return _solPriceCache }
   } catch { /* fall through to CoinGecko */ }
 
-  // Fallback: CoinGecko (no key needed)
+  // Fallback 1: CoinGecko
   try {
     const res = await $fetch<{ solana: { usd: number } }>(
       'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd',
       { retry: 0, timeout: 5000 }
     )
     const price = res?.solana?.usd
-    if (price) { _solPriceCache = price; _solPriceFetchedAt = now }
+    if (price) { _solPriceCache = price; _solPriceFetchedAt = now; return _solPriceCache }
+  } catch { /* try next */ }
+
+  // Fallback 2: Binance public API (no key, generous rate limits)
+  try {
+    const res = await $fetch<{ price: string }>(
+      'https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT',
+      { retry: 0, timeout: 5000 }
+    )
+    const price = Number(res?.price)
+    if (price > 0) { _solPriceCache = price; _solPriceFetchedAt = now }
   } catch { /* keep stale value */ }
 
   return _solPriceCache
