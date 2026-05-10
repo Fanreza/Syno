@@ -29,6 +29,7 @@ const showPayrollGlobal = useState<boolean>("global-show-payroll", () => false);
 </script>
 
 <template>
+	<PwaUpdater />
 	<PageProgress />
 	<div v-if="isApp" class="flex min-h-screen bg-background">
 		<SideNav v-if="showNav" />

@@ -2,7 +2,7 @@
 definePageMeta({ layout: false })
 
 const route = useRoute()
-const { isReady, completeOAuthLogin, user } = useAuth()
+const { completeOAuthLogin, user } = useAuth()
 const error = ref('')
 
 onMounted(async () => {
@@ -13,43 +13,27 @@ onMounted(async () => {
     return
   }
 
-  // Retry loginWithCode — Privy's iframe may not be ready immediately after page reload.
-  // We retry with backoff for up to ~10s before giving up.
-  const delays = [800, 1200, 2000, 3000]
-  let lastErr: any
+  // Give Privy's iframe time to initialize before calling loginWithCode.
+  // The iframe is created on Privy SDK instantiation, but needs ~500-1500ms
+  // to set up messaging. Without this wait, loginWithCode can hang silently.
+  await new Promise(r => setTimeout(r, 1500))
 
-  for (let attempt = 0; attempt <= delays.length; attempt++) {
-    try {
-      // Wrap with timeout — Privy's loginWithCode can hang silently when
-      // window.ethereum is a non-writable getter (MetaMask conflict).
-      await Promise.race([
-        completeOAuthLogin(code, state),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Sign in timed out')), 8000)
-        ),
-      ])
-      await navigateTo(user.value?.privy_user_id ? '/app' : '/onboarding')
-      return
-    } catch (e: any) {
-      lastErr = e
-      const msg: string = e?.message || ''
-      // Non-retriable errors — surface immediately
-      if (msg.includes('already linked') || msg.includes('already exists')) {
-        error.value = 'This account is already linked to a different sign-in method. Go back and use email or wallet to sign in.'
-        return
-      }
-      if (msg.includes('invalid') || msg.includes('expired') || msg.includes('code')) {
-        error.value = msg || 'OAuth login failed'
-        return
-      }
-      // Likely initialization issue — wait and retry
-      if (attempt < delays.length) {
-        await new Promise(r => setTimeout(r, delays[attempt]))
-      }
+  try {
+    await Promise.race([
+      completeOAuthLogin(code, state),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Sign in timed out. Please try again.')), 12000)
+      ),
+    ])
+    await navigateTo(user.value?.privy_user_id ? '/app' : '/onboarding')
+  } catch (e: any) {
+    const msg: string = e?.message || ''
+    if (msg.includes('already linked') || msg.includes('already exists')) {
+      error.value = 'This account is already linked to another sign-in method. Go back and use email or wallet to sign in.'
+    } else {
+      error.value = msg || 'Sign in failed. Please try again.'
     }
   }
-
-  error.value = lastErr?.message || 'Sign in timed out. Please try again.'
 })
 </script>
 
