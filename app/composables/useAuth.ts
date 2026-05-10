@@ -214,6 +214,7 @@ export function useAuth() {
   }
 
   async function logout() {
+    try { await $fetch('/api/users/fcm-token', { method: 'DELETE' }) } catch {}
     try { await privy().auth.logout() } catch {}
     resetPrivy()
     clearAllStorage()
@@ -222,6 +223,7 @@ export function useAuth() {
   }
 
   async function forceLogout() {
+    try { await $fetch('/api/users/fcm-token', { method: 'DELETE' }) } catch {}
     try { await privy().auth.logout() } catch {}
     resetPrivy()
     clearAllStorage()
