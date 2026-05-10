@@ -144,7 +144,8 @@ const filteredSavedContacts = computed(() => {
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
                 <p class="text-sm font-semibold">{{ contact.username ? '@' + contact.username : 'Wallet address' }}</p>
-                <span v-if="contact.username && query.trim() && !query.trim().startsWith('@')" class="shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400">Registered</span>
+                <span v-if="contact.label" class="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{{ contact.label }}</span>
+                <span v-else-if="contact.username && query.trim() && !query.trim().startsWith('@')" class="shrink-0 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-semibold text-green-600 dark:text-green-400">Registered</span>
               </div>
               <p class="font-mono text-xs text-muted-foreground truncate">{{ shortAddr(contact.wallet_address, 8) }}</p>
             </div>

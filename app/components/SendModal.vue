@@ -163,6 +163,7 @@ watch(missingToken, (v) => {
 const loading = ref(false)
 const error = ref('')
 const successSig = ref('')
+const confirming = ref(false)
 
 const exceedsBalance = computed(() => {
   if (!selectedTokenBalance.value || amountInToken.value <= 0) return false
@@ -220,7 +221,7 @@ function reset() {
   recipientRaw.value = ''; recipientUser.value = null; recipientStatus.value = 'idle'
   amountRaw.value = ''; memo.value = ''; isPrivate.value = false
   error.value = ''; successSig.value = ''; currency.value = 'TOKEN'; inputToken.value = SOL_TOKEN
-  showContactPicker.value = false; riskScore.value = null; riskLoading.value = false
+  showContactPicker.value = false; riskScore.value = null; riskLoading.value = false; confirming.value = false
 }
 
 watch(open, (v) => { if (!v) reset() })
@@ -261,6 +262,50 @@ watch(open, (v) => { if (!v) reset() })
           <div class="mt-5 flex gap-3">
             <Button variant="outline" class="flex-1" @click="reset">Send another</Button>
             <Button class="flex-1" @click="open = false">Done</Button>
+          </div>
+        </div>
+
+        <!-- Confirm -->
+        <div v-else-if="confirming" class="p-6 space-y-5">
+          <div class="text-center">
+            <p class="text-base font-bold">Confirm payment</p>
+            <p class="mt-1 text-sm text-muted-foreground">Double-check before sending.</p>
+          </div>
+
+          <div class="rounded-2xl border border-border bg-secondary divide-y divide-border">
+            <div class="flex items-center justify-between px-4 py-3 text-sm">
+              <span class="text-muted-foreground">To</span>
+              <span class="font-semibold">{{ recipientUser?.username ? '@' + recipientUser.username : shortAddr(recipientUser?.wallet_address ?? '', 10) }}</span>
+            </div>
+            <div class="flex items-center justify-between px-4 py-3 text-sm">
+              <span class="text-muted-foreground">Amount</span>
+              <span class="font-semibold">{{ amountInToken.toFixed(6) }} {{ inputToken.symbol }}</span>
+            </div>
+            <div v-if="convertLabel" class="flex items-center justify-between px-4 py-3 text-sm">
+              <span class="text-muted-foreground">≈ USD</span>
+              <span class="text-muted-foreground">{{ convertLabel }}</span>
+            </div>
+            <div v-if="memo" class="flex items-center justify-between px-4 py-3 text-sm">
+              <span class="text-muted-foreground">Memo</span>
+              <span class="font-medium truncate max-w-45">{{ memo }}</span>
+            </div>
+            <div class="flex items-center justify-between px-4 py-3 text-sm">
+              <span class="text-muted-foreground">Type</span>
+              <span class="font-medium" :class="isPrivate ? 'text-violet-400' : ''">{{ isPrivate ? 'Private' : 'Public' }}</span>
+            </div>
+          </div>
+
+          <div v-if="error" class="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+            <AlertCircle class="h-4 w-4 shrink-0" />{{ error }}
+          </div>
+
+          <div class="flex gap-3">
+            <Button variant="outline" class="flex-1" :disabled="loading" @click="confirming = false; error = ''">Back</Button>
+            <Button class="flex-1" size="lg" :disabled="loading" @click="onSend">
+              <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              <Send v-else class="h-4 w-4" />
+              {{ loading ? 'Sending…' : 'Confirm' }}
+            </Button>
           </div>
         </div>
 
@@ -445,10 +490,9 @@ watch(open, (v) => { if (!v) reset() })
             </div>
 
             <!-- Submit -->
-            <Button class="w-full" size="lg" :disabled="!canSend || loading" @click="onSend">
-              <span v-if="loading" class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              <Send v-else class="h-4 w-4" />
-              {{ loading ? 'Sending…' : `Send${amountInToken > 0 ? ' ' + amountInToken.toFixed(4) + ' ' + inputToken.symbol : ''}` }}
+            <Button class="w-full" size="lg" :disabled="!canSend || loading" @click="confirming = true">
+              <Send class="h-4 w-4" />
+              {{ `Send${amountInToken > 0 ? ' ' + amountInToken.toFixed(4) + ' ' + inputToken.symbol : ''}` }}
             </Button>
           </div>
         </template>

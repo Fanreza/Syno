@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   ArrowUpRight, ArrowDownRight, Scissors, Star, ExternalLink,
-  RefreshCw, Inbox, Filter, Download, ChevronDown
+  RefreshCw, Inbox, Filter, Download, ChevronDown, ShieldCheck
 } from 'lucide-vue-next'
 import { formatAmount, shortAddr } from '~/utils'
 import {
@@ -71,14 +71,32 @@ type OnChainTx = {
   to_address: string | null
 }
 
+type PrivateTransfer = {
+  id: string
+  amount: number
+  token: string
+  recipient_address: string
+  recipient_username: string | null
+  memo: string | null
+  tx_signature: string | null
+  created_at: string
+}
+
 // Tabs
-const tab = ref<'syno' | 'onchain'>('syno')
+const tab = ref<'syno' | 'onchain' | 'private'>('syno')
 const filter = ref<'all' | 'sent' | 'received' | 'split' | 'gift_claim'>('all')
 
 // Syno activity
 const { data: activity, refresh: refreshActivity, pending: loadingActivity } = useAsyncData(
   'activity-page',
   () => apiFetch<ActivityItem[]>('/api/activity'),
+  { lazy: true }
+)
+
+// Private transfers
+const { data: privateTransfers, refresh: refreshPrivate, pending: loadingPrivate } = useAsyncData(
+  'private-transfers',
+  () => apiFetch<PrivateTransfer[]>('/api/private-transfers'),
   { lazy: true }
 )
 
@@ -124,6 +142,7 @@ function activityLabel(item: ActivityItem) {
 
 function refresh() {
   if (tab.value === 'syno') refreshActivity()
+  else if (tab.value === 'private') refreshPrivate()
   else refreshHistory()
 }
 </script>
@@ -172,9 +191,9 @@ function refresh() {
     <!-- Tabs -->
     <div class="mb-5 flex gap-1 rounded-xl border border-border bg-secondary p-1 w-fit">
       <button
-        v-for="t in [{ key: 'syno', label: 'Syno' }, { key: 'onchain', label: 'On-chain' }]"
+        v-for="t in [{ key: 'syno', label: 'Syno', tour: 'activity-inapp' }, { key: 'private', label: 'Private', tour: '' }, { key: 'onchain', label: 'On-chain', tour: 'activity-onchain' }]"
         :key="t.key"
-        :data-tour="t.key === 'syno' ? 'activity-inapp' : 'activity-onchain'"
+        :data-tour="t.tour || undefined"
         class="rounded-lg px-4 py-1.5 text-sm font-medium transition"
         :class="tab === t.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
         @click="tab = t.key as any"
@@ -290,6 +309,65 @@ function refresh() {
           >
             <ExternalLink class="h-3.5 w-3.5" />
           </NuxtLink>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PRIVATE TAB ── -->
+    <div v-else-if="tab === 'private'">
+      <div class="mb-4 flex items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/5 px-4 py-3 text-xs text-violet-400">
+        <ShieldCheck class="h-4 w-4 shrink-0" />
+        Private transfers are hidden on-chain. Only you can see this history.
+      </div>
+
+      <div v-if="loadingPrivate" class="rounded-2xl border border-border bg-card divide-y divide-border">
+        <div v-for="i in 4" :key="i" class="flex items-center gap-4 px-5 py-4">
+          <div class="h-9 w-9 shrink-0 skeleton rounded-full" />
+          <div class="flex-1 space-y-1.5">
+            <div class="h-3.5 w-28 skeleton rounded" />
+            <div class="h-3 w-20 skeleton rounded" />
+          </div>
+          <div class="h-3.5 w-16 skeleton rounded ml-auto" />
+        </div>
+      </div>
+
+      <div v-else-if="!privateTransfers?.length" class="flex flex-col items-center justify-center py-20 text-center">
+        <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-secondary">
+          <ShieldCheck class="h-6 w-6 text-muted-foreground" />
+        </div>
+        <p class="font-medium">No private transfers</p>
+        <p class="mt-1 text-sm text-muted-foreground">Send privately to hide amounts on-chain.</p>
+      </div>
+
+      <div v-else class="rounded-2xl border border-border bg-card divide-y divide-border">
+        <div
+          v-for="(tx, i) in privateTransfers"
+          :key="tx.id"
+          class="flex items-center gap-3 px-4 py-3 animate-item-in"
+          :style="`animation-delay: ${Math.min(i * 30, 300)}ms`"
+        >
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
+            <ShieldCheck class="h-4 w-4 text-violet-400" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium">Private send</p>
+            <p class="font-mono text-xs text-muted-foreground truncate">
+              To {{ tx.recipient_username ? '@' + tx.recipient_username : shortAddr(tx.recipient_address, 8) }}
+            </p>
+            <p v-if="tx.memo" class="truncate text-xs text-muted-foreground italic">{{ tx.memo }}</p>
+          </div>
+          <div class="shrink-0 text-right">
+            <p class="text-sm font-semibold">-{{ formatAmount(tx.amount) }} <span class="text-xs font-normal">{{ tx.token }}</span></p>
+            <p class="mt-0.5 text-xs text-muted-foreground">{{ timeAgo(tx.created_at) }}</p>
+          </div>
+          <a
+            v-if="tx.tx_signature"
+            :href="`https://solscan.io/tx/${tx.tx_signature}`"
+            target="_blank"
+            class="shrink-0 text-muted-foreground transition hover:text-foreground"
+          >
+            <ExternalLink class="h-3.5 w-3.5" />
+          </a>
         </div>
       </div>
     </div>

@@ -1,5 +1,8 @@
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
+  const body = await readBody<{ friendId: string; label: string }>(event)
+  if (!body?.friendId) throw createError({ statusCode: 400, statusMessage: 'friendId required' })
+
   const db = adminDb()
 
   const { data: me } = await db
@@ -9,12 +12,13 @@ export default defineEventHandler(async (event) => {
     .single()
   if (!me) throw createError({ statusCode: 400, statusMessage: 'User not onboarded' })
 
-  const { data, error } = await db
+  const { error } = await db
     .from('friends')
-    .select('id, label, created_at, friend:friend_id(id, username, wallet_address)')
+    .update({ label: body.label?.trim() || null })
     .eq('user_id', me.id)
-    .order('created_at', { ascending: false })
+    .eq('friend_id', body.friendId)
 
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
-  return data ?? []
+
+  return { success: true }
 })

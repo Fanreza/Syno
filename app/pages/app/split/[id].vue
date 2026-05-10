@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Copy, Check, CheckCircle2, Clock, RefreshCw, ExternalLink } from 'lucide-vue-next'
+import { ArrowLeft, Copy, Check, CheckCircle2, Clock, RefreshCw, ExternalLink, BadgeCheck } from 'lucide-vue-next'
 import { formatAmount, shortAddr } from '~/utils'
 
 const route = useRoute()
@@ -78,6 +78,20 @@ async function payNow(participant: any) {
     await navigateTo(`/pay/${res.id}`)
   } finally {
     generating.value[participant.id] = false
+  }
+}
+
+const settling = ref<string | null>(null)
+
+async function settlePaid(participant: any) {
+  settling.value = participant.id
+  try {
+    await apiFetch(`/api/split/${id}/settle`, { method: 'POST', body: { participantId: participant.id } })
+    await refresh()
+  } catch (e: any) {
+    console.error('Settle failed:', e)
+  } finally {
+    settling.value = null
   }
 }
 
@@ -233,6 +247,17 @@ const tokenSymbol = computed(() => {
                   <span v-else>Pay now</span>
                 </button>
                 <div v-else class="flex items-center gap-1.5">
+                  <!-- Creator can mark others as paid offline -->
+                  <button
+                    v-if="bill?.myParticipantId && bill.creator?.username && bill.participants?.find((x: any) => x.id === bill.myParticipantId)?.username === bill.creator.username"
+                    class="flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-medium text-muted-foreground transition hover:border-green-500/30 hover:bg-green-500/5 hover:text-green-500 disabled:opacity-50"
+                    :disabled="settling === p.id"
+                    @click="settlePaid(p)"
+                    title="Mark as paid offline"
+                  >
+                    <span v-if="settling === p.id" class="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                    <BadgeCheck v-else class="h-3.5 w-3.5" />
+                  </button>
                   <a
                     v-if="payLinks[p.id]"
                     :href="`/pay/${payLinks[p.id]}`"

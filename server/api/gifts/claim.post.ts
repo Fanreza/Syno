@@ -26,10 +26,12 @@ export default defineEventHandler(async (event) => {
 
   const { data: gift } = await db
     .from('gifts')
-    .select('id, total_amount, total_slots, claimed_count, token, creator_id')
+    .select('id, total_amount, total_slots, claimed_count, token, creator_id, expires_at, distribution')
     .eq('id', body.giftId)
     .maybeSingle()
   if (!gift) throw createError({ statusCode: 404, statusMessage: 'Gift not found' })
+  if (gift.expires_at && new Date(gift.expires_at) < new Date())
+    throw createError({ statusCode: 410, statusMessage: 'This gift has expired' })
   if (gift.claimed_count >= gift.total_slots) throw createError({ statusCode: 409, statusMessage: 'All slots claimed' })
 
   const { data: existing } = await db.from('gift_claims').select('id')
@@ -51,7 +53,32 @@ export default defineEventHandler(async (event) => {
     'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 6,
   }
   const tokenMint: string = gift.token ?? SOL_MINT
-  const amountPerClaim = gift.total_amount / gift.total_slots
+  const tokenDecimals = tokenMint === SOL_MINT ? 9 : 6
+  const minUnit = 1 / Math.pow(10, tokenDecimals)
+
+  let amountPerClaim: number
+  if (gift.distribution === 'random') {
+    const remainingSlots = gift.total_slots - gift.claimed_count
+    if (remainingSlots === 1) {
+      // Last claimer gets whatever is left
+      const { data: prevClaims } = await db.from('gift_claims').select('amount').eq('gift_id', body.giftId)
+      const claimed = (prevClaims ?? []).reduce((s, c) => s + Number(c.amount), 0)
+      amountPerClaim = Math.max(gift.total_amount - claimed, minUnit)
+    } else {
+      const { data: prevClaims } = await db.from('gift_claims').select('amount').eq('gift_id', body.giftId)
+      const claimed = (prevClaims ?? []).reduce((s, c) => s + Number(c.amount), 0)
+      const remaining = gift.total_amount - claimed
+      // Classic hongbao: random in [min, 2*avg], capped so all remaining slots can get at least min
+      const avg = remaining / remainingSlots
+      const maxAllowed = remaining - minUnit * (remainingSlots - 1)
+      const rand = Math.random() * avg * 2
+      const raw = Math.min(Math.max(rand, minUnit), maxAllowed)
+      // Round to token precision
+      amountPerClaim = Math.floor(raw * Math.pow(10, tokenDecimals)) / Math.pow(10, tokenDecimals)
+    }
+  } else {
+    amountPerClaim = gift.total_amount / gift.total_slots
+  }
 
   async function getDecimals(mint: string): Promise<number> {
     if (KNOWN_DECIMALS[mint] !== undefined) return KNOWN_DECIMALS[mint]

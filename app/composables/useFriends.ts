@@ -2,6 +2,7 @@ export interface FriendUser {
   id: string
   username: string
   wallet_address: string
+  label?: string | null
 }
 
 export function useFriends() {
@@ -12,12 +13,17 @@ export function useFriends() {
   async function load() {
     if (loaded.value) return
     try {
-      type Row = { friend: FriendUser }
+      type Row = { label: string | null; friend: FriendUser }
       const data = await apiFetch<Row[]>('/api/friends')
-      friends.value = data.map(r => r.friend)
+      friends.value = data.map(r => ({ ...r.friend, label: r.label }))
       loaded.value = true
     } catch {}
   }
 
-  return { friends, load }
+  async function reload() {
+    loaded.value = false
+    await load()
+  }
+
+  return { friends, load, reload }
 }

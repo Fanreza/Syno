@@ -12,7 +12,7 @@ const tab = ref<'friends' | 'contacts'>('friends')
 
 // ── Friends ──────────────────────────────────────────────────────────────────
 
-type Friend = { id: string; created_at: string; friend: { id: string; username: string; wallet_address: string } }
+type Friend = { id: string; label: string | null; created_at: string; friend: { id: string; username: string; wallet_address: string } }
 
 const { data: friends, refresh: refreshFriends, pending: pendingFriends } = useAsyncData<Friend[]>(
   'friends', () => apiFetch('/api/friends'), { lazy: true }
@@ -66,6 +66,28 @@ async function removeFriend(friendId: string) {
 }
 
 const alreadyFriendIds = computed(() => new Set(friends.value?.map(f => f.friend.id) ?? []))
+
+// Friend label editing
+const editingLabelId = ref<string | null>(null)
+const editingLabelValue = ref('')
+const savingLabelId = ref<string | null>(null)
+
+function startEditLabel(f: Friend) {
+  editingLabelId.value = f.id
+  editingLabelValue.value = f.label ?? ''
+}
+
+async function saveLabel(f: Friend) {
+  savingLabelId.value = f.id
+  try {
+    await apiFetch('/api/friends/label', { method: 'PATCH', body: { friendId: f.friend.id, label: editingLabelValue.value } })
+    f.label = editingLabelValue.value.trim() || null
+    editingLabelId.value = null
+    toast.success('Label saved')
+  } catch (e: any) {
+    toast.error(e?.data?.message ?? 'Could not save label')
+  } finally { savingLabelId.value = null }
+}
 
 function avatarColor(username: string) {
   const colors = ['bg-blue-500', 'bg-violet-500', 'bg-pink-500', 'bg-orange-500', 'bg-green-500', 'bg-cyan-500', 'bg-rose-500', 'bg-amber-500']
@@ -261,18 +283,47 @@ async function onDeleteContact(c: Contact) {
             {{ (f.friend.username[0] ?? '?').toUpperCase() }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="font-semibold">@{{ f.friend.username }}</p>
-            <p class="font-mono text-xs text-muted-foreground">{{ shortAddr(f.friend.wallet_address, 6) }}</p>
+            <div class="flex items-center gap-2">
+              <p class="font-semibold">@{{ f.friend.username }}</p>
+              <span v-if="f.label && editingLabelId !== f.id" class="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{{ f.label }}</span>
+            </div>
+            <!-- Inline label edit -->
+            <div v-if="editingLabelId === f.id" class="mt-1.5 flex items-center gap-1.5">
+              <input
+                v-model="editingLabelValue"
+                placeholder="Add label…"
+                class="h-7 w-32 rounded-lg border border-input bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-ring"
+                @keyup.enter="saveLabel(f)"
+                @keyup.escape="editingLabelId = null"
+              />
+              <button class="rounded-lg p-1 text-green-500 hover:bg-green-500/10 disabled:opacity-50" :disabled="savingLabelId === f.id" @click="saveLabel(f)">
+                <Save v-if="savingLabelId !== f.id" class="h-3.5 w-3.5" />
+                <Loader2 v-else class="h-3.5 w-3.5 animate-spin" />
+              </button>
+              <button class="rounded-lg p-1 text-muted-foreground hover:bg-accent" @click="editingLabelId = null">
+                <X class="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <p v-else class="font-mono text-xs text-muted-foreground">{{ shortAddr(f.friend.wallet_address, 6) }}</p>
           </div>
-          <button
-            class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-            :disabled="removingId === f.friend.id"
-            @click="removeFriend(f.friend.id)"
-          >
-            <Loader2 v-if="removingId === f.friend.id" class="h-3.5 w-3.5 animate-spin" />
-            <Trash2 v-else class="h-3.5 w-3.5" />
-            Remove
-          </button>
+          <div class="flex items-center gap-1 shrink-0">
+            <button
+              class="rounded-xl border border-border p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              @click="startEditLabel(f)"
+              title="Edit label"
+            >
+              <Edit2 class="h-3.5 w-3.5" />
+            </button>
+            <button
+              class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
+              :disabled="removingId === f.friend.id"
+              @click="removeFriend(f.friend.id)"
+            >
+              <Loader2 v-if="removingId === f.friend.id" class="h-3.5 w-3.5 animate-spin" />
+              <Trash2 v-else class="h-3.5 w-3.5" />
+              Remove
+            </button>
+          </div>
         </div>
       </div>
     </template>

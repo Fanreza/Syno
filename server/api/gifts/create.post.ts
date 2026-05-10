@@ -5,6 +5,8 @@ export default defineEventHandler(async (event) => {
     totalSlots: number
     token?: string
     decimals?: number
+    expiresAt?: string
+    distribution?: 'even' | 'random'
   }>(event)
 
   if (!body?.totalAmount || !body?.totalSlots || body.totalAmount <= 0 || body.totalSlots < 1) {
@@ -45,6 +47,8 @@ export default defineEventHandler(async (event) => {
       token: body.token ?? SOL_MINT,
       total_slots: body.totalSlots,
       claimed_count: 0,
+      expires_at: body.expiresAt ?? null,
+      distribution: body.distribution ?? 'even',
     })
     .select()
     .single()

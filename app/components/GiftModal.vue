@@ -2,7 +2,7 @@
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle } from 'reka-ui'
 import Input from '~/components/ui/input/Input.vue'
 import { Button } from '~/components/ui/button'
-import { X, Gift, AlertCircle, Copy, Check, Users, Coins, Share2, DollarSign } from 'lucide-vue-next'
+import { X, Gift, AlertCircle, Copy, Check, Users, Coins, Share2, DollarSign, Clock, Shuffle } from 'lucide-vue-next'
 import { formatAmount } from '~/utils'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -78,6 +78,22 @@ const selectedBalance = computed(() => {
   return t ? { amount: t.balance, symbol: t.symbol } : { amount: 0, symbol: giftToken.value.symbol }
 })
 
+// Distribution
+type Distribution = 'even' | 'random'
+const distribution = ref<Distribution>('even')
+
+// Expiry
+type ExpiresIn = 'none' | '24h' | '7d' | '30d'
+const expiresIn = ref<ExpiresIn>('none')
+const expiresAt = computed((): string | undefined => {
+  if (expiresIn.value === 'none') return undefined
+  const d = new Date()
+  if (expiresIn.value === '24h') d.setHours(d.getHours() + 24)
+  else if (expiresIn.value === '7d') d.setDate(d.getDate() + 7)
+  else if (expiresIn.value === '30d') d.setDate(d.getDate() + 30)
+  return d.toISOString()
+})
+
 const slotsNum = computed(() => Math.max(1, parseInt(slots.value) || 1))
 const perPerson = computed(() => totalInToken.value > 0 ? (totalInToken.value / slotsNum.value).toFixed(4) : '0')
 
@@ -93,7 +109,7 @@ async function onCreate() {
   try {
     const res = await apiFetch<{ id: string; total_amount: number; total_slots: number; token: string }>('/api/gifts/create', {
       method: 'POST',
-      body: { totalAmount: totalInToken.value, totalSlots: slotsNum.value, token: giftToken.value.address, decimals: giftToken.value.decimals }
+      body: { totalAmount: totalInToken.value, totalSlots: slotsNum.value, token: giftToken.value.address, decimals: giftToken.value.decimals, expiresAt: expiresAt.value, distribution: distribution.value }
     })
     created.value = res
     await refreshBalance()
@@ -115,7 +131,7 @@ function copyLink() {
 
 function reset() {
   totalRaw.value = ''; slots.value = '5'; giftToken.value = SOL_TOKEN
-  error.value = ''; created.value = null; copied.value = false; currency.value = 'TOKEN'
+  error.value = ''; created.value = null; copied.value = false; currency.value = 'TOKEN'; expiresIn.value = 'none'; distribution.value = 'even'
 }
 
 watch(open, (v) => { if (!v) reset() })
@@ -256,12 +272,55 @@ watch(open, (v) => { if (!v) reset() })
               </div>
             </div>
 
+            <!-- Distribution -->
+            <div>
+              <label class="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">Distribution</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  :class="['flex flex-col items-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition', distribution === 'even' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent']"
+                  @click="distribution = 'even'"
+                >
+                  <Coins class="h-4 w-4" />
+                  Evenly
+                  <span class="text-[10px] font-normal" :class="distribution === 'even' ? 'text-primary/70' : 'text-muted-foreground/60'">Same for everyone</span>
+                </button>
+                <button
+                  :class="['flex flex-col items-center gap-1.5 rounded-xl border py-3 text-sm font-semibold transition', distribution === 'random' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent']"
+                  @click="distribution = 'random'"
+                >
+                  <Shuffle class="h-4 w-4" />
+                  Random
+                  <span class="text-[10px] font-normal" :class="distribution === 'random' ? 'text-primary/70' : 'text-muted-foreground/60'">Surprise amount</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Expiry -->
+            <div>
+              <label class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                <Clock class="h-3.5 w-3.5" /> Expires
+              </label>
+              <div class="flex gap-2">
+                <button
+                  v-for="opt in [{ value: 'none', label: 'Never' }, { value: '24h', label: '24h' }, { value: '7d', label: '7 days' }, { value: '30d', label: '30 days' }]"
+                  :key="opt.value"
+                  :class="['flex-1 rounded-xl border py-2 text-xs font-semibold transition', expiresIn === opt.value ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-accent']"
+                  @click="expiresIn = opt.value as ExpiresIn"
+                >{{ opt.label }}</button>
+              </div>
+            </div>
+
             <!-- Per person preview -->
             <div v-if="totalInToken > 0" class="flex items-center gap-3 rounded-xl border border-border bg-secondary/60 px-4 py-3">
-              <Coins class="h-4 w-4 shrink-0 text-yellow-500" />
+              <Shuffle v-if="distribution === 'random'" class="h-4 w-4 shrink-0 text-yellow-500" />
+              <Coins v-else class="h-4 w-4 shrink-0 text-yellow-500" />
               <div>
-                <p class="text-sm font-semibold">{{ perPerson }} {{ giftToken.symbol }} per person</p>
-                <p class="text-xs text-muted-foreground">{{ totalInToken.toFixed(4) }} {{ giftToken.symbol }} ÷ {{ slotsNum }} slots</p>
+                <p v-if="distribution === 'random'" class="text-sm font-semibold">Up to {{ (totalInToken / slotsNum * 2).toFixed(4) }} {{ giftToken.symbol }} per person</p>
+                <p v-else class="text-sm font-semibold">{{ perPerson }} {{ giftToken.symbol }} per person</p>
+                <p class="text-xs text-muted-foreground">
+                  {{ totalInToken.toFixed(4) }} {{ giftToken.symbol }} across {{ slotsNum }} slots
+                  <span v-if="distribution === 'random'"> · random amounts</span>
+                </p>
               </div>
             </div>
 

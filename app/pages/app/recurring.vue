@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { RefreshCw, Plus, Trash2, ToggleLeft, ToggleRight, Calendar, X, Send, AlertCircle, CheckCircle2, Users, DollarSign, Coins, User, ChevronDown } from 'lucide-vue-next'
+import { RefreshCw, Plus, Trash2, ToggleLeft, ToggleRight, Calendar, X, Send, AlertCircle, CheckCircle2, Users, DollarSign, Coins, User, ChevronDown, ChevronUp, ExternalLink, History } from 'lucide-vue-next'
 import DatePicker from '~/components/ui/date-picker/DatePicker.vue'
 import { Button } from '~/components/ui/button'
 import Input from '~/components/ui/input/Input.vue'
@@ -126,6 +126,26 @@ async function onDelete(p: RecurringPayment) {
 
 function fmtDate(s: string) {
   return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// Execution history
+const expandedId = ref<string | null>(null)
+type Execution = { id: string; executed_at: string; status: 'success' | 'failed'; tx_signature: string | null; error: string | null }
+const executions = ref<Record<string, Execution[]>>({})
+const executionsLoading = ref<string | null>(null)
+
+async function toggleExecutions(p: RecurringPayment) {
+  if (expandedId.value === p.id) {
+    expandedId.value = null
+    return
+  }
+  expandedId.value = p.id
+  if (executions.value[p.id]) return
+  executionsLoading.value = p.id
+  try {
+    executions.value[p.id] = await apiFetch(`/api/recurring/${p.id}/executions`)
+  } catch { executions.value[p.id] = [] }
+  finally { executionsLoading.value = null }
 }
 
 // ── PAYROLL ──────────────────────────────────────────────────────────────────
@@ -409,6 +429,9 @@ function resetPayroll() {
             <p v-if="p.memo" class="mt-0.5 text-[11px] text-muted-foreground italic truncate">{{ p.memo }}</p>
           </div>
           <div class="flex items-center gap-1 shrink-0">
+            <button class="rounded-lg p-1.5 text-muted-foreground transition hover:bg-accent" @click="toggleExecutions(p)" title="Run history">
+              <History class="h-4 w-4" />
+            </button>
             <button class="rounded-lg p-1.5 transition hover:bg-accent disabled:opacity-40" :disabled="toggling === p.id || deleting === p.id" @click="onToggle(p)">
               <span v-if="toggling === p.id" class="block h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
               <ToggleRight v-else-if="p.active" class="h-5 w-5 text-primary" />
@@ -418,6 +441,38 @@ function resetPayroll() {
               <span v-if="deleting === p.id" class="block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               <Trash2 v-else class="h-4 w-4" />
             </button>
+          </div>
+        </div>
+
+        <!-- Execution history panel -->
+        <div v-if="expandedId === p.id" class="mt-3 rounded-xl border border-border bg-background overflow-hidden">
+          <div class="px-3 py-2 border-b border-border flex items-center justify-between">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Run history</p>
+            <button class="text-muted-foreground hover:text-foreground" @click="expandedId = null"><ChevronUp class="h-3.5 w-3.5" /></button>
+          </div>
+          <div v-if="executionsLoading === p.id" class="px-3 py-4 text-center">
+            <span class="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-foreground inline-block" />
+          </div>
+          <div v-else-if="!executions[p.id]?.length" class="px-3 py-3 text-center text-xs text-muted-foreground">No runs yet.</div>
+          <div v-else class="divide-y divide-border max-h-48 overflow-y-auto">
+            <div v-for="ex in executions[p.id]" :key="ex.id" class="flex items-center gap-3 px-3 py-2.5">
+              <span
+                class="h-2 w-2 shrink-0 rounded-full"
+                :class="ex.status === 'success' ? 'bg-green-500' : 'bg-destructive'"
+              />
+              <div class="min-w-0 flex-1">
+                <p class="text-xs text-muted-foreground">{{ fmtDate(ex.executed_at) }}</p>
+                <p v-if="ex.error" class="text-[11px] text-destructive truncate">{{ ex.error }}</p>
+              </div>
+              <a
+                v-if="ex.tx_signature"
+                :href="`https://solscan.io/tx/${ex.tx_signature}`"
+                target="_blank"
+                class="shrink-0 text-muted-foreground hover:text-foreground transition"
+              >
+                <ExternalLink class="h-3 w-3" />
+              </a>
+            </div>
           </div>
         </div>
       </div>

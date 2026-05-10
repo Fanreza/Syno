@@ -1,4 +1,4 @@
-import { Connection, Transaction, VersionedTransaction } from '@solana/web3.js'
+import { Transaction, VersionedTransaction } from '@solana/web3.js'
 import { authorizationContext } from '../../utils/privy'
 import { createNotification } from '../../utils/notifications'
 
@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
   const privy = getPrivy()
   const authCtx = authorizationContext()
   const now = new Date().toISOString()
+  const startedAt = Date.now()
 
   // Fetch ALL overdue recurring payments across all users
   const { data: overdue, error } = await db
@@ -75,7 +76,7 @@ export default defineEventHandler(async (event) => {
         txBase64 = await buildTransferSplTx(sender.wallet_address, recipientAddress, payment.token, payment.amount, payment.decimals, blockhash)
       }
 
-      const signed = await privy.wallets().solana().signTransaction(sender.privy_wallet_id, {
+      const signed = await (privy.wallets() as any).solana().signTransaction(sender.privy_wallet_id, {
         transaction: txBase64,
         caip2: config.solanaCaip2 as string,
         ...authCtx,
@@ -119,16 +120,42 @@ export default defineEventHandler(async (event) => {
         next_run_at: computeNext(new Date(payment.next_run_at), payment.frequency).toISOString(),
       }).eq('id', payment.id)
 
+      await db.from('recurring_executions').insert({
+        recurring_payment_id: payment.id,
+        status: 'success',
+        tx_signature: sig,
+      })
+
       results.push({ id: payment.id, success: true, signature: sig })
     } catch (err: any) {
+      try {
+        await db.from('recurring_executions').insert({
+          recurring_payment_id: payment.id,
+          status: 'failed',
+          error: err?.message ?? 'Unknown error',
+        })
+      } catch {}
+
       results.push({ id: payment.id, success: false, error: err?.message ?? 'Unknown error' })
     }
   }
 
+  const succeeded = results.filter(r => r.success).length
+  const failed = results.filter(r => !r.success).length
+
+  try {
+    await db.from('cron_runs').insert({
+      payments_attempted: results.length,
+      payments_succeeded: succeeded,
+      payments_failed: failed,
+      duration_ms: Date.now() - startedAt,
+    })
+  } catch {}
+
   return {
     processed: results.length,
-    succeeded: results.filter(r => r.success).length,
-    failed: results.filter(r => !r.success).length,
+    succeeded,
+    failed,
     results,
   }
 })

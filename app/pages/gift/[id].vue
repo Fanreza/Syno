@@ -14,7 +14,10 @@ const { data: gift, error: fetchError, refresh: refreshGift } = await useFetch<{
   amount_per_claim: number
   remaining_slots: number
   is_exhausted: boolean
+  is_expired: boolean
   already_claimed: boolean
+  expires_at: string | null
+  distribution: 'even' | 'random'
   creator: { username: string; wallet_address: string }
 }>(`/api/gifts/${id}`)
 
@@ -104,16 +107,29 @@ if (import.meta.client) {
           <div class="pointer-events-none absolute inset-0 opacity-[0.15]"
             style="background-image: radial-gradient(circle, white 1px, transparent 1px); background-size: 20px 20px" />
           <div class="relative z-10">
-            <p class="text-5xl">🎁</p>
+            <p class="text-5xl">{{ gift.distribution === 'random' ? '🎲' : '🎁' }}</p>
             <p class="mt-3 text-sm font-semibold text-white/70">from @{{ gift.creator?.username }}</p>
-            <h1 class="mt-1 text-4xl font-extrabold text-white">
-              {{ gift.amount_per_claim.toFixed(4) }} {{ tokenSymbol }}
-            </h1>
-            <p class="mt-1 text-sm text-white/70">≈ per person</p>
+            <template v-if="gift.distribution === 'random'">
+              <h1 class="mt-1 text-4xl font-extrabold text-white">
+                {{ gift.total_amount.toFixed(4) }} {{ tokenSymbol }}
+              </h1>
+              <p class="mt-1 text-sm text-white/70">🎲 Random amounts · {{ gift.total_slots }} slots</p>
+            </template>
+            <template v-else>
+              <h1 class="mt-1 text-4xl font-extrabold text-white">
+                {{ gift.amount_per_claim.toFixed(4) }} {{ tokenSymbol }}
+              </h1>
+              <p class="mt-1 text-sm text-white/70">≈ per person</p>
+            </template>
           </div>
         </div>
 
         <div class="p-6 space-y-5">
+
+          <!-- Expiry notice -->
+          <div v-if="gift.expires_at && !gift.is_expired" class="flex items-center justify-center gap-1.5 text-xs text-amber-500">
+            <span>Expires {{ new Date(gift.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</span>
+          </div>
 
           <!-- Progress -->
           <div>
@@ -164,6 +180,11 @@ if (import.meta.client) {
             </NuxtLink>
           </div>
 
+          <!-- Expired -->
+          <div v-else-if="gift.is_expired" class="rounded-xl border border-border bg-secondary px-4 py-3 text-center text-sm text-muted-foreground">
+            This gift has expired.
+          </div>
+
           <!-- Exhausted -->
           <div v-else-if="gift.is_exhausted" class="rounded-xl border border-border bg-secondary px-4 py-3 text-center text-sm text-muted-foreground">
             All slots have been claimed.
@@ -191,7 +212,7 @@ if (import.meta.client) {
               @click="claim"
             >
               <span v-if="claiming" class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              {{ claiming ? 'Claiming…' : `Claim ${gift.amount_per_claim.toFixed(4)} ${tokenSymbol}` }}
+              {{ claiming ? 'Claiming…' : gift.distribution === 'random' ? '🎲 Open gift' : `Claim ${gift.amount_per_claim.toFixed(4)} ${tokenSymbol}` }}
             </button>
           </template>
 

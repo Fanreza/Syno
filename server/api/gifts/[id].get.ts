@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   const { data: gift, error } = await db
     .from('gifts')
     .select(`
-      id, total_amount, token, total_slots, claimed_count, created_at,
+      id, total_amount, token, total_slots, claimed_count, created_at, expires_at, distribution,
       creator:creator_id ( username, wallet_address )
     `)
     .eq('id', id)
@@ -17,6 +17,7 @@ export default defineEventHandler(async (event) => {
 
   const amountPerClaim = gift.total_amount / gift.total_slots
   const remaining = gift.total_slots - gift.claimed_count
+  const isExpired = gift.expires_at ? new Date(gift.expires_at) < new Date() : false
 
   // Optionally check if the logged-in user already claimed
   let alreadyClaimed = false
@@ -34,6 +35,7 @@ export default defineEventHandler(async (event) => {
     amount_per_claim: amountPerClaim,
     remaining_slots: remaining,
     is_exhausted: remaining <= 0,
+    is_expired: isExpired,
     already_claimed: alreadyClaimed,
   }
 })
