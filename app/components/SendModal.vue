@@ -399,7 +399,7 @@ watch(open, (v) => { if (!v) reset() })
                 >
                   {{ riskScore.level === 'low' ? 'Wallet looks safe' : riskScore.level === 'medium' ? 'Some risk detected' : 'High risk wallet' }}
                 </span>
-                <span class="ml-auto text-muted-foreground">Score {{ riskScore.score }}/100</span>
+                <span v-if="riskScore.score > 0" class="ml-auto text-muted-foreground">Risk {{ riskScore.score }}/100</span>
               </div>
               <ul v-if="riskScore.flags.length" class="mt-1.5 space-y-0.5 pl-6 text-muted-foreground">
                 <li v-for="f in riskScore.flags" :key="f">· {{ f }}</li>
