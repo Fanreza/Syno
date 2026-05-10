@@ -42,10 +42,14 @@ export default defineEventHandler(async (event) => {
 
   const decimals = body.decimals ?? 6
   const rawAmount = Math.round(body.amount * Math.pow(10, decimals))
-  const MIN_RAW = Math.pow(10, Math.max(decimals - 2, 0)) // 0.01 tokens minimum
-  if (rawAmount < MIN_RAW) {
-    const minHuman = (MIN_RAW / Math.pow(10, decimals)).toFixed(2)
-    throw createError({ statusCode: 400, statusMessage: `Minimum deposit is ${minHuman} tokens` })
+  const isSwap = body.inputMint && body.inputMint !== body.mint
+  // Only enforce minimum on direct deposits — swap path output amount is validated by Jupiter Earn itself
+  if (!isSwap) {
+    const MIN_RAW = Math.pow(10, Math.max(decimals - 2, 0)) // 0.01 vault tokens minimum
+    if (rawAmount < MIN_RAW) {
+      const minHuman = (MIN_RAW / Math.pow(10, decimals)).toFixed(2)
+      throw createError({ statusCode: 400, statusMessage: `Minimum deposit is ${minHuman} USDC` })
+    }
   }
 
   const db = adminDb()
