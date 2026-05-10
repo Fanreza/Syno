@@ -94,12 +94,8 @@ export default defineEventHandler(async (event) => {
       ?? postBalances.find((b: any) => swapTxResult?.transaction?.message?.staticAccountKeys?.[b.accountIndex]?.toBase58() === ataStr)
     const depositRaw = ataEntry ? BigInt(ataEntry.uiTokenAmount.amount) : await getTokenBalance(me.wallet_address, vaultMint)
 
-    const vaultDecimals = ataEntry ? (ataEntry.uiTokenAmount.decimals ?? 6) : 6
-    const MIN_DEPOSIT_RAW = BigInt(Math.pow(10, Math.max(vaultDecimals - 1, 0))) // 0.1 vault tokens minimum
-    if (depositRaw < MIN_DEPOSIT_RAW) {
-      const minHuman = (Number(MIN_DEPOSIT_RAW) / Math.pow(10, vaultDecimals)).toFixed(1)
-      throw createError({ statusCode: 400, statusMessage: `Swap output too small to deposit. Minimum is ${minHuman} tokens — try a larger amount.` })
-    }
+    if (depositRaw === 0n)
+      throw createError({ statusCode: 400, statusMessage: 'Swap produced no output. Try a larger amount.' })
 
     const depositTx = await buildEarnDepositTx(me.wallet_address, vaultMint, new BN(depositRaw.toString()))
     const signature = await signAndBroadcastLendTx(privy, me.privy_wallet_id, depositTx)
