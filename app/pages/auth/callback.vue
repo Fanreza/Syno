@@ -20,7 +20,14 @@ onMounted(async () => {
 
   for (let attempt = 0; attempt <= delays.length; attempt++) {
     try {
-      await completeOAuthLogin(code, state)
+      // Wrap with timeout — Privy's loginWithCode can hang silently when
+      // window.ethereum is a non-writable getter (MetaMask conflict).
+      await Promise.race([
+        completeOAuthLogin(code, state),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Sign in timed out')), 8000)
+        ),
+      ])
       await navigateTo(user.value?.privy_user_id ? '/app' : '/onboarding')
       return
     } catch (e: any) {

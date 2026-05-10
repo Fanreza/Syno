@@ -6,17 +6,29 @@ async function getCachedSolPrice(): Promise<number> {
   const now = Date.now()
   if (_solPriceCache > 0 && now - _solPriceFetchedAt < 60_000) return _solPriceCache
   const SOL_MINT = 'So11111111111111111111111111111111111111112'
+
+  // Try Jupiter v3 first
   try {
     const config = useRuntimeConfig()
     const headers: Record<string, string> = {}
     if (config.jupiterApiKey) headers['x-api-key'] = config.jupiterApiKey as string
     const res = await $fetch<Record<string, { usdPrice: number }>>(`https://api.jup.ag/price/v3?ids=${SOL_MINT}`, {
-      headers,
-      retry: 0,
+      headers, retry: 0, timeout: 5000,
     })
     const price = res?.[SOL_MINT]?.usdPrice
+    if (price) { _solPriceCache = price; _solPriceFetchedAt = now; return _solPriceCache }
+  } catch { /* fall through to CoinGecko */ }
+
+  // Fallback: CoinGecko (no key needed)
+  try {
+    const res = await $fetch<{ solana: { usd: number } }>(
+      'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd',
+      { retry: 0, timeout: 5000 }
+    )
+    const price = res?.solana?.usd
     if (price) { _solPriceCache = price; _solPriceFetchedAt = now }
   } catch { /* keep stale value */ }
+
   return _solPriceCache
 }
 
