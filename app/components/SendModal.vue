@@ -17,7 +17,7 @@ const open = defineModel<boolean>('open', { required: true })
 const { apiFetch, user } = useAuth()
 const { balance, refresh: refreshBalance } = useBalance()
 const { startTourIfNew } = useOnboarding()
-watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('send-modal'), 400) })
+watch(open, (v) => { if (v) startTourIfNew('send-modal') })
 
 // ── Contact picker ─────────────────────────────────────────────────────────
 const showContactPicker = ref(false)
@@ -195,6 +195,9 @@ async function onSend() {
     if (isPrivate.value) {
       body.mint = inputToken.value.address
       body.decimals = inputToken.value.decimals
+      if (missingToken.value) {
+        body.inputMint = convertFromToken.value.address
+      }
     } else if (missingToken.value) {
       // user doesn't have inputToken — use convertFromToken, Jupiter swaps to inputToken
       body.outputToken = inputToken.value.address
@@ -207,7 +210,7 @@ async function onSend() {
     const res = await apiFetch<{ signature?: string; withdrawSignature?: string }>(endpoint, { method: 'POST', body })
     successSig.value = res.withdrawSignature ?? res.signature ?? ''
     await refreshBalance()
-    setTimeout(() => refreshBalance(), 3000)
+    refreshBalance()
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Transaction failed'
   } finally { loading.value = false }
@@ -220,7 +223,7 @@ function reset() {
   showContactPicker.value = false; riskScore.value = null; riskLoading.value = false
 }
 
-watch(open, (v) => { if (!v) setTimeout(reset, 300) })
+watch(open, (v) => { if (!v) reset() })
 </script>
 
 <template>

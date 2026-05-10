@@ -8,7 +8,7 @@ const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
 const { balance, refresh: refreshBalance } = useBalance()
 const { startTourIfNew } = useOnboarding()
-watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('swap-modal'), 400) })
+watch(open, (v) => { if (v) startTourIfNew('swap-modal') })
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112'
 
@@ -109,7 +109,7 @@ async function onSwap() {
     })
     result.value = res
     await refreshBalance()
-    setTimeout(() => refreshBalance(), 3000)
+    refreshBalance()
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Swap failed'
   } finally {
@@ -129,7 +129,7 @@ function reset() {
   fromToken.value = SOL_TOKEN
 }
 
-watch(open, (v) => { if (!v) setTimeout(reset, 300) })
+watch(open, (v) => { if (!v) reset() })
 </script>
 
 <template>

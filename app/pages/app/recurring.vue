@@ -116,7 +116,7 @@ async function onDelete(p: RecurringPayment) {
   if (!ok) return
   deleting.value = p.id
   try {
-    await apiFetch(`/api/recurring/${p.id}`, { method: 'DELETE' })
+    await apiFetch(`/api/recurring/${p.id}/delete`, { method: 'DELETE' })
     toast.success('Recurring payment deleted')
     refreshRecurring()
   } catch (e: any) {
@@ -252,7 +252,6 @@ async function onSend() {
     payrollResult.value = res
     toast.success(`Payroll sent — ${res.succeeded} of ${res.results.length} succeeded`)
     await refreshBalance()
-    setTimeout(() => refreshBalance(), 3000)
   } catch (e: any) {
     payrollError.value = e?.data?.statusMessage || e?.message || 'Failed to send'
     toast.error(payrollError.value)

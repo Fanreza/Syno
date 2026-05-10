@@ -12,7 +12,7 @@ const { apiFetch } = useAuth()
 const { balance } = useBalance()
 const { formatDisplay } = useDisplayCurrency()
 const { startTourIfNew } = useOnboarding()
-onMounted(() => setTimeout(() => startTourIfNew('activity'), 1200))
+onMounted(() => startTourIfNew('activity'))
 
 // Export
 const exporting = ref<'csv' | 'pdf' | null>(null)

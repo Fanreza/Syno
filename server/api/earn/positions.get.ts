@@ -1,5 +1,5 @@
-const cache = new Map<string, { data: any[]; ts: number }>()
-const TTL = 60_000
+// Only used as a fallback when Jupiter returns 429
+const staleCache = new Map<string, any[]>()
 
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
@@ -7,10 +7,6 @@ export default defineEventHandler(async (event) => {
 
   const { data: me } = await db.from('users').select('wallet_address').eq('privy_user_id', auth.userId).single()
   if (!me) throw createError({ statusCode: 400, statusMessage: 'User not onboarded' })
-
-  const now = Date.now()
-  const cached = cache.get(me.wallet_address)
-  if (cached && now - cached.ts < TTL) return cached.data
 
   try {
     const config = useRuntimeConfig()
@@ -39,10 +35,11 @@ export default defineEventHandler(async (event) => {
         }
       })
 
-    cache.set(me.wallet_address, { data: result, ts: now })
+    staleCache.set(me.wallet_address, result)
     return result
   } catch (error: any) {
+    if (error?.status === 429) return staleCache.get(me.wallet_address) ?? []
     console.error('Error fetching positions:', error?.message)
-    return cached?.data ?? []
+    return staleCache.get(me.wallet_address) ?? []
   }
 })

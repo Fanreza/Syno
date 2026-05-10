@@ -59,7 +59,7 @@ async function enableNotifications() {
       })
       if (token) await apiFetch('/api/users/fcm-token', { method: 'POST', body: { token } }).catch(() => {})
       notifDone.value = true
-      setTimeout(() => finish(), 800)
+      await finish()
     } else {
       await finish()
     }

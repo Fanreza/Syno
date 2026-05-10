@@ -5,7 +5,12 @@ const { apiFetch } = useAuth()
 const { formatDisplay, fetchRates } = useDisplayCurrency()
 const { isDark } = useTheme()
 const { startTourIfNew } = useOnboarding()
-onMounted(() => { fetchRates(); setTimeout(() => startTourIfNew('portfolio'), 1200) })
+onMounted(() => {
+  fetchRates()
+  refreshPortfolio()
+  refreshAnalytics()
+  startTourIfNew('portfolio')
+})
 
 // ── Portfolio data ───────────────────────────────────────────────────────────
 const { data: portfolio, refresh: refreshPortfolio, pending: pendingPortfolio } = useAsyncData(

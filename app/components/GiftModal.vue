@@ -9,7 +9,7 @@ const open = defineModel<boolean>('open', { required: true })
 const config = useRuntimeConfig()
 const { apiFetch } = useAuth()
 const { startTourIfNew } = useOnboarding()
-watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('gift-modal'), 400) })
+watch(open, (v) => { if (v) startTourIfNew('gift-modal') })
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 const { balance, refresh: refreshBalance } = useBalance()
@@ -97,7 +97,7 @@ async function onCreate() {
     })
     created.value = res
     await refreshBalance()
-    setTimeout(() => refreshBalance(), 3000)
+    refreshBalance()
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Failed to create gift'
   } finally { loading.value = false }
@@ -118,7 +118,7 @@ function reset() {
   error.value = ''; created.value = null; copied.value = false; currency.value = 'TOKEN'
 }
 
-watch(open, (v) => { if (!v) setTimeout(reset, 300) })
+watch(open, (v) => { if (!v) reset() })
 </script>
 
 <template>

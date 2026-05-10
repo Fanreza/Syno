@@ -1,5 +1,6 @@
 import bs58 from 'bs58'
 import { privateSend, toRawAmount } from '../../utils/private-send'
+import { authorizationContext } from '../../utils/privy'
 
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
@@ -9,6 +10,7 @@ export default defineEventHandler(async (event) => {
     amount: number
     decimals?: number
     mint?: string
+    inputMint?: string
     memo?: string
   }>(event)
 
@@ -64,28 +66,58 @@ export default defineEventHandler(async (event) => {
   const rpcUrl = (config as any).solanaRpcUrl || 'https://api.mainnet-beta.solana.com'
   const connection = new Connection(rpcUrl, 'confirmed')
 
+  console.log(`[private-send] exporting private key...`)
+  const privy = getPrivy()
+  const { private_key } = await (privy.wallets() as any).exportPrivateKey(sender.privy_wallet_id, {
+    authorization_context: { authorization_private_keys: [(config as any).privyAuthorizationKey] },
+  })
+
+  // If user pays with a different token, swap to the target mint first.
+  // MagicBlock charges ~1% protocol fee on top of the send amount, so we swap
+  // for amount + fee so the sender's wallet has enough to cover both.
+  const MAGICBLOCK_FEE_RATE = 0.01
+  const needsSwap = body.inputMint && body.inputMint !== mintAddress
+  if (needsSwap) {
+    console.log(`[private-send] swapping ${body.inputMint} → ${mintAddress}`)
+    const totalNeeded = body.amount * (1 + MAGICBLOCK_FEE_RATE)
+    const outUnits = Math.round(totalNeeded * Math.pow(10, decimals))
+    const quote = await getJupiterQuote({
+      inputMint: body.inputMint!,
+      outputMint: mintAddress,
+      amount: outUnits,
+      swapMode: 'ExactOut',
+      slippageBps: 100,
+    })
+    const swapTxBase64 = await buildJupiterSwapTx({ quote, userPublicKey: sender.wallet_address })
+    const authCtx = authorizationContext()
+    const swapResult = await (privy.wallets() as any).solana().signAndSendTransaction(
+      sender.privy_wallet_id,
+      { caip2: (config as any).solanaCaip2, transaction: swapTxBase64, ...authCtx },
+    )
+    const swapSig = swapResult.signature ?? swapResult.hash ?? swapResult
+    console.log(`[private-send] swap signature=${swapSig}`)
+    const { blockhash: swapBlockhash, lastValidBlockHeight: swapLastValid } = await connection.getLatestBlockhash('confirmed')
+    await connection.confirmTransaction({ signature: swapSig as string, blockhash: swapBlockhash, lastValidBlockHeight: swapLastValid }, 'confirmed')
+    console.log(`[private-send] swap confirmed, proceeding with private send`)
+  }
+
+  // Check output token balance after potential swap
   try {
     const { getAssociatedTokenAddressSync } = await import('@solana/spl-token')
     const ata = getAssociatedTokenAddressSync(new PublicKey(mintAddress), new PublicKey(sender.wallet_address))
     const acct = await connection.getTokenAccountBalance(ata)
     const senderBalance = acct.value.uiAmount ?? 0
     console.log(`[private-send] token balance=${senderBalance}`)
-    // MagicBlock charges a protocol fee in the same token on top of the transfer amount.
-    // Reserve 1% (min 0.01) so the transaction doesn't fail on-chain.
-    const feeBuffer = Math.max(senderBalance * 0.01, 0.000001)
-    const maxSendable = senderBalance - feeBuffer
-    if (body.amount > maxSendable)
-      throw createError({ statusCode: 400, statusMessage: `Insufficient balance. Max sendable via private send: ${maxSendable.toFixed(6)} (protocol fee reserved).` })
+    if (senderBalance <= 0)
+      throw createError({ statusCode: 400, statusMessage: `You don't have ${mintAddress === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' ? 'USDC' : 'USDT'} in your wallet.` })
+    const feeBuffer = Math.max(body.amount * MAGICBLOCK_FEE_RATE, 0.000001)
+    const minRequired = body.amount + feeBuffer
+    if (senderBalance < minRequired)
+      throw createError({ statusCode: 400, statusMessage: `Insufficient balance. Need ${minRequired.toFixed(6)} (amount + protocol fee), have ${senderBalance.toFixed(6)}.` })
   } catch (e: any) {
     if (e.statusCode) throw e
     throw createError({ statusCode: 400, statusMessage: `Token account not found. You don't have this token in your wallet.` })
   }
-
-  console.log(`[private-send] exporting private key...`)
-  const privy = getPrivy()
-  const { private_key } = await (privy.wallets() as any).exportPrivateKey(sender.privy_wallet_id, {
-    authorization_context: { authorization_private_keys: [(config as any).privyAuthorizationKey] },
-  })
 
   const rawAmount = toRawAmount(body.amount, decimals)
 

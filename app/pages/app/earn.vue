@@ -97,15 +97,14 @@ function openWithdraw(market: Market) {
 
 function closeModal() {
 	modalOpen.value = false;
-	setTimeout(() => {
-		modal.value = null;
-		amountRaw.value = "";
-		error.value = "";
-		successSig.value = "";
-		quoteError.value = "";
-		swapQuote.value = null;
-	}, 200);
+	modal.value = null;
+	amountRaw.value = "";
+	error.value = "";
+	successSig.value = "";
+	quoteError.value = "";
+	swapQuote.value = null;
 	refreshBalance();
+	refreshPositions();
 }
 
 function onOpenChange(val: boolean) {
@@ -494,7 +493,7 @@ const totalEarningUsd = computed(() => {
 										<button
 											class="font-semibold text-primary hover:opacity-80 transition"
 											@click="
-												amountRaw = String(positionForModal.balance);
+												amountRaw = parseFloat(positionForModal.balance.toFixed(positionForModal.decimals)).toString();
 												isMaxWithdraw = true;
 											"
 										>

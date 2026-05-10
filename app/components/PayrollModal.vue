@@ -8,7 +8,7 @@ const open = defineModel<boolean>('open', { required: true })
 const { apiFetch } = useAuth()
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
 const { startTourIfNew } = useOnboarding()
-watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('payroll-modal'), 400) })
+watch(open, (v) => { if (v) startTourIfNew('payroll-modal') })
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 const { balance, refresh: refreshBalance } = useBalance()
 
@@ -168,7 +168,7 @@ async function onSend() {
     })
     result.value = res
     await refreshBalance()
-    setTimeout(() => refreshBalance(), 3000)
+    refreshBalance()
   } catch (e: any) {
     error.value = e?.data?.statusMessage || e?.message || 'Failed to send'
   } finally {
@@ -182,7 +182,7 @@ function reset() {
   error.value = ''; result.value = null
 }
 
-watch(open, (v) => { if (!v) setTimeout(reset, 300) })
+watch(open, (v) => { if (!v) reset() })
 </script>
 
 <template>

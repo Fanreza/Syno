@@ -30,7 +30,7 @@ const { data, refresh, pending } = useAsyncData(
 
 onMounted(() => refresh())
 
-watch(showGift, (v) => { if (!v) setTimeout(refresh, 500) })
+watch(showGift, (v) => { if (!v) refresh() })
 
 const tab = ref<'created' | 'claimed'>('created')
 

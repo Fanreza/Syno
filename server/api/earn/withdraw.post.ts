@@ -82,7 +82,9 @@ export default defineEventHandler(async (event) => {
 		},
 	}).catch((err) => {
 		console.error("Redeem API error:", err);
-		throw createError({ statusCode: 400, statusMessage: "Failed to build redeem transaction" });
+		if (err?.status === 503 || err?.statusCode === 503)
+			throw createError({ statusCode: 503, statusMessage: "Jupiter Lend is temporarily unavailable. Try again in a moment." })
+		throw createError({ statusCode: 502, statusMessage: "Failed to build redeem transaction. Try again." });
 	});
 
 	withdrawSignature = await signAndBroadcastTx(privy, me.privy_wallet_id, redeemTx.transaction);

@@ -92,7 +92,7 @@ const showRequest = ref(false)
 const showPayroll = ref(false)
 
 const { startTourIfNew } = useOnboarding()
-onMounted(() => setTimeout(() => startTourIfNew('dashboard'), 800))
+onMounted(() => startTourIfNew('dashboard'))
 
 const copied = ref(false)
 function copyAddr() {
@@ -129,8 +129,8 @@ function activityLabel(item: ActivityItem) {
 }
 
 // Refresh activity after send modal closes with a success
-watch(showSend, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
-watch(showGift, (v) => { if (!v) setTimeout(() => { refreshAll() }, 500) })
+watch(showSend, (v) => { if (!v) refreshAll() })
+watch(showGift, (v) => { if (!v) refreshAll() })
 </script>
 
 <template>

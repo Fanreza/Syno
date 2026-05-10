@@ -6,7 +6,7 @@ import { toast } from 'vue-sonner'
 const { apiFetch, user } = useAuth()
 const { confirm } = useConfirm()
 const { startTourIfNew } = useOnboarding()
-onMounted(() => setTimeout(() => startTourIfNew('people'), 1200))
+onMounted(() => startTourIfNew('people'))
 
 const tab = ref<'friends' | 'contacts'>('friends')
 

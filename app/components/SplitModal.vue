@@ -10,7 +10,7 @@ const open = defineModel<boolean>('open', { required: true })
 const config = useRuntimeConfig()
 const { apiFetch } = useAuth()
 const { startTourIfNew } = useOnboarding()
-watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('split-modal'), 400) })
+watch(open, (v) => { if (v) startTourIfNew('split-modal') })
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 
@@ -171,7 +171,7 @@ function reset() {
   error.value = ''; createdId.value = ''; outputToken.value = SOL_TOKEN; currency.value = 'TOKEN'
 }
 
-watch(open, (v) => { if (!v) setTimeout(reset, 300) })
+watch(open, (v) => { if (!v) reset() })
 </script>
 
 <template>

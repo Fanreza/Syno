@@ -5,7 +5,7 @@ const route = useRoute()
 const id = route.params.id as string
 const { isReady, isAuthenticated, user, apiFetch } = useAuth()
 
-const { data: gift, error: fetchError } = await useFetch<{
+const { data: gift, error: fetchError, refresh: refreshGift } = await useFetch<{
   id: string
   total_amount: number
   token: string
@@ -14,6 +14,7 @@ const { data: gift, error: fetchError } = await useFetch<{
   amount_per_claim: number
   remaining_slots: number
   is_exhausted: boolean
+  already_claimed: boolean
   creator: { username: string; wallet_address: string }
 }>(`/api/gifts/${id}`)
 
@@ -21,7 +22,8 @@ const claiming = ref(false)
 const claimError = ref('')
 const claimResult = ref<{ signature: string; amount: number } | null>(null)
 
-const alreadyClaimed = ref(false)
+const alreadyClaimed = computed(() => !!gift.value?.already_claimed || _alreadyClaimed.value)
+const _alreadyClaimed = ref(false)
 
 const KNOWN_MINTS: Record<string, string> = {
   'So11111111111111111111111111111111111111112': 'SOL',
@@ -52,17 +54,23 @@ async function claim() {
       body: { giftId: id }
     })
     claimResult.value = res
+    await refreshGift()
   } catch (e: any) {
     const msg = e?.data?.statusMessage || e?.message || 'Claim failed'
-    if (msg === 'Already claimed') alreadyClaimed.value = true
+    if (msg === 'Already claimed') _alreadyClaimed.value = true
     else claimError.value = msg
   } finally { claiming.value = false }
 }
 
 // wait for auth ready before anything
 if (import.meta.client) {
-  watchEffect(() => {
-    if (isReady.value && !user.value) { /* stay on page, show login CTA */ }
+  watchEffect(async () => {
+    if (isReady.value && isAuthenticated.value && gift.value && !claimResult.value) {
+      try {
+        const res = await apiFetch<{ already_claimed: boolean }>(`/api/gifts/${id}`)
+        if (res.already_claimed) _alreadyClaimed.value = true
+      } catch {}
+    }
   })
 }
 </script>
@@ -133,11 +141,27 @@ if (import.meta.client) {
             >
               View transaction
             </a>
+            <NuxtLink
+              to="/app"
+              class="mt-4 flex w-full items-center justify-center rounded-2xl py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
+              style="background: linear-gradient(135deg, hsl(38 90% 48%) 0%, hsl(30 95% 55%) 100%)"
+            >
+              Back to Dashboard
+            </NuxtLink>
           </div>
 
           <!-- Already claimed -->
-          <div v-else-if="alreadyClaimed" class="rounded-xl border border-border bg-secondary px-4 py-3 text-center text-sm text-muted-foreground">
-            You already claimed this gift.
+          <div v-else-if="alreadyClaimed" class="space-y-3 text-center">
+            <div class="rounded-xl border border-border bg-secondary px-4 py-3 text-sm text-muted-foreground">
+              You already claimed this gift.
+            </div>
+            <NuxtLink
+              to="/app"
+              class="flex w-full items-center justify-center rounded-2xl py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
+              style="background: linear-gradient(135deg, hsl(38 90% 48%) 0%, hsl(30 95% 55%) 100%)"
+            >
+              Back to Dashboard
+            </NuxtLink>
           </div>
 
           <!-- Exhausted -->

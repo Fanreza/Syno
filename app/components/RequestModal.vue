@@ -8,7 +8,7 @@ import { formatAmount } from '~/utils'
 const open = defineModel<boolean>('open', { required: true })
 const { apiFetch, user } = useAuth()
 const { startTourIfNew } = useOnboarding()
-watch(open, (v) => { if (v) setTimeout(() => startTourIfNew('request-modal'), 400) })
+watch(open, (v) => { if (v) startTourIfNew('request-modal') })
 const { formatDisplay, selectedCurrency, SUPPORTED_CURRENCIES } = useDisplayCurrency()
 const currencySymbol = computed(() => SUPPORTED_CURRENCIES.find(c => c.code === selectedCurrency.value)?.symbol ?? '$')
 
@@ -121,7 +121,7 @@ function reset() {
   outputToken.value = SOL_TOKEN
 }
 
-watch(open, (v) => { if (!v) setTimeout(reset, 300) })
+watch(open, (v) => { if (!v) reset() })
 
 const canCreate = computed(() => amountInToken.value > 0 && !loading.value)
 const isNonSOL = computed(() => outputToken.value.address !== SOL_TOKEN.address)
