@@ -187,7 +187,7 @@ Butuh 2 akun berbeda untuk test fitur social (send, split, gift, friends). Buka 
 **Prereq: USDC atau USDT saja**
 
 - [ ] Di Send modal, aktifkan mode Private (toggle jika ada)
-- [ ] Atau test via `/api/payments/private-send-umbra` langsung
+- [ ] Atau test via `/api/payments/private-send` langsung
 - [ ] Transaction tidak muncul di on-chain history publik
 - [ ] Receiver tetap dapat USDC
 

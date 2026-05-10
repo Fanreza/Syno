@@ -153,8 +153,8 @@ export default defineEventHandler(async (event) => {
     await createNotification({
       userId: recipientId,
       type: 'payment_received',
-      title: 'Private payment received',
-      body: `@${senderUsername} sent you ${body.amount.toFixed(4)} ${mintAddress === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' ? 'USDC' : 'USDT'} privately${body.memo ? ` · ${body.memo}` : ''}`,
+      title: 'Private transfer received',
+      body: `@${senderUsername} sent you a private transfer${body.memo ? ` · ${body.memo}` : ''}`,
       data: { tx_signature: result.signature },
     })
   }

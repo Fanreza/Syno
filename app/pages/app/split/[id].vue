@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Copy, Check, CheckCircle2, Clock, RefreshCw, ExternalLink, BadgeCheck } from 'lucide-vue-next'
+import { ArrowLeft, Copy, Check, CheckCircle2, RefreshCw, ExternalLink, BadgeCheck, Share2 } from 'lucide-vue-next'
 import { formatAmount, shortAddr } from '~/utils'
 
 const route = useRoute()
@@ -25,6 +25,23 @@ function toUsd(amount: number): string {
 const id = route.params.id as string
 const { apiFetch } = useAuth()
 const config = useRuntimeConfig()
+
+const copiedBill = ref(false)
+function shareBill(channel: 'whatsapp' | 'telegram') {
+  const title = bill.value?.title || 'Split Bill'
+  const paidCount = paid.value
+  const totalCount = total.value
+  const url = `${config.public.appUrl}/app/split/${id}`
+  const msg = `${title} — ${paidCount} of ${totalCount} paid. Check Syno to pay your share: ${url}`
+  const encoded = encodeURIComponent(msg)
+  if (channel === 'whatsapp') window.open(`https://wa.me/?text=${encoded}`, '_blank')
+  else window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(`${title} — ${paidCount} of ${totalCount} paid. Check Syno to pay your share.`)}`, '_blank')
+}
+function copyBillLink() {
+  navigator.clipboard.writeText(`${config.public.appUrl}/app/split/${id}`)
+  copiedBill.value = true
+  setTimeout(() => { copiedBill.value = false }, 1500)
+}
 
 const { data: bill, refresh } = await useAsyncData(`split-${id}`, () => apiFetch<any>(`/api/split/${id}`))
 
@@ -123,12 +140,30 @@ const tokenSymbol = computed(() => {
         <h1 class="text-2xl font-bold truncate">{{ bill?.title || 'Split Bill' }}</h1>
         <p class="text-sm text-muted-foreground">Created by @{{ bill?.creator?.username }}</p>
       </div>
-      <button
-        class="flex items-center gap-1.5 rounded-xl border border-border p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
-        @click="refresh()"
-      >
-        <RefreshCw class="h-4 w-4" />
-      </button>
+      <div class="flex items-center gap-1.5">
+        <button
+          class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          @click="copyBillLink"
+        >
+          <Check v-if="copiedBill" class="h-3.5 w-3.5 text-green-500" />
+          <Copy v-else class="h-3.5 w-3.5" />
+          {{ copiedBill ? 'Copied!' : 'Copy link' }}
+        </button>
+        <button
+          class="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          @click="shareBill('whatsapp')"
+          title="Share via WhatsApp"
+        >
+          <Share2 class="h-3.5 w-3.5" />
+          Share
+        </button>
+        <button
+          class="flex items-center gap-1.5 rounded-xl border border-border p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          @click="refresh()"
+        >
+          <RefreshCw class="h-4 w-4" />
+        </button>
+      </div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-3">

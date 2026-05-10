@@ -200,7 +200,7 @@ npm run dev
 - **Dashboard** — balance card, stats, 6 action buttons (Send/Request/Swap/Split/Gift/Payroll), holdings, recent activity
 - **Send** — `SendModal` with `TokenPicker`, Jupiter auto-convert if input token differs from output
 - **Swap** — `SwapModal`, live Jupiter quote (debounced), slippage picker, `GET /api/swap/quote` + `POST /api/swap/execute`
-- **Private send** — `POST /api/payments/private-send-umbra` via MagicBlock ephemeral rollup. USDC/USDT only.
+- **Private send** — `POST /api/payments/private-send` via MagicBlock ephemeral rollup. USDC/USDT only.
 - **Payment Link / QR** — `RequestModal` → `/pay/[id]` public page, WhatsApp/Telegram share
 - **Split Bill** — `SplitModal`, friends picker per row, index + detail pages, WhatsApp/Telegram share
 - **Gift** — `GiftModal` → `/gift/[id]` claim page. Direct creator→claimer transfer (no pool wallet). Partial signing for SPL: creator signs token transfer, claimer signs as fee payer. WhatsApp/Telegram share.

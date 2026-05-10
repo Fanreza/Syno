@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Gift, CheckCircle2, Clock, ExternalLink, Plus, ChevronRight } from 'lucide-vue-next'
-import { formatAmount } from '~/utils'
+import { Gift, CheckCircle2, ExternalLink, Plus, ChevronDown, Users } from 'lucide-vue-next'
+import { formatAmount, shortAddr } from '~/utils'
 
 const { apiFetch } = useAuth()
 const { balance } = useBalance()
@@ -48,6 +48,22 @@ function copyLink(id: string) {
   navigator.clipboard.writeText(giftLink(id))
   copied.value = id
   setTimeout(() => { if (copied.value === id) copied.value = '' }, 1500)
+}
+
+type ClaimRow = { id: string; amount: number; tx_signature: string | null; claimed_at: string; username: string | null }
+const expandedId = ref<string | null>(null)
+const giftClaims = ref<Record<string, ClaimRow[]>>({})
+const claimsLoading = ref<Record<string, boolean>>({})
+
+async function toggleClaims(giftId: string) {
+  if (expandedId.value === giftId) { expandedId.value = null; return }
+  expandedId.value = giftId
+  if (giftClaims.value[giftId] !== undefined) return
+  claimsLoading.value[giftId] = true
+  try {
+    const res = await apiFetch<{ claims: ClaimRow[] }>(`/api/gifts/${giftId}`)
+    giftClaims.value[giftId] = res.claims ?? []
+  } catch { giftClaims.value[giftId] = [] } finally { claimsLoading.value[giftId] = false }
 }
 </script>
 
@@ -118,56 +134,101 @@ function copyLink(id: string) {
         <div
           v-for="(g, i) in data.created"
           :key="g.id"
-          class="rounded-2xl border border-border bg-card px-5 py-4 animate-item-in"
+          class="rounded-2xl border border-border bg-card animate-item-in overflow-hidden"
           :style="`animation-delay: ${i * 50}ms`"
         >
-          <div class="flex items-center gap-4">
-            <div
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              :class="g.settled ? 'bg-green-500/10' : 'bg-yellow-500/10'"
-            >
-              <CheckCircle2 v-if="g.settled" class="h-5 w-5 text-green-500" />
-              <Gift v-else class="h-5 w-5 text-yellow-500" />
-            </div>
+          <!-- Card header (clickable) -->
+          <button class="w-full text-left px-5 py-4 transition hover:bg-accent/30" @click="toggleClaims(g.id)">
+            <div class="flex items-center gap-4">
+              <div
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                :class="g.settled ? 'bg-green-500/10' : 'bg-yellow-500/10'"
+              >
+                <CheckCircle2 v-if="g.settled" class="h-5 w-5 text-green-500" />
+                <Gift v-else class="h-5 w-5 text-yellow-500" />
+              </div>
 
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <p class="font-semibold">{{ formatAmount(g.total_amount) }} {{ g.token_symbol }}<span v-if="toUsd(g.total_amount, g.token_symbol)" class="ml-1.5 text-xs font-normal text-muted-foreground">{{ toUsd(g.total_amount, g.token_symbol) }}</span></p>
-                <span
-                  class="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                  :class="g.settled ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'"
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <p class="font-semibold">{{ formatAmount(g.total_amount) }} {{ g.token_symbol }}<span v-if="toUsd(g.total_amount, g.token_symbol)" class="ml-1.5 text-xs font-normal text-muted-foreground">{{ toUsd(g.total_amount, g.token_symbol) }}</span></p>
+                  <span
+                    class="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    :class="g.settled ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'"
+                  >
+                    {{ g.settled ? 'All claimed' : 'Active' }}
+                  </span>
+                </div>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  {{ g.claimed_count }} / {{ g.total_slots }} claimed · {{ fmtDate(g.created_at) }}
+                </p>
+                <!-- Progress bar -->
+                <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    class="h-full rounded-full transition-all"
+                    :class="g.settled ? 'bg-green-500' : 'bg-yellow-500'"
+                    :style="{ width: `${Math.round((g.claimed_count / g.total_slots) * 100)}%` }"
+                  />
+                </div>
+              </div>
+
+              <div class="shrink-0 flex items-center gap-1.5" @click.stop>
+                <button
+                  v-if="!g.settled"
+                  class="flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent"
+                  @click="copyLink(g.id)"
                 >
-                  {{ g.settled ? 'All claimed' : 'Active' }}
-                </span>
-              </div>
-              <p class="mt-0.5 text-xs text-muted-foreground">
-                {{ g.claimed_count }} / {{ g.total_slots }} claimed · {{ fmtDate(g.created_at) }}
-              </p>
-              <!-- Progress bar -->
-              <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
-                <div
-                  class="h-full rounded-full transition-all"
-                  :class="g.settled ? 'bg-green-500' : 'bg-yellow-500'"
-                  :style="{ width: `${Math.round((g.claimed_count / g.total_slots) * 100)}%` }"
-                />
+                  {{ copied === g.id ? 'Copied!' : 'Copy link' }}
+                </button>
+                <a
+                  :href="`/gift/${g.id}`"
+                  target="_blank"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-accent"
+                >
+                  <ExternalLink class="h-3.5 w-3.5" />
+                </a>
+                <div class="flex h-8 w-8 items-center justify-center text-muted-foreground transition" :class="expandedId === g.id ? 'rotate-180' : ''" @click="toggleClaims(g.id)">
+                  <ChevronDown class="h-4 w-4" />
+                </div>
               </div>
             </div>
+          </button>
 
-            <div class="shrink-0 flex items-center gap-1.5">
-              <button
-                v-if="!g.settled"
-                class="flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent"
-                @click="copyLink(g.id)"
+          <!-- Claim list panel -->
+          <div v-if="expandedId === g.id" class="border-t border-border">
+            <div v-if="claimsLoading[g.id]" class="flex items-center justify-center gap-2 px-5 py-4 text-sm text-muted-foreground">
+              <span class="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" />
+              Loading claimers…
+            </div>
+            <div v-else-if="!giftClaims[g.id]?.length" class="flex items-center gap-2 px-5 py-4 text-sm text-muted-foreground">
+              <Users class="h-4 w-4" />
+              No one has claimed this gift yet.
+            </div>
+            <div v-else class="divide-y divide-border">
+              <div
+                v-for="c in giftClaims[g.id]"
+                :key="c.id"
+                class="flex items-center gap-3 px-5 py-3"
               >
-                {{ copied === g.id ? 'Copied!' : 'Copy link' }}
-              </button>
-              <a
-                :href="`/gift/${g.id}`"
-                target="_blank"
-                class="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition hover:bg-accent"
-              >
-                <ExternalLink class="h-3.5 w-3.5" />
-              </a>
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-muted-foreground">
+                  {{ c.username?.[0]?.toUpperCase() ?? '?' }}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold">{{ c.username ? '@' + c.username : shortAddr(c.username ?? '', 8) }}</p>
+                  <p class="text-xs text-muted-foreground">{{ fmtDate(c.claimed_at) }}</p>
+                </div>
+                <div class="shrink-0 text-right">
+                  <p class="text-sm font-semibold text-green-600 dark:text-green-400">+{{ formatAmount(c.amount) }} {{ g.token_symbol }}</p>
+                  <a
+                    v-if="c.tx_signature"
+                    :href="`https://solscan.io/tx/${c.tx_signature}`"
+                    target="_blank"
+                    class="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                  >
+                    <ExternalLink class="h-2.5 w-2.5" />
+                    Solscan
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>

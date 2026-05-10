@@ -127,11 +127,11 @@ server/
     privy.ts                  # getPrivy(), requireUser(), signAndBroadcast()
     solana.ts                 # buildTransferSolTx(), buildTransferSplTx()
     jupiter.ts                # getJupiterQuote(), buildJupiterSwapTx()
-    umbra.ts                  # umbraPrivateSend() — wraps magicblock-runner.mjs child process
-    magicblock-runner.mjs     # standalone ESM script: calls MagicBlock API, signs tx, broadcasts
+    private-send.ts           # privateSend() — calls MagicBlock API, signs tx, broadcasts
+    runners/magicblock-runner.mjs  # MagicBlock private transfer runner
   api/
     users/                    # register, me, search
-    payments/                 # send, create-link, [id], private-send-umbra
+    payments/                 # send, create-link, [id], private-send
     split/                    # create, index, [id]
     gifts/                    # create, claim, [id]
     friends/                  # index, add, remove
@@ -166,7 +166,7 @@ nuxt.config.ts
 
 ## Private send flow
 
-1. `SendModal` (Private mode) → `POST /api/payments/private-send-umbra` with `{ toUsername | toAddress, amount, mint, decimals }`.
+1. `SendModal` (Private mode) → `POST /api/payments/private-send` with `{ toUsername | toAddress, amount, mint, decimals }`.
 2. Server checks sender has enough USDC/USDT balance (pre-flight).
 3. Server exports sender private key from Privy via `exportPrivateKey()`.
 4. `magicblock-runner.mjs` calls `POST https://payments.magicblock.app/v1/spl/transfer` with `privacy: 'private'`.

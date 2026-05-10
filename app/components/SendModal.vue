@@ -186,7 +186,7 @@ async function onSend() {
   try {
     const addr = recipientUser.value?.wallet_address ?? ''
     const uname = recipientUser.value?.username ?? null
-    const endpoint = isPrivate.value ? '/api/payments/private-send-umbra' : '/api/payments/send'
+    const endpoint = isPrivate.value ? '/api/payments/private-send' : '/api/payments/send'
     const body: Record<string, any> = {
       toUsername: uname ? uname : undefined,
       toAddress: uname ? undefined : addr,
@@ -468,7 +468,7 @@ watch(open, (v) => { if (!v) reset() })
                   />
                 </div>
               </div>
-              <p v-if="convertLabel && !isPrivate" class="mt-1.5 pl-1 text-xs text-muted-foreground">{{ convertLabel }}</p>
+              <p v-if="convertLabel" class="mt-1.5 pl-1 text-xs text-muted-foreground">{{ convertLabel }}</p>
             </div>
 
             <!-- Memo -->
