@@ -58,15 +58,10 @@ export default defineNuxtPlugin({
           }).catch(() => {})
         }
 
-        if (authToken.value) {
-          await save(authToken.value)
-        } else {
-          const stop = watch(authToken, async (token) => {
-            if (!token) return
-            stop()
-            await save(token)
-          })
-        }
+        watch(authToken, async (token) => {
+          if (!token) return
+          await save(token)
+        }, { immediate: true })
       } catch (err) {
         console.warn('[FCM] plugin failed:', err)
       }
