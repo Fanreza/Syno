@@ -85,7 +85,6 @@ export default defineNuxtConfig({
       ],
     },
     workbox: {
-      skipWaiting: false,
       navigateFallback: null,
       // Don't cache HTML — always fetch from network so stale pages never cause issues
       globPatterns: ['**/*.{js,css,ico,png,jpeg,jpg,svg,woff2}'],
