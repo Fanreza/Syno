@@ -1,5 +1,5 @@
 import { authorizationContext } from '../../utils/privy'
-import { Connection, Transaction, VersionedTransaction } from '@solana/web3.js'
+import { Connection, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js'
 
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
@@ -25,6 +25,18 @@ export default defineEventHandler(async (event) => {
 
   const rawAmount = Math.round(body.amount * Math.pow(10, body.inputDecimals))
 
+  // ATA creation costs 2,039,280 lamports rent + ~10,000 for fees — check upfront
+  const config = useRuntimeConfig()
+  const connection = new Connection(config.solanaRpcUrl as string, 'confirmed')
+  const solBalance = await connection.getBalance(new PublicKey(user.wallet_address))
+  const MIN_SOL_LAMPORTS = 2_100_000 // ~0.0021 SOL: covers ATA rent + fees
+  if (solBalance < MIN_SOL_LAMPORTS) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: `Not enough SOL for fees. You need at least 0.003 SOL in your wallet to cover transaction costs (current: ${(solBalance / 1e9).toFixed(4)} SOL).`,
+    })
+  }
+
   const feeAccount = getJupiterFeeAccount(body.outputMint)
   const quote = await getJupiterQuote({
     inputMint: body.inputMint,
@@ -37,7 +49,6 @@ export default defineEventHandler(async (event) => {
 
   const swapTx = await buildJupiterSwapTx({ quote, userPublicKey: user.wallet_address, feeAccount })
 
-  const config = useRuntimeConfig()
   const privy = getPrivy()
   const authCtx = authorizationContext()
 
@@ -50,7 +61,6 @@ export default defineEventHandler(async (event) => {
   let tx: Transaction | VersionedTransaction
   try { tx = VersionedTransaction.deserialize(buf) } catch { tx = Transaction.from(buf) }
 
-  const connection = new Connection(config.solanaRpcUrl as string, 'confirmed')
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
 
   const signature = await connection.sendRawTransaction(
