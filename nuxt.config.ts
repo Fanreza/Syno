@@ -86,7 +86,8 @@ export default defineNuxtConfig({
     },
     workbox: {
       navigateFallback: null,
-      globPatterns: ['**/*.{js,css,html,ico,png,jpeg,jpg,svg,woff2}'],
+      // Don't cache HTML — always fetch from network so stale pages never cause issues
+      globPatterns: ['**/*.{js,css,ico,png,jpeg,jpg,svg,woff2}'],
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
