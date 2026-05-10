@@ -40,6 +40,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'mint and amount required' })
   }
 
+  const decimals = body.decimals ?? 6
+  const rawAmount = Math.round(body.amount * Math.pow(10, decimals))
+  const MIN_RAW = Math.pow(10, Math.max(decimals - 2, 0)) // 0.01 tokens minimum
+  if (rawAmount < MIN_RAW) {
+    const minHuman = (MIN_RAW / Math.pow(10, decimals)).toFixed(2)
+    throw createError({ statusCode: 400, statusMessage: `Minimum deposit is ${minHuman} tokens` })
+  }
+
   const db = adminDb()
   const { data: me } = await db
     .from('users')
@@ -51,7 +59,6 @@ export default defineEventHandler(async (event) => {
   const privy = getPrivy()
   const inputMint = body.inputMint ?? body.mint
   const vaultMint = body.mint
-  const rawAmount = Math.round(body.amount * Math.pow(10, body.decimals))
 
   if (inputMint !== vaultMint) {
     const quote = await getJupiterQuote({
