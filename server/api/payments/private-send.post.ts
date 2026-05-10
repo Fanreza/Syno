@@ -98,25 +98,49 @@ export default defineEventHandler(async (event) => {
     console.log(`[private-send] swap signature=${swapSig}`)
     const { blockhash: swapBlockhash, lastValidBlockHeight: swapLastValid } = await connection.getLatestBlockhash('confirmed')
     await connection.confirmTransaction({ signature: swapSig as string, blockhash: swapBlockhash, lastValidBlockHeight: swapLastValid }, 'confirmed')
-    console.log(`[private-send] swap confirmed, proceeding with private send`)
-  }
 
-  // Check output token balance after potential swap
-  try {
+    // Read post-swap balance directly from the confirmed transaction metadata
+    // to avoid RPC lag on a separate getTokenAccountBalance call
+    const swapTxResult = await connection.getTransaction(swapSig as string, {
+      commitment: 'confirmed',
+      maxSupportedTransactionVersion: 0,
+    })
     const { getAssociatedTokenAddressSync } = await import('@solana/spl-token')
     const ata = getAssociatedTokenAddressSync(new PublicKey(mintAddress), new PublicKey(sender.wallet_address))
-    const acct = await connection.getTokenAccountBalance(ata)
-    const senderBalance = acct.value.uiAmount ?? 0
-    console.log(`[private-send] token balance=${senderBalance}`)
-    if (senderBalance <= 0)
-      throw createError({ statusCode: 400, statusMessage: `You don't have ${mintAddress === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' ? 'USDC' : 'USDT'} in your wallet.` })
-    const feeBuffer = Math.max(body.amount * MAGICBLOCK_FEE_RATE, 0.000001)
-    const minRequired = body.amount + feeBuffer
-    if (senderBalance < minRequired)
-      throw createError({ statusCode: 400, statusMessage: `Insufficient balance. Need ${minRequired.toFixed(6)} (amount + protocol fee), have ${senderBalance.toFixed(6)}.` })
-  } catch (e: any) {
-    if (e.statusCode) throw e
-    throw createError({ statusCode: 400, statusMessage: `Token account not found. You don't have this token in your wallet.` })
+    const ataStr = ata.toBase58()
+    const postBalances = swapTxResult?.meta?.postTokenBalances ?? []
+    const ataEntry = postBalances.find((b: any) => b.mint === mintAddress && b.owner === sender.wallet_address)
+      ?? postBalances.find((b: any) => swapTxResult?.transaction?.message?.staticAccountKeys?.[b.accountIndex]?.toBase58() === ataStr)
+    const swapOutBalance = ataEntry ? Number(ataEntry.uiTokenAmount.uiAmount ?? 0) : null
+
+    console.log(`[private-send] swap confirmed, post-swap balance=${swapOutBalance}`)
+
+    if (swapOutBalance !== null) {
+      const feeBuffer = Math.max(body.amount * MAGICBLOCK_FEE_RATE, 0.000001)
+      const minRequired = body.amount + feeBuffer
+      if (swapOutBalance < minRequired)
+        throw createError({ statusCode: 400, statusMessage: `Swap output insufficient. Need ${minRequired.toFixed(6)}, got ${swapOutBalance.toFixed(6)}.` })
+    }
+  }
+
+  // Check output token balance (no-swap path)
+  if (!needsSwap) {
+    try {
+      const { getAssociatedTokenAddressSync } = await import('@solana/spl-token')
+      const ata = getAssociatedTokenAddressSync(new PublicKey(mintAddress), new PublicKey(sender.wallet_address))
+      const acct = await connection.getTokenAccountBalance(ata)
+      const senderBalance = acct.value.uiAmount ?? 0
+      console.log(`[private-send] token balance=${senderBalance}`)
+      if (senderBalance <= 0)
+        throw createError({ statusCode: 400, statusMessage: `You don't have ${mintAddress === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' ? 'USDC' : 'USDT'} in your wallet.` })
+      const feeBuffer = Math.max(body.amount * MAGICBLOCK_FEE_RATE, 0.000001)
+      const minRequired = body.amount + feeBuffer
+      if (senderBalance < minRequired)
+        throw createError({ statusCode: 400, statusMessage: `Insufficient balance. Need ${minRequired.toFixed(6)}, have ${senderBalance.toFixed(6)}.` })
+    } catch (e: any) {
+      if (e.statusCode) throw e
+      throw createError({ statusCode: 400, statusMessage: `Token account not found. You don't have this token in your wallet.` })
+    }
   }
 
   const rawAmount = toRawAmount(body.amount, decimals)
