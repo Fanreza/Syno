@@ -25,16 +25,16 @@ export default defineEventHandler(async (event) => {
 
   const rawAmount = Math.round(body.amount * Math.pow(10, body.inputDecimals))
 
+  const feeAccount = getJupiterFeeAccount(body.outputMint)
   const quote = await getJupiterQuote({
     inputMint: body.inputMint,
     outputMint: body.outputMint,
     amount: rawAmount,
     slippageBps: body.slippageBps ?? 50,
     swapMode: 'ExactIn',
-    platformFeeBps: 10,
+    platformFeeBps: feeAccount ? 10 : undefined,
   })
 
-  const feeAccount = getJupiterFeeAccount(body.outputMint)
   const swapTx = await buildJupiterSwapTx({ quote, userPublicKey: user.wallet_address, feeAccount })
 
   const config = useRuntimeConfig()
