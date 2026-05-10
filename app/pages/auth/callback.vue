@@ -13,20 +13,36 @@ onMounted(async () => {
     return
   }
 
-  // Give Privy iframe time to initialize
-  await new Promise(r => setTimeout(r, 1000))
+  // Retry loginWithCode — Privy's iframe may not be ready immediately after page reload.
+  // We retry with backoff for up to ~10s before giving up.
+  const delays = [800, 1200, 2000, 3000]
+  let lastErr: any
 
-  try {
-    await completeOAuthLogin(code, state)
-    await navigateTo(user.value?.privy_user_id ? '/app' : '/onboarding')
-  } catch (e: any) {
-    const msg: string = e?.message || ''
-    if (msg.includes('already linked') || msg.includes('already exists')) {
-      error.value = 'This email is already registered with a different sign-in method. Go back and use email or wallet to sign in.'
-    } else {
-      error.value = msg || 'OAuth login failed'
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      await completeOAuthLogin(code, state)
+      await navigateTo(user.value?.privy_user_id ? '/app' : '/onboarding')
+      return
+    } catch (e: any) {
+      lastErr = e
+      const msg: string = e?.message || ''
+      // Non-retriable errors — surface immediately
+      if (msg.includes('already linked') || msg.includes('already exists')) {
+        error.value = 'This account is already linked to a different sign-in method. Go back and use email or wallet to sign in.'
+        return
+      }
+      if (msg.includes('invalid') || msg.includes('expired') || msg.includes('code')) {
+        error.value = msg || 'OAuth login failed'
+        return
+      }
+      // Likely initialization issue — wait and retry
+      if (attempt < delays.length) {
+        await new Promise(r => setTimeout(r, delays[attempt]))
+      }
     }
   }
+
+  error.value = lastErr?.message || 'Sign in timed out. Please try again.'
 })
 </script>
 

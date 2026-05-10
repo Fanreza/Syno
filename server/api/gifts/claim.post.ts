@@ -30,6 +30,8 @@ export default defineEventHandler(async (event) => {
     .eq('id', body.giftId)
     .maybeSingle()
   if (!gift) throw createError({ statusCode: 404, statusMessage: 'Gift not found' })
+  if (gift.creator_id === claimer.id)
+    throw createError({ statusCode: 403, statusMessage: 'You cannot claim your own gift' })
   if (gift.expires_at && new Date(gift.expires_at) < new Date())
     throw createError({ statusCode: 410, statusMessage: 'This gift has expired' })
   if (gift.claimed_count >= gift.total_slots) throw createError({ statusCode: 409, statusMessage: 'All slots claimed' })

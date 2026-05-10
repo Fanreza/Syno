@@ -27,6 +27,7 @@ const claimResult = ref<{ signature: string; amount: number } | null>(null)
 
 const alreadyClaimed = computed(() => !!gift.value?.already_claimed || _alreadyClaimed.value)
 const _alreadyClaimed = ref(false)
+const isCreator = computed(() => !!user.value && !!gift.value && gift.value.creator?.username === user.value.username)
 
 const KNOWN_MINTS: Record<string, string> = {
   'So11111111111111111111111111111111111111112': 'SOL',
@@ -188,6 +189,11 @@ if (import.meta.client) {
           <!-- Exhausted -->
           <div v-else-if="gift.is_exhausted" class="rounded-xl border border-border bg-secondary px-4 py-3 text-center text-sm text-muted-foreground">
             All slots have been claimed.
+          </div>
+
+          <!-- Creator view -->
+          <div v-else-if="isCreator" class="rounded-xl border border-border bg-secondary px-4 py-3 text-center text-sm text-muted-foreground">
+            This is your gift — you can't claim it yourself.
           </div>
 
           <!-- Claim button -->

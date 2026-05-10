@@ -98,7 +98,8 @@ export async function getWalletRiskScore(walletAddress: string): Promise<RiskSco
 	const spamTokens = items.filter((t) => t.is_spam).length;
 	const totalTokens = items.length;
 	const totalUsd = items.reduce((sum, t) => sum + (t.quote ?? 0), 0);
-	const hasActivity = items.some((t) => t.last_transferred_at !== null);
+	// GoldRush never populates last_transferred_at on Solana — use balance as proxy for activity
+	const hasActivity = totalUsd > 0.01 || totalTokens > 0;
 
 	const flags: string[] = [];
 	let score = 0;
@@ -113,14 +114,14 @@ export async function getWalletRiskScore(walletAddress: string): Promise<RiskSco
 		score += 20;
 	}
 
-	// New / empty wallet
-	if (totalTokens === 0 || !hasActivity) {
-		flags.push("New or inactive wallet");
+	// Truly empty wallet — no tokens at all
+	if (totalTokens === 0) {
+		flags.push("Empty wallet");
 		score += 15;
 	}
 
 	// Very low balance — might be a fresh drainer wallet
-	if (hasActivity && totalUsd < 0.1 && totalTokens > 0) {
+	if (totalTokens > 0 && totalUsd < 0.1) {
 		flags.push("Very low balance");
 		score += 10;
 	}
