@@ -445,7 +445,11 @@ const totalEarningUsd = computed(() => {
 							<CheckCircle2 class="h-8 w-8 text-green-500" />
 						</div>
 						<p class="text-xl font-bold">{{ modal.mode === "deposit" ? "Deposited" : "Withdrawn" }}</p>
-						<p class="mt-1 text-sm text-muted-foreground">{{ amountNum.toFixed(4) }} {{ modal.market.symbol }}</p>
+						<p class="mt-1 text-sm text-muted-foreground">
+							<template v-if="modal.mode === 'deposit' && swapQuote">~{{ quoteOutputAmount.toFixed(4) }}</template>
+							<template v-else>{{ amountNum.toFixed(4) }}</template>
+							{{ modal.market.symbol }}
+						</p>
 						<a :href="`https://solscan.io/tx/${successSig}`" target="_blank" class="mt-4 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"> View on explorer <ExternalLink class="h-3 w-3" /> </a>
 						<button class="mt-5 w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground hover:opacity-90" @click="closeModal">Done</button>
 					</div>
