@@ -2,12 +2,17 @@
 import { Bell, CheckCheck, Gift, CreditCard, Users, Inbox } from 'lucide-vue-next'
 
 const { apiFetch } = useAuth()
+const { fetchUnread } = useNotifications()
 
 const { data, refresh, pending } = useAsyncData(
   'notifications-page',
   () => apiFetch<{ notifications: any[]; unread: number }>('/api/notifications'),
   { lazy: true }
 )
+
+watch(() => data.value?.unread, (val) => {
+  if (val !== undefined) fetchUnread()
+})
 
 const markingAll = ref(false)
 const markingId = ref<string | null>(null)
@@ -16,7 +21,7 @@ async function markAllRead() {
   markingAll.value = true
   try {
     await apiFetch('/api/notifications/read', { method: 'POST', body: {} })
-    await refresh()
+    await Promise.all([refresh(), fetchUnread()])
   } finally { markingAll.value = false }
 }
 
@@ -24,7 +29,7 @@ async function markRead(id: string) {
   markingId.value = id
   try {
     await apiFetch('/api/notifications/read', { method: 'POST', body: { id } })
-    await refresh()
+    await Promise.all([refresh(), fetchUnread()])
   } finally { markingId.value = null }
 }
 
